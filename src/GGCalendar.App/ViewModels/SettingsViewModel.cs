@@ -27,6 +27,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _google = google;
         GoogleClientId = s.GoogleClientId ?? "";
         GoogleClientSecret = s.GoogleClientSecret ?? "";
+        SyncIntervalIndex = Math.Max(0, Array.IndexOf(SyncIntervalOptions, s.SyncIntervalMinutes));
         if (google is not null) foreach (var a in google.AccountEmails) GoogleAccounts.Add(a);
         NotificationsEnabled = s.NotificationsEnabled;
         ReminderVolumePercent = s.ReminderVolumePercent;
@@ -74,6 +75,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<string> GoogleAccounts { get; } = [];
     [ObservableProperty] public partial string GoogleClientId { get; set; }
     [ObservableProperty] public partial string GoogleClientSecret { get; set; }
+
+    public static readonly int[] SyncIntervalOptions = [0, 1, 2, 5, 10, 15, 30, 60];
+    public string[] SyncIntervalLabels { get; } =
+        ["Mai (solo manuale)", "Ogni minuto", "Ogni 2 minuti", "Ogni 5 minuti", "Ogni 10 minuti", "Ogni 15 minuti", "Ogni 30 minuti", "Ogni 60 minuti"];
+    [ObservableProperty] public partial int SyncIntervalIndex { get; set; }
     [ObservableProperty] public partial string GoogleStatus { get; set; } = "";
     [ObservableProperty] public partial bool IsSigningIn { get; set; }
 
@@ -220,6 +226,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultGuestsCanModify = DefaultGuestsCanModify,
             DefaultGuestsCanInvite = DefaultGuestsCanInvite,
             DefaultGuestsCanSeeList = DefaultGuestsCanSeeList,
+            SyncIntervalMinutes = SyncIntervalOptions[Math.Clamp(SyncIntervalIndex, 0, SyncIntervalOptions.Length - 1)],
             GoogleClientId = string.IsNullOrWhiteSpace(GoogleClientId) ? null : GoogleClientId.Trim(),
             GoogleClientSecret = string.IsNullOrWhiteSpace(GoogleClientSecret) ? null : GoogleClientSecret.Trim(),
             DefaultEventMinutes = DefaultEventMinutes,

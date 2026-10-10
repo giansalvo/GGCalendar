@@ -19,6 +19,8 @@ public sealed class AppSettings
     /// <summary>Optional override of the embedded Google OAuth client (advanced).</summary>
     public string? GoogleClientId { get; set; }
     public string? GoogleClientSecret { get; set; }
+    /// <summary>Intervallo di sincronizzazione automatica in minuti; 0 = mai.</summary>
+    public int SyncIntervalMinutes { get; set; } = 5;
 
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;

@@ -107,16 +107,27 @@ public partial class MainWindow : Window
         ConfigureGoogle();
         vm.ChangeQueued += () =>
         {
+            if (vm.Settings.SyncIntervalMinutes <= 0) return;
             _debounce ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _debounce.Stop();
             _debounce.Tick -= OnDebounce;
             _debounce.Tick += OnDebounce;
             _debounce.Start();
         };
-        _syncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        _syncTimer = new DispatcherTimer();
         _syncTimer.Tick += async (_, _) => await SyncAsync();
+        ApplySyncInterval();
+        if (vm.Settings.SyncIntervalMinutes > 0) _ = SyncAsync();
+    }
+
+    private void ApplySyncInterval()
+    {
+        if (_syncTimer is null || Vm is not { } vm) return;
+        _syncTimer.Stop();
+        var minutes = vm.Settings.SyncIntervalMinutes;
+        if (minutes <= 0) return;
+        _syncTimer.Interval = TimeSpan.FromMinutes(minutes);
         _syncTimer.Start();
-        _ = SyncAsync();
     }
 
     private async void OnDebounce(object? sender, EventArgs e)
@@ -229,8 +240,9 @@ public partial class MainWindow : Window
         vm.Settings = result;
         ApplyTheme(result);
         ConfigureGoogle();
+        ApplySyncInterval();
         if (accountsChanged) vm.Reload();
-        _ = SyncAsync();
+        if (result.SyncIntervalMinutes > 0 || accountsChanged) _ = SyncAsync();
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;
         ScrollToDayStart();
     }

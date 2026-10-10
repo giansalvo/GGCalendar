@@ -96,6 +96,10 @@
                     <Button Content="Annulla" Command="{Binding CancelSignInCommand}" IsVisible="{Binding IsSigningIn}" />
                 </StackPanel>
                 <TextBlock Text="{Binding GoogleStatus}" TextWrapping="Wrap" Opacity="0.75" />
+                <Grid ColumnDefinitions="140,*">
+                    <TextBlock Text="Sincronizza" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SyncIntervalLabels}" SelectedIndex="{Binding SyncIntervalIndex}" HorizontalAlignment="Stretch" />
+                </Grid>
                 <Expander Header="Avanzate: credenziali OAuth personalizzate">
                     <StackPanel Spacing="8" Margin="0,8,0,0">
                         <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
