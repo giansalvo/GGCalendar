@@ -14,6 +14,7 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string Id { get; } = info.Id;
     public string Name { get; } = info.Name;
     public string ColorHex { get; } = info.ColorHex;
+    public string AccountName { get; } = info.AccountName;
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; } = info.IsVisible;
@@ -42,11 +43,23 @@ public sealed partial class MainViewModel : ViewModelBase
 
         _allEvents = SampleData.Events(StartOfWeek(DateTime.Today));
         SelectedDate = DateTime.Today;
-        Refresh();
+        Settings = new AppSettings();
     }
 
     public ObservableCollection<AccountGroup> Accounts { get; } = [];
-    public AppSettings Settings { get; } = new();
+    public IReadOnlyList<CalendarItemViewModel> Calendars => _calendars;
+
+    [ObservableProperty]
+    public partial AppSettings Settings { get; set; } = new();
+
+    [ObservableProperty]
+    public partial int FirstHour { get; set; }
+
+    [ObservableProperty]
+    public partial int LastHour { get; set; } = 24;
+
+    [ObservableProperty]
+    public partial string TimeZoneLabel { get; set; } = "";
 
     [ObservableProperty]
     public partial DateTime? SelectedDate { get; set; }
@@ -71,6 +84,38 @@ public sealed partial class MainViewModel : ViewModelBase
 
     partial void OnSelectedDateChanged(DateTime? value) => Refresh();
 
+    partial void OnSettingsChanged(AppSettings value)
+    {
+        FirstHour = value.HideOutsideHours ? value.DayStartHour : 0;
+        LastHour = value.HideOutsideHours ? value.DayEndHour : 24;
+        var zone = TimeZoneInfo.TryFindSystemTimeZoneById(value.PrimaryTimeZoneId ?? "", out var z) ? z : TimeZoneInfo.Local;
+        var offset = zone.GetUtcOffset(DateTime.UtcNow);
+        TimeZoneLabel = offset.Minutes == 0
+            ? $"GMT{(offset < TimeSpan.Zero ? "-" : "+")}{Math.Abs(offset.Hours):00}"
+            : $"GMT{(offset < TimeSpan.Zero ? "-" : "+")}{Math.Abs(offset.Hours):00}:{Math.Abs(offset.Minutes):00}";
+        Refresh();
+    }
+
+    public void AddEvent(CalendarEvent ev)
+    {
+        _allEvents.Add(ev);
+        Refresh();
+    }
+
+    public void UpdateEvent(CalendarEvent ev)
+    {
+        var i = _allEvents.FindIndex(e => e.Id == ev.Id);
+        if (i < 0) return;
+        _allEvents[i] = ev;
+        Refresh();
+    }
+
+    public CalendarEvent NewEvent(DateTime start, DateTime end, bool allDay = false)
+    {
+        var calendar = _calendars.FirstOrDefault(c => c.IsVisible) ?? _calendars.First();
+        return new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end) { IsAllDay = allDay };
+    }
+
     [RelayCommand] private void Today() => SelectedDate = DateTime.Today;
     [RelayCommand] private void Previous() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(-7);
     [RelayCommand] private void Next() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(7);
@@ -80,14 +125,6 @@ public sealed partial class MainViewModel : ViewModelBase
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
         _allEvents[i] = ev with { Start = start, End = end };
-        Refresh();
-    }
-
-    public void CreateEvent(DateTime start, DateTime end)
-    {
-        var calendar = _calendars.FirstOrDefault(c => c.IsVisible) ?? _calendars.FirstOrDefault();
-        if (calendar is null) return;
-        _allEvents.Add(new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end));
         Refresh();
     }
 

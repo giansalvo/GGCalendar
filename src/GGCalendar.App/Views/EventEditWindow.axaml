@@ -1,0 +1,55 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GGCalendar.App.ViewModels"
+        x:Class="GGCalendar.App.Views.EventEditWindow"
+        x:DataType="vm:EventEditViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="{Binding Header}">
+
+    <StackPanel Margin="24" Spacing="14">
+        <TextBox Text="{Binding Title}" PlaceholderText="Aggiungi titolo" FontSize="20" Name="TitleBox" />
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+            <TextBlock Grid.Row="0" Text="Inizio" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <CalendarDatePicker SelectedDate="{Binding StartDate}" FirstDayOfWeek="Monday" />
+                <TimePicker SelectedTime="{Binding StartTime}" IsVisible="{Binding IsTimed}"
+                            ClockIdentifier="{Binding Use24Hour, Converter={x:Static vm:ClockConverter.Instance}}" MinuteIncrement="5" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="1" Text="Fine" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <CalendarDatePicker SelectedDate="{Binding EndDate}" FirstDayOfWeek="Monday" />
+                <TimePicker SelectedTime="{Binding EndTime}" IsVisible="{Binding IsTimed}"
+                            ClockIdentifier="{Binding Use24Hour, Converter={x:Static vm:ClockConverter.Instance}}" MinuteIncrement="5" />
+            </StackPanel>
+
+            <CheckBox Grid.Row="2" Grid.Column="1" Content="Tutto il giorno" IsChecked="{Binding IsAllDay}" />
+        </Grid>
+
+        <ComboBox ItemsSource="{Binding Calendars}" SelectedItem="{Binding SelectedCalendar}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CalendarItemViewModel">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="12" Height="12" Fill="{Binding ColorHex}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Name}" />
+                        <TextBlock Text="{Binding AccountName}" Opacity="0.6" />
+                    </StackPanel>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBox Text="{Binding Location}" PlaceholderText="Aggiungi luogo" />
+        <TextBox Text="{Binding Description}" PlaceholderText="Aggiungi descrizione" AcceptsReturn="True" TextWrapping="Wrap" Height="90" />
+
+        <TextBlock Text="{Binding Error}" Foreground="#D93025" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <Button Name="DeleteButton" Content="Elimina" Foreground="#D93025" IsVisible="{Binding !IsNew}" Click="OnDelete" />
+            <Button Grid.Column="2" Content="Annulla" Margin="0,0,8,0" Click="OnCancel" />
+            <Button Grid.Column="3" Content="Salva" Classes="accent" IsDefault="True" Click="OnSave" />
+        </Grid>
+    </StackPanel>
+</Window>

@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GGCalendar.App.ViewModels"
+        x:Class="GGCalendar.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Width="560" Height="640" CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="Impostazioni">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,10,0,0" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="24,16">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+            <TextBlock Text="{Binding Error}" Foreground="#D93025" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" Content="Annulla" Margin="0,0,8,0" Click="OnCancel" />
+            <Button Grid.Column="2" Content="Salva" Classes="accent" IsDefault="True" Click="OnSave" />
+        </Grid>
+
+        <ScrollViewer>
+            <StackPanel Spacing="10" Margin="0,0,12,0">
+                <TextBlock Classes="section" Text="Calendario" Margin="0" />
+                <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="Inizio giornata" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayStartHour}" MinWidth="100" />
+                    <TextBlock Grid.Row="1" Text="Fine giornata" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayEndHour}" MinWidth="100" />
+                    <TextBlock Grid.Row="2" Text="La settimana inizia di" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Weekdays}" SelectedItem="{Binding FirstDayOfWeek}" MinWidth="160">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WeekdayOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Row="3" Text="Durata predefinita (minuti)" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding DefaultEventMinutes}" Minimum="5" Maximum="1440" Increment="15" FormatString="0" HorizontalAlignment="Left" Width="140" />
+                </Grid>
+                <CheckBox Content="Mostra solo la fascia oraria della giornata" IsChecked="{Binding HideOutsideHours}" />
+                <CheckBox Content="Mostra i numeri di settimana" IsChecked="{Binding ShowWeekNumbers}" />
+                <CheckBox Content="Orologio a 24 ore" IsChecked="{Binding Use24HourClock}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Scatto del trascinamento (minuti)" VerticalAlignment="Center" Width="220" />
+                    <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding SnapMinutes}" MinWidth="100" />
+                </StackPanel>
+
+                <TextBlock Classes="section" Text="Fusi orari" />
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="Principale" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding TimeZones}" SelectedItem="{Binding PrimaryTimeZone}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Row="1" Text="Secondario" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding SecondaryTimeZones}" SelectedItem="{Binding SecondaryTimeZone}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+                <TextBlock Classes="section" Text="Ollama (modello locale)" />
+                <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="Indirizzo" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1" Text="{Binding OllamaUrl}" />
+                    <Button Grid.Column="2" Content="Aggiorna modelli" Margin="8,0,0,0" Command="{Binding RefreshModelsCommand}" />
+                    <TextBlock Grid.Row="1" Text="Modello" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaModel}" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Row="2" Text="Modello di riserva" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaFallbackModel}" HorizontalAlignment="Stretch" />
+                </Grid>
+                <TextBlock Text="{Binding OllamaStatus}" Opacity="0.7" TextWrapping="Wrap" />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

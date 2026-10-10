@@ -13,7 +13,7 @@ using GGCalendar.Core.Models;
 
 namespace GGCalendar.App.Controls;
 
-/// <summary>Hour grid with the events of one week, drawn directly for speed and drag &amp; drop control.</summary>
+/// <summary>Hour grid with the timed events of one week, drawn directly for speed and drag &amp; drop control.</summary>
 public sealed class WeekGrid : Control
 {
     public const double Gutter = 56;
@@ -39,6 +39,15 @@ public sealed class WeekGrid : Control
     public static readonly StyledProperty<int> DefaultMinutesProperty =
         AvaloniaProperty.Register<WeekGrid, int>(nameof(DefaultMinutes), 60);
 
+    public static readonly StyledProperty<int> FirstHourProperty =
+        AvaloniaProperty.Register<WeekGrid, int>(nameof(FirstHour), 0);
+
+    public static readonly StyledProperty<int> LastHourProperty =
+        AvaloniaProperty.Register<WeekGrid, int>(nameof(LastHour), 24);
+
+    public static readonly StyledProperty<bool> Use24HourProperty =
+        AvaloniaProperty.Register<WeekGrid, bool>(nameof(Use24Hour), true);
+
     private enum DragMode { None, Pending, Move, Resize, Create }
 
     private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
@@ -52,12 +61,13 @@ public sealed class WeekGrid : Control
 
     static WeekGrid()
     {
-        AffectsRender<WeekGrid>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty);
+        AffectsRender<WeekGrid>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty,
+            FirstHourProperty, LastHourProperty, Use24HourProperty);
     }
 
     public WeekGrid()
     {
-        Height = 24 * HourHeight;
+        UpdateHeight();
         Focusable = true;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         timer.Tick += (_, _) => InvalidateVisual();
@@ -72,12 +82,28 @@ public sealed class WeekGrid : Control
     public int DayCount { get => GetValue(DayCountProperty); set => SetValue(DayCountProperty, value); }
     public int SnapMinutes { get => GetValue(SnapMinutesProperty); set => SetValue(SnapMinutesProperty, value); }
     public int DefaultMinutes { get => GetValue(DefaultMinutesProperty); set => SetValue(DefaultMinutesProperty, value); }
+    public int FirstHour { get => GetValue(FirstHourProperty); set => SetValue(FirstHourProperty, value); }
+    public int LastHour { get => GetValue(LastHourProperty); set => SetValue(LastHourProperty, value); }
+    public bool Use24Hour { get => GetValue(Use24HourProperty); set => SetValue(Use24HourProperty, value); }
 
     public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
     public event Action<DateTime, DateTime>? EventCreated;
     public event Action<CalendarEvent>? EventDeleted;
+    public event Action<CalendarEvent>? EventOpened;
 
     private double ColumnWidth => (Bounds.Width - Gutter) / Math.Max(1, DayCount);
+    private double Y(double hours) => (hours - FirstHour) * HourHeight;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == FirstHourProperty || change.Property == LastHourProperty)
+            UpdateHeight();
+    }
+
+    private void UpdateHeight() => Height = Math.Max(1, LastHour - FirstHour) * HourHeight;
+
+    private string FormatTime(DateTime t) => t.ToString(Use24Hour ? "HH:mm" : "h:mm tt", CultureInfo.CurrentCulture);
 
     // ---------- Pointer handling ----------
 
@@ -217,13 +243,29 @@ public sealed class WeekGrid : Control
                 e.Handled = true;
             }
         }
+        else if (e.Key == Key.Enter && _selectedId is not null)
+        {
+            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId);
+            if (ev is not null)
+            {
+                EventOpened?.Invoke(ev);
+                e.Handled = true;
+            }
+        }
     }
 
     protected override void OnDoubleTapped(TappedEventArgs e)
     {
         base.OnDoubleTapped(e);
         var p = e.GetPosition(this);
-        if (p.X < Gutter || HitTest(p) is not null) return;
+        if (p.X < Gutter) return;
+
+        if (HitTest(p) is { } hit)
+        {
+            EventOpened?.Invoke(hit.Event);
+            return;
+        }
+
         var start = PointToTime(p, snap: true, floor: true);
         EventCreated?.Invoke(start, start.AddMinutes(DefaultMinutes));
     }
@@ -255,7 +297,7 @@ public sealed class WeekGrid : Control
     {
         var days = Math.Max(1, DayCount);
         var day = (int)Math.Clamp(Math.Floor((p.X - Gutter) / ColumnWidth), 0, days - 1);
-        var minutes = Math.Clamp(p.Y / HourHeight * 60, 0, 24 * 60);
+        var minutes = Math.Clamp(p.Y / HourHeight * 60 + FirstHour * 60, 0, 24 * 60);
         var t = WeekStart.Date.AddDays(day).AddMinutes(minutes);
         return snap ? Snap(t, Math.Max(1, SnapMinutes), floor) : t;
     }
@@ -283,13 +325,14 @@ public sealed class WeekGrid : Control
         var days = Math.Max(1, DayCount);
         var colW = ColumnWidth;
 
+        using var clip = context.PushClip(new Rect(0, 0, w, h));
         context.FillRectangle(new SolidColorBrush(bg), new Rect(0, 0, w, h));
 
-        for (var hour = 1; hour < 24; hour++)
+        for (var hour = FirstHour + 1; hour < LastHour; hour++)
         {
-            var y = Math.Round(hour * HourHeight) + 0.5;
+            var y = Math.Round(Y(hour)) + 0.5;
             context.DrawLine(linePen, new Point(Gutter - 8, y), new Point(w, y));
-            var text = Text($"{hour:00}:00", 11, labelBrush);
+            var text = Text(DateTime.Today.AddHours(hour).ToString(Use24Hour ? "HH:mm" : "h tt", CultureInfo.CurrentCulture), 11, labelBrush);
             context.DrawText(text, new Point(Gutter - 12 - text.Width, y - text.Height / 2));
         }
 
@@ -310,7 +353,7 @@ public sealed class WeekGrid : Control
         var colors = CalendarColors;
 
         // Layout always uses the original positions so other events stay still while dragging.
-        var source = Events ?? [];
+        var source = (Events ?? []).Where(e => !e.IsAllDay).ToList();
         var hideId = _preview is not null && _mode is DragMode.Move or DragMode.Resize ? _active?.Id : null;
 
         void DrawBlock(CalendarEvent ev, Rect rect, bool translucent, bool selected)
@@ -329,7 +372,7 @@ public sealed class WeekGrid : Control
                 context.DrawText(title, new Point(rect.X + 6, rect.Y + 3));
                 if (rect.Height >= 38)
                 {
-                    var time = Text($"{ev.Start:HH:mm} - {ev.End:HH:mm}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
+                    var time = Text($"{FormatTime(ev.Start)} - {FormatTime(ev.End)}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
                     context.DrawText(time, new Point(rect.X + 6, rect.Y + 3 + title.Height));
                 }
             }
@@ -340,7 +383,7 @@ public sealed class WeekGrid : Control
             var day = WeekStart.Date.AddDays(d);
             var next = day.AddDays(1);
             var items = source
-                .Where(e => !e.IsAllDay && e.Start < next && e.End > day)
+                .Where(e => e.Start < next && e.End > day)
                 .Select(e => (Ev: e, S: e.Start < day ? day : e.Start, E: e.End > next ? next : e.End))
                 .ToList();
 
@@ -349,7 +392,7 @@ public sealed class WeekGrid : Control
                 var (ev, s, e) = p.Item;
                 var slotW = (colW - 8) / p.ColumnCount;
                 var x = Gutter + d * colW + 2 + p.Column * slotW;
-                var y = (s - day).TotalHours * HourHeight + 1;
+                var y = Y((s - day).TotalHours) + 1;
                 var height = Math.Max((e - s).TotalHours * HourHeight - 2, 20);
                 var rect = new Rect(x, y, slotW - (p.ColumnCount > 1 ? 1 : 0) + 2, height);
 
@@ -362,7 +405,7 @@ public sealed class WeekGrid : Control
             {
                 var s = pv.Start < day ? day : pv.Start;
                 var e = pv.End > next ? next : pv.End;
-                var y = (s - day).TotalHours * HourHeight + 1;
+                var y = Y((s - day).TotalHours) + 1;
                 var height = Math.Max((e - s).TotalHours * HourHeight - 2, 20);
                 DrawBlock(pv, new Rect(Gutter + d * colW + 2, y, colW - 6, height), true, false);
             }
@@ -374,7 +417,8 @@ public sealed class WeekGrid : Control
         var now = DateTime.Now;
         var index = (int)(now.Date - WeekStart.Date).TotalDays;
         if (index < 0 || index >= days) return;
-        var y = now.TimeOfDay.TotalHours * HourHeight;
+        var y = Y(now.TimeOfDay.TotalHours);
+        if (y < 0 || y > Bounds.Height) return;
         var brush = new SolidColorBrush(Color.Parse("#EA4335"));
         var x0 = Gutter + index * colW;
         context.DrawLine(new Pen(brush, 2), new Point(x0, y), new Point(x0 + colW, y));

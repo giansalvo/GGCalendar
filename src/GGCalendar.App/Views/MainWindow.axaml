@@ -37,23 +37,26 @@
                 <Button Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
                 <Button Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
                 <TextBlock Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" VerticalAlignment="Center" />
-                <Border CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" Margin="6,0,0,0">
+                <Border CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Settings.ShowWeekNumbers}">
                     <TextBlock FontSize="12" Text="{Binding WeekNumber, StringFormat='Settimana {0}'}" />
                 </Border>
             </StackPanel>
-            <ComboBox Grid.Column="2" SelectedIndex="1" Width="130" CornerRadius="18">
-                <ComboBoxItem>Giorno</ComboBoxItem>
-                <ComboBoxItem>Settimana</ComboBoxItem>
-                <ComboBoxItem>Mese</ComboBoxItem>
-                <ComboBoxItem>Agenda</ComboBoxItem>
-            </ComboBox>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <ComboBox SelectedIndex="1" Width="130" CornerRadius="18">
+                    <ComboBoxItem>Giorno</ComboBoxItem>
+                    <ComboBoxItem>Settimana</ComboBoxItem>
+                    <ComboBoxItem>Mese</ComboBoxItem>
+                    <ComboBoxItem>Agenda</ComboBoxItem>
+                </ComboBox>
+                <Button Classes="nav" Content="⚙" FontSize="18" Click="OnOpenSettings" ToolTip.Tip="Impostazioni" />
+            </StackPanel>
         </Grid>
 
         <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
             <DockPanel>
-                <Button DockPanel.Dock="Top" Content="＋  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" />
+                <Button DockPanel.Dock="Top" Content="＋  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" Click="OnNewEvent" />
                 <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
-                    <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="Monday" Width="300" />
+                    <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
                 <ScrollViewer Margin="0,16,0,0">
                     <ItemsControl ItemsSource="{Binding Accounts}">
@@ -77,7 +80,9 @@
         </Border>
 
         <DockPanel>
-            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Days}" Margin="56,4,12,4">
+            <Panel DockPanel.Dock="Top">
+            <TextBlock Text="{Binding TimeZoneLabel}" Classes="muted" FontSize="11" Margin="8,0,0,6" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
+            <ItemsControl ItemsSource="{Binding Days}" Margin="56,4,12,4">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Rows="1" />
@@ -102,11 +107,19 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </Panel>
+            <ctl:AllDayStrip Name="AllDay" DockPanel.Dock="Top" Margin="0,0,12,0"
+                             WeekStart="{Binding WeekStart}"
+                             Events="{Binding VisibleEvents}"
+                             CalendarColors="{Binding CalendarColors}" />
             <ScrollViewer Name="GridScroll">
                 <ctl:WeekGrid Name="Grid"
                               WeekStart="{Binding WeekStart}"
                               Events="{Binding VisibleEvents}"
                               CalendarColors="{Binding CalendarColors}"
+                              FirstHour="{Binding FirstHour}"
+                              LastHour="{Binding LastHour}"
+                              Use24Hour="{Binding Settings.Use24HourClock}"
                               SnapMinutes="{Binding Settings.SnapMinutes}"
                               DefaultMinutes="{Binding Settings.DefaultEventMinutes}" />
             </ScrollViewer>

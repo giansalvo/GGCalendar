@@ -4,6 +4,7 @@ public sealed class AppSettings
 {
     public int DayStartHour { get; set; } = 7;
     public int DayEndHour { get; set; } = 22;
+    public bool HideOutsideHours { get; set; }
     public DayOfWeek FirstDayOfWeek { get; set; } = DayOfWeek.Monday;
     public bool ShowWeekNumbers { get; set; } = true;
     public bool Use24HourClock { get; set; } = true;
