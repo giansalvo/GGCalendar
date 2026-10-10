@@ -29,13 +29,18 @@ public sealed class AllDayStrip : Control
     public static readonly StyledProperty<int> DayCountProperty =
         AvaloniaProperty.Register<AllDayStrip, int>(nameof(DayCount), 7);
 
+    public static readonly StyledProperty<bool> DimPastProperty =
+        AvaloniaProperty.Register<AllDayStrip, bool>(nameof(DimPast), true);
+
     private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
     private List<(CalendarEvent Ev, int FirstDay, int LastDay, int Row)> _layout = [];
 
     static AllDayStrip()
     {
-        AffectsRender<AllDayStrip>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty);
+        AffectsRender<AllDayStrip>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty, DimPastProperty);
     }
+
+    public bool DimPast { get => GetValue(DimPastProperty); set => SetValue(DimPastProperty, value); }
 
     public DateTime WeekStart { get => GetValue(WeekStartProperty); set => SetValue(WeekStartProperty, value); }
     public IReadOnlyList<CalendarEvent>? Events { get => GetValue(EventsProperty); set => SetValue(EventsProperty, value); }
@@ -120,6 +125,7 @@ public sealed class AllDayStrip : Control
                 (last - first + 1) * colW - 5, RowHeight);
             _hits.Add((rect, ev));
             var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8");
+            using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
             context.DrawRectangle(new SolidColorBrush(Color.Parse(hex)), null, rect, 5, 5);
             using (context.PushClip(rect.Deflate(new Thickness(6, 0))))
             {

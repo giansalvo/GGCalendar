@@ -39,6 +39,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
         DefaultEventMinutes = s.DefaultEventMinutes;
         SnapMinutes = s.SnapMinutes;
         OllamaUrl = s.OllamaUrl;
+        ThemeIndex = Math.Clamp(s.Theme, 0, 2);
+        DimPastEvents = s.DimPastEvents;
+        DefaultGuestsCanModify = s.DefaultGuestsCanModify;
+        DefaultGuestsCanInvite = s.DefaultGuestsCanInvite;
+        DefaultGuestsCanSeeList = s.DefaultGuestsCanSeeList;
 
         Weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Sunday, DayOfWeek.Saturday }
             .Select(d => new WeekdayOption(d, Culture.TextInfo.ToTitleCase(Culture.DateTimeFormat.GetDayName(d)))).ToList();
@@ -93,6 +98,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool HideOutsideHours { get; set; }
     [ObservableProperty] public partial bool ShowWeekNumbers { get; set; }
     [ObservableProperty] public partial bool Use24HourClock { get; set; }
+    [ObservableProperty] public partial int ThemeIndex { get; set; }
+    [ObservableProperty] public partial bool DimPastEvents { get; set; }
+    [ObservableProperty] public partial bool DefaultGuestsCanModify { get; set; }
+    [ObservableProperty] public partial bool DefaultGuestsCanInvite { get; set; }
+    [ObservableProperty] public partial bool DefaultGuestsCanSeeList { get; set; }
     [ObservableProperty] public partial int DefaultEventMinutes { get; set; }
     [ObservableProperty] public partial int SnapMinutes { get; set; }
     [ObservableProperty] public partial WeekdayOption FirstDayOfWeek { get; set; }
@@ -143,6 +153,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
             FirstDayOfWeek = FirstDayOfWeek.Day,
             ShowWeekNumbers = ShowWeekNumbers,
             Use24HourClock = Use24HourClock,
+            Theme = ThemeIndex,
+            DimPastEvents = DimPastEvents,
+            DefaultGuestsCanModify = DefaultGuestsCanModify,
+            DefaultGuestsCanInvite = DefaultGuestsCanInvite,
+            DefaultGuestsCanSeeList = DefaultGuestsCanSeeList,
             DefaultEventMinutes = DefaultEventMinutes,
             NotificationsEnabled = NotificationsEnabled,
             ReminderVolumePercent = ReminderVolumePercent,

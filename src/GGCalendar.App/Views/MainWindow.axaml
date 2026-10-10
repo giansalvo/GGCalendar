@@ -95,7 +95,7 @@
         </Border>
 
         <Panel>
-        <ctl:MonthGrid Name="Month" IsVisible="{Binding IsMonth}" Margin="0,0,12,0" ShowWeekends="{Binding ShowWeekends}"
+        <ctl:MonthGrid Name="Month" DimPast="{Binding Settings.DimPastEvents}" IsVisible="{Binding IsMonth}" Margin="0,0,12,0" ShowWeekends="{Binding ShowWeekends}"
                        GridStart="{Binding MonthGridStart}" Month="{Binding MonthNumber}"
                        Events="{Binding VisibleEvents}" CalendarColors="{Binding CalendarColors}" />
 
@@ -159,12 +159,12 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             </Panel>
-            <ctl:AllDayStrip Name="AllDay" DockPanel.Dock="Top" Margin="0,0,12,0"
+            <ctl:AllDayStrip Name="AllDay" DimPast="{Binding Settings.DimPastEvents}" DockPanel.Dock="Top" Margin="0,0,12,0"
                              WeekStart="{Binding WeekStart}" DayCount="{Binding DayCount}"
                              Events="{Binding VisibleEvents}"
                              CalendarColors="{Binding CalendarColors}" />
             <ScrollViewer Name="GridScroll">
-                <ctl:WeekGrid Name="Grid"
+                <ctl:WeekGrid Name="Grid" DimPast="{Binding Settings.DimPastEvents}"
                               WeekStart="{Binding WeekStart}" DayCount="{Binding DayCount}"
                               Events="{Binding VisibleEvents}"
                               CalendarColors="{Binding CalendarColors}"

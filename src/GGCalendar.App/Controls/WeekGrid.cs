@@ -48,6 +48,9 @@ public sealed class WeekGrid : Control
     public static readonly StyledProperty<bool> Use24HourProperty =
         AvaloniaProperty.Register<WeekGrid, bool>(nameof(Use24Hour), true);
 
+    public static readonly StyledProperty<bool> DimPastProperty =
+        AvaloniaProperty.Register<WeekGrid, bool>(nameof(DimPast), true);
+
     private enum DragMode { None, Pending, Move, Resize, Create }
 
     private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
@@ -62,7 +65,7 @@ public sealed class WeekGrid : Control
     static WeekGrid()
     {
         AffectsRender<WeekGrid>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty,
-            FirstHourProperty, LastHourProperty, Use24HourProperty);
+            FirstHourProperty, LastHourProperty, Use24HourProperty, DimPastProperty);
     }
 
     public WeekGrid()
@@ -84,6 +87,7 @@ public sealed class WeekGrid : Control
     public int DefaultMinutes { get => GetValue(DefaultMinutesProperty); set => SetValue(DefaultMinutesProperty, value); }
     public int FirstHour { get => GetValue(FirstHourProperty); set => SetValue(FirstHourProperty, value); }
     public int LastHour { get => GetValue(LastHourProperty); set => SetValue(LastHourProperty, value); }
+    public bool DimPast { get => GetValue(DimPastProperty); set => SetValue(DimPastProperty, value); }
     public bool Use24Hour { get => GetValue(Use24HourProperty); set => SetValue(Use24HourProperty, value); }
 
     public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
@@ -364,6 +368,7 @@ public sealed class WeekGrid : Control
             var pen = selected
                 ? new Pen(new SolidColorBrush(Color.Parse("#1A73E8")), 2)
                 : new Pen(new SolidColorBrush(background), 1);
+            using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
             context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
 
             using (context.PushClip(rect.Deflate(new Thickness(6, 3))))

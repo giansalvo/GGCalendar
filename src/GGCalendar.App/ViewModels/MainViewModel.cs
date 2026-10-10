@@ -183,7 +183,13 @@ public sealed partial class MainViewModel : ViewModelBase
     public CalendarEvent NewEvent(DateTime start, DateTime end, bool allDay = false)
     {
         var calendar = _calendars.FirstOrDefault(c => c.IsVisible) ?? _calendars.First();
-        return new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end) { IsAllDay = allDay };
+        return new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end)
+        {
+            IsAllDay = allDay,
+            GuestsCanModify = Settings.DefaultGuestsCanModify,
+            GuestsCanInvite = Settings.DefaultGuestsCanInvite,
+            GuestsCanSeeList = Settings.DefaultGuestsCanSeeList,
+        };
     }
 
     [RelayCommand] private void Today() => SelectedDate = DateTime.Today;

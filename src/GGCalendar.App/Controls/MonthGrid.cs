@@ -31,6 +31,11 @@ public sealed class MonthGrid : Control
     public static readonly StyledProperty<IReadOnlyDictionary<string, string>?> CalendarColorsProperty =
         AvaloniaProperty.Register<MonthGrid, IReadOnlyDictionary<string, string>?>(nameof(CalendarColors));
 
+    public static readonly StyledProperty<bool> DimPastProperty =
+        AvaloniaProperty.Register<MonthGrid, bool>(nameof(DimPast), true);
+
+    public bool DimPast { get => GetValue(DimPastProperty); set => SetValue(DimPastProperty, value); }
+
     public static readonly StyledProperty<bool> ShowWeekendsProperty =
         AvaloniaProperty.Register<MonthGrid, bool>(nameof(ShowWeekends), true);
 
@@ -38,7 +43,7 @@ public sealed class MonthGrid : Control
 
     static MonthGrid()
     {
-        AffectsRender<MonthGrid>(ShowWeekendsProperty, GridStartProperty, MonthProperty, EventsProperty, CalendarColorsProperty);
+        AffectsRender<MonthGrid>(DimPastProperty, ShowWeekendsProperty, GridStartProperty, MonthProperty, EventsProperty, CalendarColorsProperty);
     }
 
     public DateTime GridStart { get => GetValue(GridStartProperty); set => SetValue(GridStartProperty, value); }
@@ -147,6 +152,7 @@ public sealed class MonthGrid : Control
                     var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var cc) ? cc : "#1A73E8");
                     var color = Color.Parse(hex);
                     var title = string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title;
+                    using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
                     if (ev.IsAllDay)
                     {
                         context.DrawRectangle(new SolidColorBrush(color), null, rect, 4, 4);

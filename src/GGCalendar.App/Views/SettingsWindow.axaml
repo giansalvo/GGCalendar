@@ -43,10 +43,24 @@
                 <CheckBox Content="Mostra solo la fascia oraria della giornata" IsChecked="{Binding HideOutsideHours}" />
                 <CheckBox Content="Mostra i numeri di settimana" IsChecked="{Binding ShowWeekNumbers}" />
                 <CheckBox Content="Orologio a 24 ore" IsChecked="{Binding Use24HourClock}" />
+                <CheckBox Content="Riduci la luminosità degli eventi passati" IsChecked="{Binding DimPastEvents}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Tema" VerticalAlignment="Center" Width="220" />
+                    <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="160">
+                        <ComboBoxItem>Come il sistema</ComboBoxItem>
+                        <ComboBoxItem>Chiaro</ComboBoxItem>
+                        <ComboBoxItem>Scuro</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Text="Scatto del trascinamento (minuti)" VerticalAlignment="Center" Width="220" />
                     <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding SnapMinutes}" MinWidth="100" />
                 </StackPanel>
+
+                <TextBlock Classes="section" Text="Nuovi eventi: autorizzazioni degli invitati" />
+                <CheckBox Content="Modificare l'evento" IsChecked="{Binding DefaultGuestsCanModify}" />
+                <CheckBox Content="Invitare altre persone" IsChecked="{Binding DefaultGuestsCanInvite}" />
+                <CheckBox Content="Vedere l'elenco invitati" IsChecked="{Binding DefaultGuestsCanSeeList}" />
 
                 <TextBlock Classes="section" Text="Fusi orari" />
                 <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="8">

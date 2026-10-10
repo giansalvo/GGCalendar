@@ -45,6 +45,7 @@ public partial class MainWindow : Window
             if (Vm is { } vm)
             {
                 vm.Settings = _store.Load();
+                ApplyTheme(vm.Settings);
                 vm.ViewModeIndex = Math.Clamp(vm.Settings.DefaultView, 0, 5);
                 vm.PropertyChanged += (_, a) =>
                 {
@@ -83,6 +84,17 @@ public partial class MainWindow : Window
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    private static void ApplyTheme(AppSettings s)
+    {
+        if (Avalonia.Application.Current is { } app)
+            app.RequestedThemeVariant = s.Theme switch
+            {
+                1 => Avalonia.Styling.ThemeVariant.Light,
+                2 => Avalonia.Styling.ThemeVariant.Dark,
+                _ => Avalonia.Styling.ThemeVariant.Default,
+            };
+    }
 
     private void OnViewModeSelected(object? sender, RoutedEventArgs e)
     {
@@ -143,6 +155,7 @@ public partial class MainWindow : Window
         result.DefaultView = vm.Settings.DefaultView;
         _store.Save(result);
         vm.Settings = result;
+        ApplyTheme(result);
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;
         ScrollToDayStart();
     }

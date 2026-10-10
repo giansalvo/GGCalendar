@@ -9,6 +9,13 @@ public sealed class AppSettings
     public bool ShowWeekNumbers { get; set; } = true;
     public bool ShowWeekends { get; set; } = true;
 
+    /// <summary>0 sistema, 1 chiaro, 2 scuro.</summary>
+    public int Theme { get; set; }
+    public bool DimPastEvents { get; set; } = true;
+    public bool DefaultGuestsCanModify { get; set; }
+    public bool DefaultGuestsCanInvite { get; set; }
+    public bool DefaultGuestsCanSeeList { get; set; } = true;
+
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;
