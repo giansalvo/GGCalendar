@@ -162,6 +162,27 @@ public sealed partial class EventEditViewModel : ViewModelBase
     [ObservableProperty] public partial DateTime? EndDate { get; set; }
     [ObservableProperty] public partial TimeSpan? StartTime { get; set; }
     [ObservableProperty] public partial TimeSpan? EndTime { get; set; }
+
+    private bool _shifting;
+
+    partial void OnStartDateChanged(DateTime? oldValue, DateTime? newValue)
+    {
+        if (_shifting || oldValue is null || newValue is null || EndDate is null) return;
+        _shifting = true;
+        EndDate = EndDate.Value.Date + (newValue.Value.Date - oldValue.Value.Date);
+        _shifting = false;
+    }
+
+    // Like Google Calendar: moving the start keeps the duration, so the end follows.
+    partial void OnStartTimeChanged(TimeSpan? oldValue, TimeSpan? newValue)
+    {
+        if (_shifting || oldValue is null || newValue is null || EndTime is null || EndDate is null) return;
+        _shifting = true;
+        var end = EndDate.Value.Date + EndTime.Value + (newValue.Value - oldValue.Value);
+        EndDate = end.Date;
+        EndTime = end.TimeOfDay;
+        _shifting = false;
+    }
     [ObservableProperty] public partial ChoiceOption<string?> Recurrence { get; set; }
     [ObservableProperty] public partial ChoiceOption<EventAvailability> Availability { get; set; }
     [ObservableProperty] public partial ChoiceOption<EventVisibility> Visibility { get; set; }
