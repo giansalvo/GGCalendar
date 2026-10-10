@@ -1,0 +1,96 @@
+<p align="center"><img src="img/GGCalendar_logo.jpg" alt="Logo di GGCalendar" width="128"></p>
+
+<h1 align="center">GGCalendar</h1>
+
+<p align="center">Calendario per Windows 11 con sincronizzazione Google Calendar.</p>
+
+<p align="center">
+  <a href="https://github.com/giansalvo/GGCalendar/releases/latest">Scarica l'ultima versione</a> ·
+  <a href="website/privacy.html">Privacy</a> ·
+  <a href="website/terms.html">Termini</a> ·
+  <a href="LICENSE">Licenza GPL v3 o successive</a>
+</p>
+
+---
+
+## Funzionalità
+
+- Viste giorno, settimana, 6 giorni, mese, anno e programma; weekend nascondibili
+- Creazione, spostamento e ridimensionamento degli eventi con il trascinamento, anche tra calendari diversi
+- Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
+- Promemoria con notifica, allarme sonoro in loop e posticipo, conservati anche dopo un riavvio
+- Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti
+- Invitati, link Google Meet, promemoria via email (inviati da Google)
+- Calendari locali, importazione ed esportazione di file `.ics`
+- Tema chiaro e scuro
+
+## Installazione
+
+Scarica `GGCalendar-v<versione>-Setup.exe` dalla pagina [Releases](https://github.com/giansalvo/GGCalendar/releases/latest) ed eseguilo.
+
+- Requisiti: Windows 11 a 64 bit. Il runtime .NET è incluso, non servono altri componenti.
+- Di default installa solo per l'utente corrente, senza permessi di amministratore.
+- L'installer non è firmato digitalmente: se Windows SmartScreen mostra "Windows ha protetto il PC", scegli **Ulteriori informazioni → Esegui comunque**.
+
+I dati dell'app sono in `%AppData%\GGCalendar` e non vengono cancellati dalla disinstallazione.
+
+## Compilare dal codice sorgente
+
+Requisiti: [.NET SDK 10](https://dotnet.microsoft.com/download) su Windows.
+
+```powershell
+git clone https://github.com/giansalvo/GGCalendar.git
+cd GGCalendar
+dotnet run --project src/GGCalendar.App
+dotnet test
+```
+
+### Credenziali Google
+
+Le credenziali OAuth dell'app ufficiale non sono nel repository. Per usare la sincronizzazione con una build compilata da te serve un tuo progetto Google Cloud:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) abilita la **Google Calendar API**.
+2. Configura la schermata di consenso OAuth con l'ambito `https://www.googleapis.com/auth/calendar`.
+3. Crea un ID client OAuth di tipo **App desktop** e scarica il file JSON.
+4. Copia il file in una cartella `OAuth/` nella radice del repository, con un nome che inizi per `client_secret` (la cartella è esclusa da git): verrà incluso nell'eseguibile alla compilazione.
+
+In alternativa puoi inserire ID client e secret nell'app, in *Impostazioni → Account Google → Avanzate*.
+
+### Creare l'installer
+
+Richiede [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) e le credenziali Google descritte sopra.
+
+```powershell
+.\installer\build-installer.ps1
+```
+
+Lo script pubblica l'app self-contained per `win-x64` e crea `website/downloads/GGCalendar-v<versione>-Setup.exe`, prendendo la versione da `InformationalVersion` in `src/GGCalendar.App/GGCalendar.App.csproj`.
+
+## Struttura del progetto
+
+| Cartella | Contenuto |
+|---|---|
+| `src/GGCalendar.Core` | Modelli, ricorrenze (RRULE), parser e writer ICS, calcolo dei promemoria, layout degli eventi sovrapposti |
+| `src/GGCalendar.Data` | Archivio SQLite di calendari ed eventi, coda delle modifiche da inviare, impostazioni, stato dei promemoria |
+| `src/GGCalendar.Providers.Google` | Accesso OAuth (PKCE, redirect su loopback) e client delle Google Calendar API |
+| `src/GGCalendar.App` | Interfaccia [Avalonia](https://avaloniaui.net/) (MVVM), sincronizzazione, notifiche e suoni |
+| `tests/GGCalendar.Core.Tests` | Test xUnit |
+| `installer` | Script Inno Setup e script di build dell'installer |
+| `website` | Sito di presentazione, informativa privacy e termini |
+
+## Privacy
+
+GGCalendar non ha server propri e non raccoglie telemetria. I dati restano sul tuo computer e, se colleghi un account Google, viaggiano solo tra il computer e Google. I dettagli sono nell'[informativa sulla privacy](website/privacy.html).
+
+## Licenza
+
+Copyright © 2026 Giansalvo Gusinu.
+
+GGCalendar è software libero: puoi ridistribuirlo e/o modificarlo secondo i termini della GNU General Public License pubblicata dalla Free Software Foundation, versione 3 della licenza o (a tua scelta) qualsiasi versione successiva. È distribuito nella speranza che sia utile, ma **senza alcuna garanzia**, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo è nel file [LICENSE](LICENSE).
+
+### Termini aggiuntivi (GPL v3, sezione 7)
+
+Il nome "GGCalendar" e il logo (file `img/GGCalendar.jpg`, `img/GGCalendar_logo.jpg`, `src/GGCalendar.App/Assets/GGCalendar.ico`, `src/GGCalendar.App/Assets/GGCalendar_logo.jpg`, `website/assets/logo.jpg`) identificano l'app originale dell'autore:
+
+- ai sensi della sezione 7(e), la licenza non concede alcun diritto d'uso del nome e del logo come marchi;
+- ai sensi della sezione 7(c), chi distribuisce una versione modificata deve usare un nome e un logo diversi, così che non sia confusa con l'originale. È consentito dichiarare che deriva da GGCalendar.

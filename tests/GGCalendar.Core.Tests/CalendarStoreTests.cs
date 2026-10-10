@@ -65,8 +65,12 @@ public class CalendarStoreTests
         store.SetCalendarVisible("c1", false);
         Assert.False(Assert.Single(store.GetCalendars()).IsVisible);
         store.UpsertEvent(Ev("e1", DateTime.Today));
+        store.Enqueue("e1", "c1", OutboxOperation.Update, Ev("e1", DateTime.Today));
+        store.SetSyncToken("c1", "tok");
         store.DeleteCalendar("c1");
         Assert.Empty(store.GetAllEvents());
+        Assert.Empty(store.GetPending());
+        Assert.Null(store.GetSyncToken("c1"));
     }
 
     [Fact]

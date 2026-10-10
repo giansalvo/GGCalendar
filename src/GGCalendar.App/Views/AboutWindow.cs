@@ -13,7 +13,7 @@ public sealed class AboutWindow : Window
     public AboutWindow()
     {
         Title = "Informazioni su GGCalendar";
-        Width = 360;
+        Width = 440;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -40,6 +40,14 @@ public sealed class AboutWindow : Window
                     Text = $"Versione: {AppInfo.Version}\nAutore: {AppInfo.Author}\nData di build: {AppInfo.BuildDate}",
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                new SelectableTextBlock
+                {
+                    Text = AppInfo.LegalNotice,
+                    TextWrapping = TextWrapping.Wrap,
+                    TextAlignment = TextAlignment.Center,
+                    FontSize = 12,
+                    Opacity = 0.75,
                 },
                 close,
             },

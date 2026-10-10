@@ -141,9 +141,15 @@ public sealed class CalendarStore
 
     public void ClearSyncTokens() => WithConnection(c => Run(c, "DELETE FROM sync_state", []));
 
-    /// <summary>Deletes a calendar together with its events.</summary>
-    public void DeleteCalendar(string calendarId) =>
-        WithConnection(c => Run(c, "DELETE FROM calendars WHERE id = $id", ("$id", calendarId)));
+    /// <summary>Deletes a calendar together with its events, its queued changes and its sync position.</summary>
+    public void DeleteCalendar(string calendarId) => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        Run(c, "DELETE FROM outbox WHERE calendar_id = $id", ("$id", calendarId));
+        Run(c, "DELETE FROM sync_state WHERE calendar_id = $id", ("$id", calendarId));
+        Run(c, "DELETE FROM calendars WHERE id = $id", ("$id", calendarId));
+        tx.Commit();
+    });
 
     // Events
 

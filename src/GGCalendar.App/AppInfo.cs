@@ -20,5 +20,15 @@ public static class AppInfo
         ? date.ToString("dd/MM/yyyy")
         : "";
 
-    public static string Summary => $"GGCalendar versione {Version}\nAutore: {Author}\nData di build: {BuildDate}";
+    public const string SourceUrl = "https://github.com/giansalvo/GGCalendar";
+
+    /// <summary>The "appropriate legal notices" that the GPL v3 (section 0) requires an interactive program to show.</summary>
+    public const string LegalNotice =
+        "Copyright © 2026 Giansalvo Gusinu.\n" +
+        "Software libero distribuito con licenza GNU General Public License versione 3 o (a tua scelta) successiva, SENZA ALCUNA GARANZIA. " +
+        "Puoi ridistribuirlo e modificarlo secondo i termini della licenza: https://www.gnu.org/licenses/gpl-3.0.html\n" +
+        "Codice sorgente: " + SourceUrl + "\n" +
+        "Il nome e il logo GGCalendar non sono concessi in licenza.";
+
+    public static string Summary => $"GGCalendar versione {Version}\nAutore: {Author}\nData di build: {BuildDate}\n\n{LegalNotice}";
 }

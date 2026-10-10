@@ -26,6 +26,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.22000
 OutputDir=..\website\downloads
 OutputBaseFilename=GGCalendar-v{#AppVersion}-Setup
+; GPL v3 shown for information: the license does not require accepting it to install or run the program.
+InfoBeforeFile=..\LICENSE
 SetupIconFile=..\src\GGCalendar.App\Assets\GGCalendar.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName=GGCalendar

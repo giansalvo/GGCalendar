@@ -223,7 +223,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         Error = "";
         if (DayEndHour <= DayStartHour) { Error = "La fine della giornata deve essere dopo l'inizio."; return null; }
         if (PrimaryTimeZone is null) { Error = "Seleziona il fuso orario principale."; return null; }
-        if (string.IsNullOrWhiteSpace(OllamaModel)) { Error = "Seleziona un modello Ollama."; return null; }
+        // Ollama is optional: without a model (not installed, or no models) the other settings must still save.
 
         return new AppSettings
         {
@@ -249,7 +249,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             PrimaryTimeZoneId = PrimaryTimeZone.Id,
             SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == PrimaryTimeZone.Id ? null : SecondaryTimeZone.Id,
             OllamaUrl = OllamaUrl.Trim(),
-            OllamaModel = OllamaModel!,
+            OllamaModel = OllamaModel ?? "",
             OllamaFallbackModel = OllamaFallbackModel == NoFallback ? null : OllamaFallbackModel,
         };
     }
