@@ -42,15 +42,27 @@ public sealed partial class MainViewModel : ViewModelBase
     public MainViewModel(CalendarStore store)
     {
         _store = store;
-        var infos = store.GetCalendars();
+        _allEvents = [];
+        Settings = new AppSettings();
+        Reload();
+        SelectedDate = DateTime.Today;
+    }
+
+    /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
+    public void Reload()
+    {
+        var hidden = _calendars.Where(c => !c.IsVisible).Select(c => c.Id).ToHashSet();
+        var infos = _store.GetCalendars();
         if (infos.Count == 0)
         {
             // First run: a local calendar so the app is usable before any account is connected.
             var local = new CalendarInfo("local-personale", "Locale", "Personale", "#1A73E8");
-            store.UpsertCalendar(local);
+            _store.UpsertCalendar(local);
             infos = [local];
         }
 
+        _calendars.Clear();
+        Accounts.Clear();
         foreach (var g in infos.GroupBy(c => c.AccountName))
         {
             var items = g.Select(info =>
@@ -67,9 +79,9 @@ public sealed partial class MainViewModel : ViewModelBase
             Accounts.Add(new AccountGroup(g.Key, items));
         }
 
-        _allEvents = store.GetAllEvents().ToList();
-        SelectedDate = DateTime.Today;
-        Settings = new AppSettings();
+        _allEvents.Clear();
+        _allEvents.AddRange(_store.GetAllEvents());
+        if (SelectedDate is not null) Refresh();
     }
 
     public ObservableCollection<AccountGroup> Accounts { get; } = [];
@@ -164,10 +176,22 @@ public sealed partial class MainViewModel : ViewModelBase
         Refresh();
     }
 
+    private static bool IsRemote(string calendarId) => Services.GoogleSyncService.IsGoogleCalendar(calendarId);
+
+    /// <summary>Raised after a local change was queued for Google, so the host can sync soon.</summary>
+    public event Action? ChangeQueued;
+
+    [ObservableProperty]
+    public partial string SyncStatus { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool IsSyncing { get; set; }
+
     public void AddEvent(CalendarEvent ev)
     {
         _allEvents.Add(ev);
         _store.UpsertEvent(ev);
+        if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
         Refresh();
     }
 
@@ -175,9 +199,31 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
+        var old = _allEvents[i];
+        var oldRemote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents[i] = ev;
         _store.UpsertEvent(ev);
+
+        if (old.CalendarId != ev.CalendarId)
+        {
+            // Cross-calendar move: delete at the origin, create at the destination.
+            if (IsRemote(old.CalendarId) && oldRemote is not null)
+                Queue(() => _store.EnqueueDelete(ev.Id, old.CalendarId, oldRemote));
+            _store.ClearRemote(ev.Id);
+            if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
+        }
+        else if (IsRemote(ev.CalendarId))
+        {
+            Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Update, ev));
+        }
+
         Refresh();
+    }
+
+    private void Queue(Action enqueue)
+    {
+        enqueue();
+        ChangeQueued?.Invoke();
     }
 
     public CalendarEvent NewEvent(DateTime start, DateTime end, bool allDay = false)
@@ -222,15 +268,15 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
-        _allEvents[i] = ev with { Start = start, End = end };
-        _store.UpsertEvent(_allEvents[i]);
-        Refresh();
+        UpdateEvent(_allEvents[i] with { Start = start, End = end });
     }
 
     public void DeleteEvent(CalendarEvent ev)
     {
+        var remote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents.RemoveAll(e => e.Id == ev.Id);
         _store.DeleteEvent(ev.Id);
+        if (IsRemote(ev.CalendarId) && remote is not null) Queue(() => _store.EnqueueDelete(ev.Id, ev.CalendarId, remote));
         Refresh();
     }
 

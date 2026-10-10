@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Folder Include="Models\" />
+    <SupportedOSPlatform Include="windows" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 

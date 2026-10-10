@@ -1,7 +1,11 @@
 using System;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using GGCalendar.Providers.Google;
 using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Models;
@@ -14,12 +18,17 @@ public partial class MainWindow : Window
 {
     private readonly SettingsStore _store = new();
     private readonly SoundService _sound = new();
+    private readonly GoogleSyncService _google;
+    private readonly SemaphoreSlim _syncLock = new(1, 1);
+    private DispatcherTimer? _syncTimer;
+    private DispatcherTimer? _debounce;
     private ReminderScheduler? _scheduler;
 
     public MainWindow()
     {
         InitializeComponent();
-        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); };
+        _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
+        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
         Grid.EventChanged += (ev, s, e) => Vm?.MoveEvent(ev, s, e);
         Grid.EventDeleted += ev => Vm?.DeleteEvent(ev);
         Grid.EventOpened += async ev => await EditAsync(ev, isNew: false);
@@ -56,6 +65,7 @@ public partial class MainWindow : Window
                 _scheduler = new ReminderScheduler(() => vm.AllEvents) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
                 _scheduler.Start();
+                StartSync();
             }
             Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToDayStart, Avalonia.Threading.DispatcherPriority.Loaded);
         };
@@ -84,6 +94,63 @@ public partial class MainWindow : Window
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    private void ConfigureGoogle()
+    {
+        if (Vm is not { } vm) return;
+        _google.Configure(GoogleClientConfig.Resolve(vm.Settings.GoogleClientId, vm.Settings.GoogleClientSecret));
+    }
+
+    private void StartSync()
+    {
+        if (Vm is not { } vm) return;
+        ConfigureGoogle();
+        vm.ChangeQueued += () =>
+        {
+            _debounce ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _debounce.Stop();
+            _debounce.Tick -= OnDebounce;
+            _debounce.Tick += OnDebounce;
+            _debounce.Start();
+        };
+        _syncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        _syncTimer.Tick += async (_, _) => await SyncAsync();
+        _syncTimer.Start();
+        _ = SyncAsync();
+    }
+
+    private async void OnDebounce(object? sender, EventArgs e)
+    {
+        _debounce?.Stop();
+        await SyncAsync();
+    }
+
+    private async void OnSyncNow(object? sender, RoutedEventArgs e) => await SyncAsync();
+
+    private async Task SyncAsync()
+    {
+        if (Vm is not { } vm || _google.AccountEmails.Count == 0) return;
+        if (!await _syncLock.WaitAsync(0)) return;
+        vm.IsSyncing = true;
+        vm.SyncStatus = "Sincronizzazione...";
+        try
+        {
+            var result = await Task.Run(() => _google.SyncAllAsync(CancellationToken.None));
+            if (result.Changed) vm.Reload();
+            vm.SyncStatus = result.Errors.Count > 0
+                ? "Errore di sincronizzazione: " + result.Errors[0]
+                : $"Sincronizzato alle {DateTime.Now:HH:mm}";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            vm.SyncStatus = "Errore di sincronizzazione: " + ex.Message;
+        }
+        finally
+        {
+            vm.IsSyncing = false;
+            _syncLock.Release();
+        }
+    }
 
     private static void ApplyTheme(AppSettings s)
     {
@@ -148,14 +215,22 @@ public partial class MainWindow : Window
     private async void OnOpenSettings(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;
-        var dialog = new SettingsWindow { DataContext = new SettingsViewModel(vm.Settings, _sound) };
+        var dialog = new SettingsWindow { DataContext = new SettingsViewModel(vm.Settings, _sound, _google) };
         var result = await dialog.ShowDialog<AppSettings?>(this);
-        if (result is null) return;
+        var accountsChanged = (dialog.DataContext as SettingsViewModel)?.AccountsChanged == true;
+        if (result is null)
+        {
+            if (accountsChanged) { vm.Reload(); await SyncAsync(); }
+            return;
+        }
         result.ShowWeekends = vm.Settings.ShowWeekends;
         result.DefaultView = vm.Settings.DefaultView;
         _store.Save(result);
         vm.Settings = result;
         ApplyTheme(result);
+        ConfigureGoogle();
+        if (accountsChanged) vm.Reload();
+        _ = SyncAsync();
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;
         ScrollToDayStart();
     }

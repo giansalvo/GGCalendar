@@ -13,7 +13,7 @@ public sealed record OutboxItem(long Seq, string EventId, string CalendarId, Out
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
 
     private static readonly JsonSerializerOptions Json = new() { Converters = { new JsonStringEnumConverter() } };
 
@@ -91,6 +91,10 @@ public sealed class CalendarStore
                     operation TEXT NOT NULL,
                     payload TEXT,
                     created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS sync_state (
+                    calendar_id TEXT PRIMARY KEY,
+                    sync_token TEXT NOT NULL
                 );
                 """);
             Run(c, $"PRAGMA user_version = {SchemaVersion}");
@@ -201,6 +205,57 @@ public sealed class CalendarStore
     });
 
     public void Complete(long seq) => WithConnection(c => Run(c, "DELETE FROM outbox WHERE seq = $s", ("$s", seq)));
+
+    public static CalendarEvent? ReadSnapshot(OutboxItem item) =>
+        item.Payload is null ? null : JsonSerializer.Deserialize<CalendarEvent>(item.Payload, Json);
+
+    public bool HasPending(string eventId) => GetPending().Any(p => p.EventId == eventId);
+
+    /// <summary>Queues a remote deletion; the payload carries the remote id because the local row is already gone.</summary>
+    public long EnqueueDelete(string eventId, string calendarId, string remoteId) => WithConnection(c =>
+    {
+        using var cmd = Command(c, """
+            INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, 'Delete', $p, $t);
+            SELECT last_insert_rowid();
+            """, [("$e", eventId), ("$c", calendarId), ("$p", remoteId), ("$t", DateTime.UtcNow.ToString("O"))]);
+        return Convert.ToInt64(cmd.ExecuteScalar());
+    });
+
+    /// <summary>Forgets the remote link, so the next push creates the event again (used when it moves to another calendar).</summary>
+    public void ClearRemote(string eventId) =>
+        WithConnection(c => Run(c, "UPDATE events SET remote_id = NULL, etag = NULL WHERE id = $id", ("$id", eventId)));
+
+    public void SetRemote(string eventId, string remoteId, string? etag) =>
+        WithConnection(c => Run(c, "UPDATE events SET remote_id = $r, etag = $e WHERE id = $id", ("$r", remoteId), ("$e", etag), ("$id", eventId)));
+
+    public string? FindLocalId(string calendarId, string remoteId) => WithConnection(c =>
+    {
+        using var cmd = Command(c, "SELECT id FROM events WHERE calendar_id = $c AND remote_id = $r", [("$c", calendarId), ("$r", remoteId)]);
+        return cmd.ExecuteScalar() as string;
+    });
+
+    /// <summary>Events of a calendar that exist remotely: (local id, remote id).</summary>
+    public IReadOnlyList<(string Id, string RemoteId)> GetSyncedEvents(string calendarId) => WithConnection(c =>
+    {
+        using var cmd = Command(c, "SELECT id, remote_id FROM events WHERE calendar_id = $c AND remote_id IS NOT NULL", [("$c", calendarId)]);
+        using var r = cmd.ExecuteReader();
+        var list = new List<(string, string)>();
+        while (r.Read()) list.Add((r.GetString(0), r.GetString(1)));
+        return list;
+    });
+
+    public string? GetSyncToken(string calendarId) => WithConnection(c =>
+    {
+        using var cmd = Command(c, "SELECT sync_token FROM sync_state WHERE calendar_id = $c", [("$c", calendarId)]);
+        return cmd.ExecuteScalar() as string;
+    });
+
+    public void SetSyncToken(string calendarId, string? token) => WithConnection(c =>
+    {
+        if (token is null) Run(c, "DELETE FROM sync_state WHERE calendar_id = $c", ("$c", calendarId));
+        else Run(c, "INSERT INTO sync_state (calendar_id, sync_token) VALUES ($c, $t) ON CONFLICT(calendar_id) DO UPDATE SET sync_token = $t",
+            ("$c", calendarId), ("$t", token));
+    });
 
     private static string Stamp(DateTime d) => d.ToString("yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
 }

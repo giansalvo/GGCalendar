@@ -4,11 +4,13 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Ollama;
+using GGCalendar.Providers.Google;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -19,9 +21,13 @@ public sealed partial class SettingsViewModel : ViewModelBase
 {
     private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.GetCultureInfo("it-IT");
 
-    public SettingsViewModel(AppSettings s, SoundService? sound = null)
+    public SettingsViewModel(AppSettings s, SoundService? sound = null, GoogleSyncService? google = null)
     {
         _sound = sound;
+        _google = google;
+        GoogleClientId = s.GoogleClientId ?? "";
+        GoogleClientSecret = s.GoogleClientSecret ?? "";
+        if (google is not null) foreach (var a in google.AccountEmails) GoogleAccounts.Add(a);
         NotificationsEnabled = s.NotificationsEnabled;
         ReminderVolumePercent = s.ReminderVolumePercent;
         if (Directory.Exists(SoundService.MediaFolder))
@@ -62,6 +68,62 @@ public sealed partial class SettingsViewModel : ViewModelBase
     }
 
     private readonly SoundService? _sound;
+    private readonly GoogleSyncService? _google;
+    private CancellationTokenSource? _signIn;
+
+    public ObservableCollection<string> GoogleAccounts { get; } = [];
+    [ObservableProperty] public partial string GoogleClientId { get; set; }
+    [ObservableProperty] public partial string GoogleClientSecret { get; set; }
+    [ObservableProperty] public partial string GoogleStatus { get; set; } = "";
+    [ObservableProperty] public partial bool IsSigningIn { get; set; }
+
+    public bool AccountsChanged { get; private set; }
+
+    [RelayCommand]
+    private async Task AddGoogleAccountAsync()
+    {
+        if (_google is null) return;
+        _google.Configure(GoogleClientConfig.Resolve(GoogleClientId, GoogleClientSecret));
+        if (!_google.IsConfigured)
+        {
+            GoogleStatus = "Credenziali Google non ancora configurate: inseriscile in \"Avanzate\".";
+            return;
+        }
+
+        IsSigningIn = true;
+        GoogleStatus = "Completa l'accesso nel browser...";
+        _signIn = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        try
+        {
+            var email = await _google.AddAccountAsync(_signIn.Token);
+            if (!GoogleAccounts.Contains(email)) GoogleAccounts.Add(email);
+            AccountsChanged = true;
+            GoogleStatus = $"Account {email} collegato.";
+        }
+        catch (Exception ex) when (ex is GoogleAuthException or System.Net.Http.HttpRequestException or OperationCanceledException)
+        {
+            GoogleStatus = ex is OperationCanceledException ? "Accesso annullato o scaduto." : ex.Message;
+        }
+        finally
+        {
+            IsSigningIn = false;
+            _signIn.Dispose();
+            _signIn = null;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelSignIn() => _signIn?.Cancel();
+
+    [RelayCommand]
+    private void RemoveGoogleAccount(string? email)
+    {
+        if (_google is null || email is null) return;
+        _google.RemoveAccount(email);
+        GoogleAccounts.Remove(email);
+        AccountsChanged = true;
+        GoogleStatus = $"Account {email} scollegato.";
+    }
 
     public ObservableCollection<SoundOption> Sounds { get; } = [];
 
@@ -158,6 +220,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultGuestsCanModify = DefaultGuestsCanModify,
             DefaultGuestsCanInvite = DefaultGuestsCanInvite,
             DefaultGuestsCanSeeList = DefaultGuestsCanSeeList,
+            GoogleClientId = string.IsNullOrWhiteSpace(GoogleClientId) ? null : GoogleClientId.Trim(),
+            GoogleClientSecret = string.IsNullOrWhiteSpace(GoogleClientSecret) ? null : GoogleClientSecret.Trim(),
             DefaultEventMinutes = DefaultEventMinutes,
             NotificationsEnabled = NotificationsEnabled,
             ReminderVolumePercent = ReminderVolumePercent,

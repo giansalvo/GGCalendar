@@ -16,6 +16,10 @@ public sealed class AppSettings
     public bool DefaultGuestsCanInvite { get; set; }
     public bool DefaultGuestsCanSeeList { get; set; } = true;
 
+    /// <summary>Optional override of the embedded Google OAuth client (advanced).</summary>
+    public string? GoogleClientId { get; set; }
+    public string? GoogleClientSecret { get; set; }
+
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;

@@ -78,6 +78,33 @@
                     </ComboBox>
                 </Grid>
 
+                <TextBlock Classes="section" Text="Account Google" />
+                <ItemsControl ItemsSource="{Binding GoogleAccounts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                <TextBlock Text="{Binding}" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Content="Scollega" Padding="10,3"
+                                        Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveGoogleAccountCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="＋  Aggiungi account Google" Command="{Binding AddGoogleAccountCommand}" IsEnabled="{Binding !IsSigningIn}" />
+                    <Button Content="Annulla" Command="{Binding CancelSignInCommand}" IsVisible="{Binding IsSigningIn}" />
+                </StackPanel>
+                <TextBlock Text="{Binding GoogleStatus}" TextWrapping="Wrap" Opacity="0.75" />
+                <Expander Header="Avanzate: credenziali OAuth personalizzate">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                                   Text="Lascia vuoto per usare le credenziali incluse in GGCalendar." />
+                        <TextBox PlaceholderText="Client ID" Text="{Binding GoogleClientId}" />
+                        <TextBox PlaceholderText="Client secret" Text="{Binding GoogleClientSecret}" PasswordChar="●" />
+                    </StackPanel>
+                </Expander>
+
                 <TextBlock Classes="section" Text="Notifiche" />
                 <CheckBox Content="Mostra le notifiche con suono mentre GGCalendar è aperto" IsChecked="{Binding NotificationsEnabled}" />
                 <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
