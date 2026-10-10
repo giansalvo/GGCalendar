@@ -78,6 +78,10 @@
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
+                <Button Classes="nav" Padding="0" Click="OnOpenAbout" ToolTip.Tip="Informazioni">
+                    <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
                 <Button Classes="nav" Padding="0" Click="OnOpenSettings" ToolTip.Tip="Impostazioni">
                     <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />

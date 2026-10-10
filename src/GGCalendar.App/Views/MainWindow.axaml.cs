@@ -408,6 +408,8 @@ public partial class MainWindow : Window
         await EditAsync(vm.NewEvent(start, start.AddMinutes(vm.Settings.DefaultEventMinutes)), isNew: true);
     }
 
+    private async void OnOpenAbout(object? sender, RoutedEventArgs e) => await new AboutWindow().ShowDialog(this);
+
     private async void OnOpenSettings(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;
