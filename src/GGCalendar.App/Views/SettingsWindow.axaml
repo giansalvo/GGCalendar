@@ -3,7 +3,7 @@
         xmlns:vm="using:GGCalendar.App.ViewModels"
         x:Class="GGCalendar.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/GGCalendar.ico"
         Width="560" Height="780" CanResize="False"
         WindowStartupLocation="CenterOwner"
         Title="Impostazioni">

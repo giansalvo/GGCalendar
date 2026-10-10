@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
         xmlns:ctl="using:GGCalendar.App.Controls"
@@ -7,7 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="1300" d:DesignHeight="760"
         x:Class="GGCalendar.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/GGCalendar.ico"
         Width="1300" Height="780" MinWidth="900" MinHeight="500"
         Title="GGCalendar">
 
@@ -34,8 +34,8 @@
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,24,0" VerticalAlignment="Center" />
                 <Button Content="Oggi" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
-                <Button Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
-                <Button Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
+                <Button Classes="nav" Content="â€¹" FontSize="20" Command="{Binding PreviousCommand}" />
+                <Button Classes="nav" Content="â€º" FontSize="20" Command="{Binding NextCommand}" />
                 <TextBlock Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" VerticalAlignment="Center" />
                 <Border CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Settings.ShowWeekNumbers}">
                     <TextBlock FontSize="12" Text="{Binding WeekNumber, StringFormat='Settimana {0}'}" />
@@ -74,7 +74,7 @@
 
         <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
             <DockPanel>
-                <Button DockPanel.Dock="Top" Content="＋  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" Click="OnNewEvent" />
+                <Button DockPanel.Dock="Top" Content="ï¼‹  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" Click="OnNewEvent" />
                 <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
                     <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
