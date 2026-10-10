@@ -137,6 +137,9 @@
                     <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaFallbackModel}" HorizontalAlignment="Stretch" />
                 </Grid>
                 <TextBlock Text="{Binding OllamaStatus}" Opacity="0.7" TextWrapping="Wrap" />
+
+                <TextBlock Classes="section" Text="Informazioni" />
+                <SelectableTextBlock Name="AboutText" Opacity="0.85" TextWrapping="Wrap" />
             </StackPanel>
         </ScrollViewer>
     </DockPanel>
