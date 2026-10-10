@@ -346,6 +346,20 @@ public sealed partial class MainViewModel : ViewModelBase
         var isFirst = occurrence.Start == master.Start;
         if (scope == SeriesScope.All || (scope == SeriesScope.ThisAndFollowing && isFirst))
         {
+            // Moving the series moves every slot: exclusions and replaced-occurrence markers must follow,
+            // otherwise the original slots of deleted/modified occurrences show up again.
+            var shift = edited.Start - master.Start;
+            if (shift != TimeSpan.Zero)
+            {
+                edited = edited with { ExcludedStarts = edited.ExcludedStarts.Select(d => d + shift).ToList() };
+                foreach (var child in _allEvents.Where(e => e.SeriesMasterId == master.Id && e.OriginalStart is not null).ToList())
+                {
+                    var moved = child with { OriginalStart = child.OriginalStart + shift };
+                    _allEvents[_allEvents.FindIndex(e => e.Id == child.Id)] = moved;
+                    _store.UpsertEvent(moved);
+                }
+            }
+
             UpdateEvent(edited with { Id = master.Id, OccurrenceIndex = null });
             return;
         }
