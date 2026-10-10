@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GGCalendar.App.ViewModels"
+        xmlns:ctl="using:GGCalendar.App.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1300" d:DesignHeight="760"
+        x:Class="GGCalendar.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Width="1300" Height="780" MinWidth="900" MinHeight="500"
+        Title="GGCalendar">
+
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="Button.nav">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Opacity" Value="0.65" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,10">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,24,0" VerticalAlignment="Center" />
+                <Button Content="Oggi" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
+                <Button Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
+                <Button Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
+                <TextBlock Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" VerticalAlignment="Center" />
+                <Border CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" Margin="6,0,0,0">
+                    <TextBlock FontSize="12" Text="{Binding WeekNumber, StringFormat='Settimana {0}'}" />
+                </Border>
+            </StackPanel>
+            <ComboBox Grid.Column="2" SelectedIndex="1" Width="130" CornerRadius="18">
+                <ComboBoxItem>Giorno</ComboBoxItem>
+                <ComboBoxItem>Settimana</ComboBoxItem>
+                <ComboBoxItem>Mese</ComboBoxItem>
+                <ComboBoxItem>Agenda</ComboBoxItem>
+            </ComboBox>
+        </Grid>
+
+        <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Top" Content="＋  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" />
+                <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
+                    <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="Monday" Width="300" />
+                </Viewbox>
+                <ScrollViewer Margin="0,16,0,0">
+                    <ItemsControl ItemsSource="{Binding Accounts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AccountGroup">
+                                <StackPanel Margin="0,0,0,12">
+                                    <TextBlock Text="{Binding AccountName}" Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,4" />
+                                    <ItemsControl ItemsSource="{Binding Calendars}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:CalendarItemViewModel">
+                                                <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <DockPanel>
+            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Days}" Margin="56,4,12,4">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DayHeader">
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" Classes="muted" />
+                            <Border Width="40" Height="40" CornerRadius="20" Classes.today="{Binding IsToday}">
+                                <Border.Styles>
+                                    <Style Selector="Border.today">
+                                        <Setter Property="Background" Value="#1A73E8" />
+                                    </Style>
+                                    <Style Selector="Border.today TextBlock">
+                                        <Setter Property="Foreground" Value="White" />
+                                    </Style>
+                                </Border.Styles>
+                                <TextBlock Text="{Binding Number}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ScrollViewer Name="GridScroll">
+                <ctl:WeekGrid WeekStart="{Binding WeekStart}"
+                              Events="{Binding VisibleEvents}"
+                              CalendarColors="{Binding CalendarColors}" />
+            </ScrollViewer>
+        </DockPanel>
+    </DockPanel>
+</Window>
