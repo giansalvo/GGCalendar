@@ -51,6 +51,9 @@ public partial class MainWindow : Window
             if (Vm is { } vm) await EditAsync(vm.NewEvent(day.AddHours(vm.Settings.DayStartHour), day.AddHours(vm.Settings.DayStartHour).AddMinutes(vm.Settings.DefaultEventMinutes)), isNew: true);
         };
         Month.DayNumberClicked += day => Vm?.ShowDay(day);
+        Grid.EventClicked += (ev, rect) => ShowDetails(ev, Grid, rect);
+        AllDay.EventClicked += (ev, rect) => ShowDetails(ev, AllDay, rect);
+        Month.EventClicked += (ev, rect) => ShowDetails(ev, Month, rect);
         Year.DayClicked += day => Vm?.ShowDay(day);
         KeyDown += OnShortcut;
         Opened += (_, _) =>
@@ -76,6 +79,8 @@ public partial class MainWindow : Window
         };
     }
 
+    private static readonly TimeSpan AlarmMaxDuration = TimeSpan.FromMinutes(2);
+
     private void OnReminderFired(DueReminder due)
     {
         if (Vm is not { } vm) return;
@@ -89,9 +94,19 @@ public partial class MainWindow : Window
         var player = new SoundService();
         player.Play(sound, vm.Settings.ReminderVolumePercent, loop: isAlarm);
 
+        // An alarm rings until it is turned off, but at most AlarmMaxDuration; the notification stays on screen.
+        DispatcherTimer? alarmLimit = null;
+        if (isAlarm)
+        {
+            alarmLimit = new DispatcherTimer { Interval = AlarmMaxDuration };
+            alarmLimit.Tick += (_, _) => { alarmLimit.Stop(); player.Stop(); };
+            alarmLimit.Start();
+        }
+
         var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm);
         toast.Closed += (_, _) =>
         {
+            alarmLimit?.Stop();
             player.Dispose();
             if (toast.Result == ReminderAction.Snooze) _scheduler?.Snooze(due, TimeSpan.FromMinutes(5));
         };
@@ -190,6 +205,80 @@ public partial class MainWindow : Window
         if (sender is Control { DataContext: AgendaItem item }) await EditAsync(item.Event, isNew: false);
     }
 
+    private void OnAgendaItemTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: AgendaItem item } row) ShowDetails(item.Event, row, null);
+    }
+
+    // ---------- Event details (single click) ----------
+
+    /// <summary>Shows the details card beside <paramref name="rect"/> of <paramref name="target"/> (the whole control when null).</summary>
+    private void ShowDetails(CalendarEvent ev, Control target, Avalonia.Rect? rect)
+    {
+        if (Vm is not { } vm) return;
+        var calendar = vm.Calendars.FirstOrDefault(c => c.Id == ev.CalendarId);
+        // A modified occurrence belongs to the series of its master; any other event is (or expands from) itself.
+        var series = ev.SeriesMasterId is { } masterId ? vm.AllEvents.FirstOrDefault(e => e.Id == masterId) : vm.ResolveMaster(ev);
+        var card = new EventDetailsCard(ev, series?.Recurrence, ev.ColorHex ?? calendar?.ColorHex ?? "#1A73E8",
+            calendar?.Name ?? "", calendar?.AccountName ?? "", vm.Settings.Use24HourClock,
+            ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
+        card.EditRequested += async () => { CloseDetails(); await EditAsync(ev, isNew: false); };
+        card.DeleteRequested += async () => { CloseDetails(); await DeleteAsync(ev); };
+        card.MailRequested += async () => await MailGuestsAsync(ev);
+        card.ExportRequested += async () => { CloseDetails(); await ExportEventAsync(vm.ResolveMaster(ev)); };
+        card.JoinMeetRequested += async () => await OpenHttpsAsync(ev.MeetLink);
+        card.CloseRequested += CloseDetails;
+
+        DetailsPopup.IsOpen = false;
+        DetailsPopup.PlacementTarget = target;
+        DetailsPopup.PlacementRect = rect;
+        DetailsPopup.Child = card;
+        DetailsPopup.IsOpen = true;
+        card.Focus();
+    }
+
+    private void CloseDetails()
+    {
+        DetailsPopup.IsOpen = false;
+        DetailsPopup.Child = null;
+    }
+
+    private async Task MailGuestsAsync(CalendarEvent ev)
+    {
+        var to = string.Join(",", ev.Attendees.Select(a => Uri.EscapeDataString(a.Email)));
+        if (to.Length == 0) return;
+        await Launcher.LaunchUriAsync(new Uri($"mailto:{to}?subject={Uri.EscapeDataString(ev.Title)}"));
+    }
+
+    private async Task OpenHttpsAsync(string? link)
+    {
+        // Only web links: the value comes from Google, but it is still data from outside the app.
+        if (Uri.TryCreate(link, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps) await Launcher.LaunchUriAsync(uri);
+    }
+
+    private async Task ExportEventAsync(CalendarEvent ev)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Esporta evento",
+            SuggestedFileName = SafeFileName(string.IsNullOrWhiteSpace(ev.Title) ? "evento" : ev.Title) + ".ics",
+            DefaultExtension = "ics",
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
+        });
+        if (file is null) return;
+        try
+        {
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await using var writer = new System.IO.StreamWriter(stream, new System.Text.UTF8Encoding(false));
+            await writer.WriteAsync(IcsWriter.Write([ev]));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            if (Vm is { } vm) vm.SyncStatus = "Errore di esportazione: " + ex.Message;
+        }
+    }
+
     private void OnShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
     {
         if (Vm is not { } vm || e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Source is TextBox) return;
@@ -253,14 +342,35 @@ public partial class MainWindow : Window
     private async Task DeleteAsync(CalendarEvent ev)
     {
         if (Vm is not { } vm) return;
+        CloseDetails();
         if (!vm.IsRecurring(ev)) { vm.DeleteEvent(ev); return; }
         var scope = await new SeriesScopeWindow("Elimina evento ricorrente").ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.DeleteOccurrence(ev, s);
     }
 
+    // True while an event dialog (or its series-scope question) is open.
+    private bool _editing;
+
     private async Task EditAsync(CalendarEvent ev, bool isNew)
     {
+        // A double click can arrive twice (e.g. the click that closes the details card is passed on to the calendar):
+        // a second dialog would open under the first and, saved or cancelled later, undo the change made in the first.
+        if (Vm is null || _editing) return;
+        _editing = true;
+        try
+        {
+            await EditCoreAsync(ev, isNew);
+        }
+        finally
+        {
+            _editing = false;
+        }
+    }
+
+    private async Task EditCoreAsync(CalendarEvent ev, bool isNew)
+    {
         if (Vm is not { } vm) return;
+        CloseDetails();
         var occurrence = ev;
         SeriesScope? scope = null;
         if (!isNew && vm.IsRecurring(ev))

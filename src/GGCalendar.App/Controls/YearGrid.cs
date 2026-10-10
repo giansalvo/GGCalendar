@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using GGCalendar.Core.Models;
 
 namespace GGCalendar.App.Controls;
@@ -37,16 +38,48 @@ public sealed class YearGrid : Control
 
     public event Action<DateTime>? DayClicked;
 
-    private int Columns => Bounds.Width >= 1000 ? 4 : Bounds.Width >= 700 ? 3 : 2;
+    private const double MinCellH = 150;
+
+    private static int ColumnsFor(double width) => width >= 1000 ? 4 : width >= 700 ? 3 : 2;
+    private int Columns => ColumnsFor(Bounds.Width);
     private int Rows => 12 / Columns;
     private double CellW => Bounds.Width / Columns;
-    private double CellH => Math.Max(150, Bounds.Height / Rows);
+    private double CellH => Math.Max(MinCellH, Bounds.Height / Rows);
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        var cols = availableSize.Width >= 1000 ? 4 : availableSize.Width >= 700 ? 3 : 2;
-        var h = double.IsInfinity(availableSize.Height) ? 600 : Math.Max(availableSize.Height, 150 * (12 / cols));
-        return new Size(double.IsInfinity(availableSize.Width) ? 900 : availableSize.Width, h);
+        var width = double.IsInfinity(availableSize.Width) ? 900 : availableSize.Width;
+        // Every row of months must fit: a narrow window (or large Windows scaling) means 2 columns and 6 rows.
+        var needed = MinCellH * (12 / ColumnsFor(width));
+        // Inside a ScrollViewer the height is unbounded: fill the visible area when there is room, otherwise
+        // report the full height so the last months can be scrolled to.
+        var available = double.IsInfinity(availableSize.Height)
+            ? _scroller?.Bounds.Height - Margin.Top - Margin.Bottom ?? 0
+            : availableSize.Height;
+        return new Size(width, Math.Max(available, needed));
+    }
+
+    private ScrollViewer? _scroller;
+
+    // The scroller always offers an unbounded height, so a taller or shorter window would not re-measure the grid on its own.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _scroller = this.FindAncestorOfType<ScrollViewer>();
+        if (_scroller is not null) _scroller.PropertyChanged += OnScrollerPropertyChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_scroller is not null) _scroller.PropertyChanged -= OnScrollerPropertyChanged;
+        _scroller = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnScrollerPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == BoundsProperty && e.OldValue is Rect before && e.NewValue is Rect after && before.Height != after.Height)
+            InvalidateMeasure();
     }
 
     private (Rect Rect, DateTime Day)? DayAt(Point p)

@@ -181,6 +181,9 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                 continue;
             }
 
+            if (localId is not null && store.GetEvent(localId) is { } local)
+                mapped = mapped with { Reminders = EventReminder.KeepLocalOptions(mapped.Reminders, local.Reminders) };
+
             var etag = item.TryGetProperty("etag", out var et) ? et.GetString() : null;
             upserts.Add(new RemoteEvent(mapped, remoteId, etag));
             localIds[remoteId] = id;
@@ -241,16 +244,38 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                         {
                             // Patch only the version we last saw; a modified occurrence's instance id has no known version.
                             var baseEtag = target == current.RemoteId ? current.Etag : null;
+                            JsonElement? patched = null;
                             try
                             {
-                                result = await client.PatchAsync(remoteCal, target, snapshot, ct, baseEtag);
+                                patched = await client.PatchAsync(remoteCal, target, snapshot, ct, baseEtag);
                             }
                             catch (GoogleApiException ex) when (ex.Status == HttpStatusCode.PreconditionFailed)
                             {
-                                conflicts.Add(await ResolveConflictAsync(client, item, target, calendars, ct));
-                                conflicted.Add(item.EventId);
-                                continue;
+                                var (remote, remoteEtag) = await GetRemoteAsync(client, item, target, snapshot.SeriesMasterId, calendars, ct);
+                                // Google also changes the version on its own (creating a Meet conference, recording a guest's
+                                // reply): if what the user sees is still what the edit started from, it is not a conflict.
+                                if (remote is not null && CalendarStore.ReadBase(item) is { } baseVersion
+                                    && EventContent.Same(remote, baseVersion, ignoreGuest: AccountOf(item.CalendarId)))
+                                {
+                                    try
+                                    {
+                                        patched = await client.PatchAsync(remoteCal, target, snapshot, ct, remoteEtag);
+                                    }
+                                    catch (GoogleApiException again) when (again.Status == HttpStatusCode.PreconditionFailed)
+                                    {
+                                        // Changed again meanwhile: treat it as a real conflict.
+                                    }
+                                }
+
+                                if (patched is null)
+                                {
+                                    conflicts.Add(ResolveConflict(item, target, remote, remoteEtag));
+                                    conflicted.Add(item.EventId);
+                                    continue;
+                                }
                             }
+
+                            result = patched.Value;
                         }
 
                         var remoteId = result.GetProperty("id").GetString()!;
@@ -277,35 +302,38 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         return done;
     }
 
+    /// <summary>The current Google version of an event and its etag; (null, null) if it was deleted on Google.</summary>
+    private async Task<(CalendarEvent? Event, string? Etag)> GetRemoteAsync(GoogleCalendarClient client, OutboxItem item, string remoteId,
+        string? seriesMasterId, IReadOnlyList<GoogleCalendarEntry> calendars, CancellationToken ct)
+    {
+        var remoteCal = RemoteCalendarId(item.CalendarId);
+        var defaults = calendars.FirstOrDefault(c => c.Id == remoteCal)?.DefaultReminders ?? [];
+        try
+        {
+            var e = await client.GetEventAsync(remoteCal, remoteId, ct);
+            return (GoogleEventMapper.FromGoogle(e, item.EventId, item.CalendarId, defaults, seriesMasterId),
+                e.TryGetProperty("etag", out var et) ? et.GetString() : null);
+        }
+        catch (GoogleApiException ex) when (ex.Status is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            return (null, null);
+        }
+    }
+
     /// <summary>
-    /// The event changed on Google after the version the local edit was based on. Google's version is applied and the
-    /// local edit is kept as a separate "(conflitto)" event in the same calendar, so neither is lost. Returns the message for the user.
+    /// The event changed on Google after the version the local edit was based on. Google's version
+    /// (<paramref name="remote"/>, null if deleted there) is applied and the local edit is kept as a separate "(conflitto)"
+    /// event in the same calendar, so neither is lost. Returns the message for the user.
     /// </summary>
-    private async Task<string> ResolveConflictAsync(GoogleCalendarClient client, OutboxItem item, string remoteId,
-        IReadOnlyList<GoogleCalendarEntry> calendars, CancellationToken ct)
+    private string ResolveConflict(OutboxItem item, string remoteId, CalendarEvent? remote, string? etag)
     {
         // The last queued snapshot carries every local edit made since the last sync.
         var local = store.GetPending().Where(p => p.EventId == item.EventId && p.Operation != OutboxOperation.Delete)
             .Select(CalendarStore.ReadSnapshot).LastOrDefault(s => s is not null) ?? CalendarStore.ReadSnapshot(item)!;
         store.DiscardPending(item.EventId);
 
-        var remoteCal = RemoteCalendarId(item.CalendarId);
-        var defaults = calendars.FirstOrDefault(c => c.Id == remoteCal)?.DefaultReminders ?? [];
-        CalendarEvent? remote = null;
-        string? etag = null;
-        try
-        {
-            var e = await client.GetEventAsync(remoteCal, remoteId, ct);
-            remote = GoogleEventMapper.FromGoogle(e, item.EventId, item.CalendarId, defaults, local.SeriesMasterId);
-            etag = e.TryGetProperty("etag", out var et) ? et.GetString() : null;
-        }
-        catch (GoogleApiException ex) when (ex.Status is HttpStatusCode.NotFound or HttpStatusCode.Gone)
-        {
-            // Deleted on Google meanwhile: only the local copy below remains.
-        }
-
         if (remote is null) store.DeleteSeries(item.EventId);
-        else store.UpsertEvent(remote, remoteId, etag);
+        else store.UpsertEvent(remote with { Reminders = EventReminder.KeepLocalOptions(remote.Reminders, local.Reminders) }, remoteId, etag);
 
         var title = string.IsNullOrWhiteSpace(local.Title) ? "(Senza titolo)" : local.Title;
         if (local.IsCancelled) return $"\"{title}\" è stato modificato anche su Google: tenuta la versione di Google.";

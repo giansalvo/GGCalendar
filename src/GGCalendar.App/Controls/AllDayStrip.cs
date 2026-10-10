@@ -48,6 +48,9 @@ public sealed class AllDayStrip : Control
     public int DayCount { get => GetValue(DayCountProperty); set => SetValue(DayCountProperty, value); }
 
     public event Action<CalendarEvent>? EventOpened;
+
+    /// <summary>Raised on a single click on an event, with its block (shows its details beside it).</summary>
+    public event Action<CalendarEvent, Rect>? EventClicked;
     public event Action<DateTime>? DayDoubleClicked;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -78,6 +81,19 @@ public sealed class AllDayStrip : Control
             if (row < 0) { rowEnds.Add(last); row = rowEnds.Count - 1; }
             else rowEnds[row] = last;
             _layout.Add((ev, first, last, row));
+        }
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (e.ClickCount != 1 || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        var p = e.GetPosition(this);
+        for (var i = _hits.Count - 1; i >= 0; i--)
+        {
+            if (!_hits[i].Rect.Contains(p)) continue;
+            EventClicked?.Invoke(_hits[i].Event, _hits[i].Rect);
+            return;
         }
     }
 

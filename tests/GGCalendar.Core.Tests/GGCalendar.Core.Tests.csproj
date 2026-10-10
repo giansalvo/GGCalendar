@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\GGCalendar.Core\GGCalendar.Core.csproj" />
     <ProjectReference Include="..\..\src\GGCalendar.Data\GGCalendar.Data.csproj" />
+    <ProjectReference Include="..\..\src\GGCalendar.Providers.Google\GGCalendar.Providers.Google.csproj" />
   </ItemGroup>
 
 </Project>

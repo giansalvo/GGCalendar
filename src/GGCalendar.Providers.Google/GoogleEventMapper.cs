@@ -74,7 +74,9 @@ public static class GoogleEventMapper
             }
         }
 
-        var meet = Str(e, "hangoutLink");
+        // Google creates the conference asynchronously: right after the request there is conferenceData but no link yet.
+        var meet = Str(e, "hangoutLink") ?? MeetUri(e);
+        var hasConference = meet is not null || e.TryGetProperty("conferenceData", out _);
         string? rrule = null;
         var excluded = new List<DateTime>();
         if (e.TryGetProperty("recurrence", out var rec))
@@ -97,12 +99,17 @@ public static class GoogleEventMapper
             Availability = Str(e, "transparency") == "transparent" ? EventAvailability.Free : EventAvailability.Busy,
             Visibility = Str(e, "visibility") switch { "public" => EventVisibility.Public, "private" => EventVisibility.Private, _ => EventVisibility.Default },
             MeetLink = meet,
-            AddMeet = meet is not null,
+            AddMeet = hasConference,
             GuestsCanModify = Bool(e, "guestsCanModify", false),
             GuestsCanInvite = Bool(e, "guestsCanInviteOthers", true),
             GuestsCanSeeList = Bool(e, "guestsCanSeeOtherGuests", true),
         };
     }
+
+    private static string? MeetUri(JsonElement e) =>
+        e.TryGetProperty("conferenceData", out var cd) && cd.TryGetProperty("entryPoints", out var eps) && eps.ValueKind == JsonValueKind.Array
+            ? eps.EnumerateArray().Where(p => Str(p, "entryPointType") == "video").Select(p => Str(p, "uri")).FirstOrDefault(u => u is not null)
+            : null;
 
     private static DateTime? ParseOriginalStart(JsonElement e, out bool allDay)
     {
@@ -162,16 +169,19 @@ public static class GoogleEventMapper
     public static JsonObject ToGoogle(CalendarEvent ev, bool includeMeetRequest)
     {
         var zone = IanaZone();
+        // Updates are PATCHes, which merge "start"/"end" with what Google has: the unused form must be sent as null to be
+        // removed, otherwise switching between all-day and timed leaves both "date" and "dateTime" and Google rejects it.
         JsonObject Time(DateTime t)
         {
-            if (ev.IsAllDay) return new JsonObject { ["date"] = t.ToString(DateFormat, CultureInfo.InvariantCulture) };
-            var o = new JsonObject
+            if (ev.IsAllDay)
+                return new JsonObject { ["date"] = t.ToString(DateFormat, CultureInfo.InvariantCulture), ["dateTime"] = null, ["timeZone"] = null };
+            return new JsonObject
             {
+                ["date"] = null,
                 ["dateTime"] = new DateTimeOffset(DateTime.SpecifyKind(t, DateTimeKind.Unspecified), TimeZoneInfo.Local.GetUtcOffset(t))
                     .ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture),
+                ["timeZone"] = zone,
             };
-            if (zone is not null) o["timeZone"] = zone;
-            return o;
         }
 
         var body = new JsonObject

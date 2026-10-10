@@ -98,7 +98,7 @@
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
                     <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="＋  Nuovo calendario locale" Click="OnNewLocalCalendar" />
                     <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="⭳  Importa file .ics…" Click="OnImportAsNewCalendar" />
-                    <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta, elimina" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta (ed elimina, se locale)" TextWrapping="Wrap" />
                 </StackPanel>
                 <ScrollViewer Margin="0,16,0,0">
                     <ItemsControl ItemsSource="{Binding Accounts}">
@@ -111,11 +111,12 @@
                                             <DataTemplate x:DataType="vm:CalendarItemViewModel">
                                                 <Border Classes.drop="{Binding IsDropTarget}" CornerRadius="6" Padding="0,2">
                                                     <Border.ContextMenu>
-                                                        <ContextMenu>
+                                                        <!-- No ResizeY: near the bottom of the screen the menu must open upwards or slide, not shrink and scroll. -->
+                                                        <ContextMenu PlacementConstraintAdjustment="FlipX,FlipY,SlideX,SlideY">
                                                             <MenuItem Header="Importa file .ics qui…" Click="OnImportIntoCalendar" />
                                                             <MenuItem Header="Esporta calendario in .ics…" Click="OnExportCalendar" />
-                                                            <Separator />
-                                                            <MenuItem Header="Elimina calendario…" Click="OnDeleteCalendar" />
+                                                            <Separator IsVisible="{Binding IsLocal}" />
+                                                            <MenuItem Header="Elimina calendario…" Click="OnDeleteCalendar" IsVisible="{Binding IsLocal}" />
                                                         </ContextMenu>
                                                     </Border.ContextMenu>
                                                     <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
@@ -150,7 +151,7 @@
                             <ItemsControl ItemsSource="{Binding Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:AgendaItem">
-                                        <Border Background="Transparent" Padding="8,6" Cursor="Hand" DoubleTapped="OnAgendaItemOpened">
+                                        <Border Background="Transparent" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened">
                                             <Grid ColumnDefinitions="18,170,*">
                                                 <Ellipse Width="10" Height="10" Fill="{Binding ColorHex}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="muted" VerticalAlignment="Center" />
@@ -201,7 +202,9 @@
                              Events="{Binding VisibleEvents}"
                              CalendarColors="{Binding CalendarColors}" />
             <ScrollViewer Name="GridScroll">
-                <ctl:WeekGrid Name="Grid" DimPast="{Binding Settings.DimPastEvents}"
+                <!-- Same 12px right margin as the day headers and the all-day strip, so the columns line up:
+                     the Fluent scrollbar overlays the content instead of taking space, and sits in that margin. -->
+                <ctl:WeekGrid Name="Grid" Margin="0,0,12,0" DimPast="{Binding Settings.DimPastEvents}"
                               WeekStart="{Binding WeekStart}" DayCount="{Binding DayCount}"
                               Events="{Binding VisibleEvents}"
                               CalendarColors="{Binding CalendarColors}"
@@ -212,6 +215,11 @@
                               DefaultMinutes="{Binding Settings.DefaultEventMinutes}" />
             </ScrollViewer>
         </DockPanel>
+
+        <!-- Event details shown on a single click, beside the clicked event (content set in code). A click outside closes it
+             and still reaches the calendar, so clicking another event opens that one directly. -->
+        <Popup Name="DetailsPopup" IsLightDismissEnabled="True" OverlayDismissEventPassThrough="True"
+               Placement="RightEdgeAlignedTop" HorizontalOffset="8" PlacementConstraintAdjustment="FlipX,FlipY,SlideX,SlideY" />
         </Panel>
     </DockPanel>
 </Window>

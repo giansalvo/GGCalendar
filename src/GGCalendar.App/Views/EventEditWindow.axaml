@@ -28,21 +28,35 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#1A73E8" />
         </Style>
+        <Style Selector="Button.iconbtn">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.iconbtn > TextBlock">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="18" />
+        </Style>
     </Window.Styles>
 
     <DockPanel Margin="24,16,24,16">
-        <!-- Header: title, save, other actions -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+        <!-- Header: title, save, cancel, delete, export -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,0,0,12">
             <TextBox Name="TitleBox" Text="{Binding Title}" PlaceholderText="Aggiungi titolo" FontSize="22" Margin="0,0,16,0" />
-            <Button Grid.Column="1" Content="Salva" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnSave" />
-            <Button Grid.Column="2" Content="Altre azioni  ▾" Classes="link" Margin="8,0,0,0">
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedRight">
-                        <MenuItem Header="Esporta come file .ics…" Click="OnExport" />
-                        <MenuItem Header="Elimina evento" Click="OnDelete" IsVisible="{Binding !IsNew}" />
-                        <MenuItem Header="Annulla modifiche" Click="OnCancel" />
-                    </MenuFlyout>
-                </Button.Flyout>
+            <Button Grid.Column="1" Content="Salva" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnSave"
+                    ToolTip.Tip="Salva le modifiche" />
+            <Button Grid.Column="2" Content="Annulla" CornerRadius="18" Padding="22,8" Margin="8,0,8,0" IsCancel="True" Click="OnCancel"
+                    ToolTip.Tip="Chiudi senza salvare le modifiche" />
+            <Button Grid.Column="3" Classes="iconbtn" Click="OnDelete" IsVisible="{Binding !IsNew}" ToolTip.Tip="Elimina evento">
+                <TextBlock Text="&#xE74D;" />
+            </Button>
+            <Button Grid.Column="4" Classes="iconbtn" Click="OnExport" ToolTip.Tip="Esporta come file .ics">
+                <TextBlock Text="&#xE896;" />
             </Button>
         </Grid>
 
@@ -78,7 +92,8 @@
                     </StackPanel>
                     <StackPanel Margin="28,-8,0,0" IsVisible="{Binding AddMeet}" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasMeetLink}">
-                            <TextBox Text="{Binding MeetLink}" IsReadOnly="True" Width="320" />
+                            <HyperlinkButton Content="{Binding MeetLink}" Click="OnOpenMeet" Padding="0" VerticalAlignment="Center"
+                                             ToolTip.Tip="Partecipa alla riunione nel browser" />
                             <Button Content="Copia" Click="OnCopyMeet" />
                         </StackPanel>
                         <TextBlock Classes="hint" IsVisible="{Binding !HasMeetLink}"
@@ -86,15 +101,17 @@
                     </StackPanel>
 
                     <!-- Location -->
-                    <StackPanel Orientation="Horizontal" Spacing="0">
+                    <!-- Icon rows are Grids, not horizontal StackPanels: those give their content unlimited width,
+                         so long hints never wrap and fixed-width boxes get cut off in a narrow window. -->
+                    <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="📍" />
-                        <TextBox Text="{Binding Location}" PlaceholderText="Aggiungi posizione" Width="480" />
-                    </StackPanel>
+                        <TextBox Grid.Column="1" Text="{Binding Location}" PlaceholderText="Aggiungi posizione" MaxWidth="480" HorizontalAlignment="Stretch" />
+                    </Grid>
 
                     <!-- Reminders -->
-                    <StackPanel Orientation="Horizontal" Spacing="0">
+                    <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="🔔" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <StackPanel Spacing="8">
+                        <StackPanel Grid.Column="1" Spacing="8">
                             <ItemsControl ItemsSource="{Binding Reminders}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ReminderItemViewModel">
@@ -125,9 +142,10 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button Content="Aggiungi notifica" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
-                            <TextBlock Classes="hint" Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta." />
+                            <TextBlock Classes="hint" MaxWidth="640" HorizontalAlignment="Left"
+                                       Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta, al massimo per 2 minuti." />
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
 
                     <!-- Calendar + color -->
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -163,11 +181,11 @@
                     </StackPanel>
 
                     <!-- Description -->
-                    <StackPanel Orientation="Horizontal" Spacing="0">
+                    <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="≡" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <TextBox Text="{Binding Description}" PlaceholderText="Aggiungi descrizione" AcceptsReturn="True" TextWrapping="Wrap"
-                                 Width="640" MinHeight="150" />
-                    </StackPanel>
+                        <TextBox Grid.Column="1" Text="{Binding Description}" PlaceholderText="Aggiungi descrizione" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MaxWidth="640" HorizontalAlignment="Stretch" MinHeight="150" />
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
 

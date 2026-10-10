@@ -54,6 +54,9 @@ public sealed class MonthGrid : Control
     public bool ShowWeekends { get => GetValue(ShowWeekendsProperty); set => SetValue(ShowWeekendsProperty, value); }
 
     public event Action<CalendarEvent>? EventOpened;
+
+    /// <summary>Raised on a single click on an event, with its block (shows its details beside it).</summary>
+    public event Action<CalendarEvent, Rect>? EventClicked;
     public event Action<DateTime>? DayDoubleClicked;
     public event Action<DateTime>? DayNumberClicked;
 
@@ -77,8 +80,15 @@ public sealed class MonthGrid : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (e.ClickCount != 1) return;
+        if (e.ClickCount != 1 || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         var p = e.GetPosition(this);
+        for (var i = _hits.Count - 1; i >= 0; i--)
+        {
+            if (!_hits[i].Rect.Contains(p)) continue;
+            EventClicked?.Invoke(_hits[i].Event, _hits[i].Rect);
+            return;
+        }
+
         if (DayAt(p) is not { } day) return;
         var row = (int)((p.Y - HeaderHeight) / CellHeight);
         var localY = p.Y - HeaderHeight - row * CellHeight;

@@ -102,6 +102,48 @@ public class CalendarStoreTests
     }
 
     [Fact]
+    public void OutboxKeepsTheBaseVersion()
+    {
+        var store = Create();
+        var before = Ev("e1", DateTime.Today);
+        store.Enqueue("e1", "c1", OutboxOperation.Update, before with { Title = "Nuovo" }, before);
+        var item = Assert.Single(store.GetPending());
+        Assert.Equal("Nuovo", CalendarStore.ReadSnapshot(item)!.Title);
+        Assert.Equal(before.Title, CalendarStore.ReadBase(item)!.Title);
+    }
+
+    [Fact]
+    public void Version3DatabaseGetsTheBaseColumn()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"ggcal-v3-{Guid.NewGuid():N}.db");
+        try
+        {
+            using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                c.Open();
+                using var cmd = c.CreateCommand();
+                cmd.CommandText = """
+                    CREATE TABLE outbox (seq INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL, calendar_id TEXT NOT NULL,
+                        operation TEXT NOT NULL, payload TEXT, created_at TEXT NOT NULL);
+                    INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ('old', 'c1', 'Delete', 'r1', '2026-01-01');
+                    PRAGMA user_version = 3;
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            var store = new CalendarStore(path);
+            store.Enqueue("e1", "c1", OutboxOperation.Update, Ev("e1", DateTime.Today), Ev("e1", DateTime.Today));
+            var pending = store.GetPending();
+            Assert.Null(pending[0].Base);
+            Assert.NotNull(pending[1].Base);
+        }
+        finally
+        {
+            foreach (var f in Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(path) + "*")) File.Delete(f);
+        }
+    }
+
+    [Fact]
     public void DeleteSeriesRemovesModifiedOccurrences()
     {
         var store = Create();

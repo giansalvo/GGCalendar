@@ -19,6 +19,9 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
 
+    /// <summary>Calendars that live only on this PC; Google calendars are removed by disconnecting their account.</summary>
+    public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id);
+
     [ObservableProperty]
     public partial bool IsVisible { get; set; } = info.IsVisible;
 
@@ -348,7 +351,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
         else if (IsRemote(ev.CalendarId))
         {
-            Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Update, ev));
+            Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Update, ev, old));
         }
 
         Refresh();

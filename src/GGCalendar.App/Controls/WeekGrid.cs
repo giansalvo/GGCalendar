@@ -56,8 +56,10 @@ public sealed class WeekGrid : Control
     private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
     private DragMode _mode;
     private CalendarEvent? _active;
+    private Rect _activeRect;
     private CalendarEvent? _preview;
     private Point _pressPoint;
+    private int _pressClickCount;
     private TimeSpan _grabOffset;
     private DateTime _createAnchor;
     private string? _selectedId;
@@ -96,6 +98,9 @@ public sealed class WeekGrid : Control
     public event Action<CalendarEvent>? EventDeleted;
     public event Action<CalendarEvent>? EventOpened;
 
+    /// <summary>Raised on a single click on an event that was not dragged, with its block (shows its details beside it).</summary>
+    public event Action<CalendarEvent, Rect>? EventClicked;
+
     /// <summary>Raised when an event is dropped to the left of the grid (the calendar list); carries the window position.</summary>
     public event Action<CalendarEvent, Point>? EventDroppedOutside;
 
@@ -128,11 +133,13 @@ public sealed class WeekGrid : Control
         var p = e.GetPosition(this);
         if (p.X < Gutter) return;
         _pressPoint = p;
+        _pressClickCount = e.ClickCount;
 
         var hit = HitTest(p);
         if (hit is { } h)
         {
             _active = h.Event;
+            _activeRect = h.Rect;
             _selectedId = h.Event.Id;
             _selectedStart = h.Event.Start;
             var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge;
@@ -212,6 +219,7 @@ public sealed class WeekGrid : Control
 
         var mode = _mode;
         var active = _active;
+        var activeRect = _activeRect;
         var preview = _preview;
         var outside = e.GetPosition(this).X < 0;
         var windowPoint = TopLevel.GetTopLevel(this) is { } top ? e.GetPosition(top) : default;
@@ -227,6 +235,11 @@ public sealed class WeekGrid : Control
                 EventDroppedOutside?.Invoke(active, windowPoint);
             else if (active is not null && (preview.Start != active.Start || preview.End != active.End))
                 EventChanged?.Invoke(active, preview.Start, preview.End);
+        }
+        // Only the first click of a double click: the second one opens the editor (OnDoubleTapped).
+        else if (active is not null && mode is DragMode.Pending or DragMode.Resize && _pressClickCount == 1)
+        {
+            EventClicked?.Invoke(active, activeRect);
         }
 
         InvalidateVisual();
@@ -389,15 +402,20 @@ public sealed class WeekGrid : Control
             using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
             context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
 
-            using (context.PushClip(rect.Deflate(new Thickness(6, 3))))
+            var inner = rect.Deflate(new Thickness(6, 3));
+            using (context.PushClip(inner))
             {
+                var showTime = rect.Height >= 38;
+                var time = Text($"{FormatTime(ev.Start)} - {FormatTime(ev.End)}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
                 var title = Text(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
-                context.DrawText(title, new Point(rect.X + 6, rect.Y + 3));
-                if (rect.Height >= 38)
-                {
-                    var time = Text($"{FormatTime(ev.Start)} - {FormatTime(ev.End)}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
-                    context.DrawText(time, new Point(rect.X + 6, rect.Y + 3 + title.Height));
-                }
+                // The title wraps over as many whole lines as fit above the time; the last visible line ends with "…".
+                var lineHeight = title.Height;
+                var lines = Math.Max(1, Math.Floor((inner.Height - (showTime ? time.Height : 0)) / lineHeight));
+                title.MaxTextWidth = Math.Max(1, inner.Width);
+                title.MaxTextHeight = lines * lineHeight + 0.5;
+                title.Trimming = TextTrimming.CharacterEllipsis;
+                context.DrawText(title, inner.TopLeft);
+                if (showTime) context.DrawText(time, new Point(inner.X, inner.Y + title.Height));
             }
         }
 

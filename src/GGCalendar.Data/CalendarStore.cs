@@ -10,13 +10,16 @@ public enum OutboxOperation { Create, Update, Delete }
 /// <summary>An event received from the remote provider, with the identifiers needed to keep it linked.</summary>
 public sealed record RemoteEvent(CalendarEvent Event, string RemoteId, string? Etag);
 
-/// <summary>A local change not yet pushed to the remote provider.</summary>
-public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload);
+/// <summary>
+/// A local change not yet pushed to the remote provider. <paramref name="Base"/> is the event as it was before the change
+/// (for updates), used to tell a real remote edit from a version change made by the provider itself.
+/// </summary>
+public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload, string? Base = null);
 
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
 {
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
 
     private static readonly JsonSerializerOptions Json = new() { Converters = { new JsonStringEnumConverter() } };
 
@@ -93,7 +96,8 @@ public sealed class CalendarStore
                     calendar_id TEXT NOT NULL,
                     operation TEXT NOT NULL,
                     payload TEXT,
-                    created_at TEXT NOT NULL
+                    created_at TEXT NOT NULL,
+                    base TEXT
                 );
                 CREATE INDEX IF NOT EXISTS ix_outbox_event ON outbox(event_id);
                 CREATE TABLE IF NOT EXISTS sync_state (
@@ -101,6 +105,13 @@ public sealed class CalendarStore
                     sync_token TEXT NOT NULL
                 );
                 """);
+
+            // v4: outbox.base (databases created before it have the table without the column).
+            using (var columns = Command(c, "SELECT COUNT(*) FROM pragma_table_info('outbox') WHERE name = 'base'", []))
+            {
+                if (Convert.ToInt64(columns.ExecuteScalar()) == 0) Run(c, "ALTER TABLE outbox ADD COLUMN base TEXT");
+            }
+
             Run(c, $"PRAGMA user_version = {SchemaVersion}");
             Run(c, "PRAGMA journal_mode = WAL");
         }
@@ -152,6 +163,9 @@ public sealed class CalendarStore
     });
 
     // Events
+
+    public CalendarEvent? GetEvent(string eventId) =>
+        WithConnection(c => ReadEvents(c, "SELECT data FROM events WHERE id = $id", [("$id", eventId)])).FirstOrDefault();
 
     public IReadOnlyList<CalendarEvent> GetAllEvents() => WithConnection(c => ReadEvents(c, "SELECT data FROM events ORDER BY start_at", []));
 
@@ -219,24 +233,28 @@ public sealed class CalendarStore
 
     // Outbox
 
-    public long Enqueue(string eventId, string calendarId, OutboxOperation operation, CalendarEvent? snapshot = null) => WithConnection(c =>
-    {
-        using var cmd = Command(c, """
-            INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, $op, $p, $t);
-            SELECT last_insert_rowid();
-            """,
-            [("$e", eventId), ("$c", calendarId), ("$op", operation.ToString()),
-             ("$p", snapshot is null ? null : JsonSerializer.Serialize(snapshot, Json)), ("$t", DateTime.UtcNow.ToString("O"))]);
-        return Convert.ToInt64(cmd.ExecuteScalar());
-    });
+    /// <param name="baseVersion">For updates: the event before the change (see <see cref="OutboxItem.Base"/>).</param>
+    public long Enqueue(string eventId, string calendarId, OutboxOperation operation, CalendarEvent? snapshot = null, CalendarEvent? baseVersion = null) =>
+        WithConnection(c =>
+        {
+            using var cmd = Command(c, """
+                INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at, base) VALUES ($e, $c, $op, $p, $t, $b);
+                SELECT last_insert_rowid();
+                """,
+                [("$e", eventId), ("$c", calendarId), ("$op", operation.ToString()),
+                 ("$p", snapshot is null ? null : JsonSerializer.Serialize(snapshot, Json)), ("$t", DateTime.UtcNow.ToString("O")),
+                 ("$b", baseVersion is null ? null : JsonSerializer.Serialize(baseVersion, Json))]);
+            return Convert.ToInt64(cmd.ExecuteScalar());
+        });
 
     public IReadOnlyList<OutboxItem> GetPending() => WithConnection(c =>
     {
-        using var cmd = Command(c, "SELECT seq, event_id, calendar_id, operation, payload FROM outbox ORDER BY seq", []);
+        using var cmd = Command(c, "SELECT seq, event_id, calendar_id, operation, payload, base FROM outbox ORDER BY seq", []);
         using var r = cmd.ExecuteReader();
         var list = new List<OutboxItem>();
         while (r.Read())
-            list.Add(new OutboxItem(r.GetInt64(0), r.GetString(1), r.GetString(2), Enum.Parse<OutboxOperation>(r.GetString(3)), r.IsDBNull(4) ? null : r.GetString(4)));
+            list.Add(new OutboxItem(r.GetInt64(0), r.GetString(1), r.GetString(2), Enum.Parse<OutboxOperation>(r.GetString(3)),
+                r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5)));
         return list;
     });
 
@@ -244,6 +262,9 @@ public sealed class CalendarStore
 
     public static CalendarEvent? ReadSnapshot(OutboxItem item) =>
         item.Payload is null ? null : JsonSerializer.Deserialize<CalendarEvent>(item.Payload, Json);
+
+    public static CalendarEvent? ReadBase(OutboxItem item) =>
+        item.Base is null ? null : JsonSerializer.Deserialize<CalendarEvent>(item.Base, Json);
 
     public bool HasPending(string eventId) => HasPendingAfter(eventId, 0);
 

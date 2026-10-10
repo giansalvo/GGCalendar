@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -63,6 +64,13 @@ public partial class EventEditWindow : Window
         stream.SetLength(0);
         await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
         await writer.WriteAsync(IcsWriter.Write([ev]));
+    }
+
+    private async void OnOpenMeet(object? sender, RoutedEventArgs e)
+    {
+        // Only web links are opened: the value comes from Google, but it is still data from outside the app.
+        if (Uri.TryCreate(Vm?.MeetLink, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+            await Launcher.LaunchUriAsync(uri);
     }
 
     private async void OnCopyMeet(object? sender, RoutedEventArgs e)

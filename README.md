@@ -17,8 +17,9 @@
 
 - Viste giorno, settimana, 6 giorni, mese, anno e programma; weekend nascondibili
 - Creazione, spostamento e ridimensionamento degli eventi con il trascinamento, anche tra calendari diversi
+- Scheda riassuntiva al clic su un evento (modifica, elimina, email agli invitati, esporta, partecipa a Meet); doppio clic per modificarlo
 - Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
-- Promemoria con notifica, allarme sonoro in loop e posticipo, conservati anche dopo un riavvio
+- Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo 2 minuti) e posticipo, conservati anche dopo un riavvio
 - Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti
 - Invitati, link Google Meet, promemoria via email (inviati da Google)
 - Calendari locali, importazione ed esportazione di file `.ics`

@@ -6,7 +6,7 @@ public enum EventAvailability { Busy, Free }
 
 public enum EventVisibility { Default, Public, Private }
 
-/// <summary>Popup = toast; Email = sent by the provider; Alarm = toast with a sound that loops until dismissed.</summary>
+/// <summary>Popup = toast; Email = sent by the provider; Alarm = toast with a sound that loops until dismissed (at most 2 minutes).</summary>
 public enum ReminderMethod { Popup, Email, Alarm }
 
 public sealed record EventAttendee(string Email, bool IsOptional = false);
@@ -18,6 +18,24 @@ public sealed record EventAttendee(string Email, bool IsOptional = false);
 public sealed record EventReminder(ReminderMethod Method, int Minutes, string? SoundPath = null)
 {
     public const string NoSound = "none";
+
+    /// <summary>
+    /// Google only knows popup and email reminders: alarms and custom sounds exist only in this app and come back from a
+    /// sync as plain popups. Each remote popup takes the method and sound of the local non-email reminder with the same
+    /// minutes, so a sync does not turn an alarm back into a notification.
+    /// </summary>
+    public static IReadOnlyList<EventReminder> KeepLocalOptions(IReadOnlyList<EventReminder> remote, IReadOnlyList<EventReminder> local)
+    {
+        var unused = local.Where(l => l.Method != ReminderMethod.Email).ToList();
+        return remote.Select(r =>
+        {
+            if (r.Method != ReminderMethod.Popup) return r;
+            var match = unused.FirstOrDefault(l => l.Minutes == r.Minutes);
+            if (match is null) return r;
+            unused.Remove(match);
+            return match;
+        }).ToList();
+    }
 }
 
 /// <summary>For all-day events Start is the first day at 00:00 and End is exclusive (00:00 of the day after the last).</summary>
