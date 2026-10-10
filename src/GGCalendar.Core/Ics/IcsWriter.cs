@@ -15,11 +15,12 @@ public static class IcsWriter
         Line(sb, "CALSCALE:GREGORIAN");
 
         var all = events.ToList();
+        var uids = all.Where(x => x.SeriesMasterId is null).ToDictionary(x => x.Id, x => x.IcsUid ?? $"{x.Id}@ggcalendar");
         foreach (var e in all.Where(x => !x.IsCancelled))
         {
             var isException = e.SeriesMasterId is not null;
             Line(sb, "BEGIN:VEVENT");
-            Line(sb, $"UID:{e.SeriesMasterId ?? e.Id}@ggcalendar");
+            Line(sb, $"UID:{(isException ? uids.GetValueOrDefault(e.SeriesMasterId!, $"{e.SeriesMasterId}@ggcalendar") : uids[e.Id])}");
             Line(sb, $"DTSTAMP:{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}");
             if (isException && e.OriginalStart is { } original)
                 Line(sb, e.IsAllDay ? $"RECURRENCE-ID;VALUE=DATE:{original:yyyyMMdd}" : $"RECURRENCE-ID:{original:yyyyMMdd'T'HHmmss}");

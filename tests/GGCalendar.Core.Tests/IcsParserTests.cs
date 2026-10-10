@@ -61,6 +61,20 @@ public class IcsParserTests
     }
 
     [Fact]
+    public void Keeps_uid_and_reports_unsupported_parts()
+    {
+        const string ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:abc-123\r\nDTSTART:20261008T080000\r\nDTEND:20261008T090000\r\n" +
+                           "SUMMARY:A\r\nRDATE:20261015T080000\r\nATTACH:http://x/y.pdf\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        var result = IcsParser.Analyze(ics, "c");
+
+        Assert.Equal("abc-123", Assert.Single(result.Events).IcsUid);
+        Assert.Contains(result.Warnings, w => w.Contains("RDATE"));
+        Assert.Contains(result.Warnings, w => w.Contains("allegati"));
+        Assert.Contains("UID:abc-123", IcsWriter.Write(result.Events));
+    }
+
+    [Fact]
     public void Parses_foreign_file_with_utc_folding_and_duration()
     {
         const string ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:z\r\nDTSTART:20261008T080000Z\r\nDURATION:PT90M\r\n" +

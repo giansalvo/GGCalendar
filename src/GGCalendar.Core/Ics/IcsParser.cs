@@ -1,7 +1,10 @@
 using System.Globalization;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Recurrence;
 
 namespace GGCalendar.Core.Ics;
+
+public sealed record IcsImport(IReadOnlyList<CalendarEvent> Events, IReadOnlyList<string> Warnings);
 
 /// <summary>Reads VEVENTs from an RFC 5545 .ics text. Times are converted to the local time zone.</summary>
 public static class IcsParser
@@ -15,9 +18,22 @@ public static class IcsParser
         public Prop? Get(string name) => Props.FirstOrDefault(p => p.Name == name);
     }
 
-    public static IReadOnlyList<CalendarEvent> Parse(string text, string calendarId)
+    public static IReadOnlyList<CalendarEvent> Parse(string text, string calendarId) => Analyze(text, calendarId).Events;
+
+    /// <summary>Parses the file and reports the parts of it this app cannot represent (so nothing is lost silently).</summary>
+    public static IcsImport Analyze(string text, string calendarId)
     {
         var raws = ReadEvents(text);
+        var warnings = new List<string>();
+        var rdate = raws.Count(r => r.Props.Any(p => p.Name == "RDATE"));
+        if (rdate > 0) warnings.Add($"{rdate} eventi con date aggiuntive (RDATE): le date aggiuntive vengono ignorate.");
+        var attach = raws.Count(r => r.Props.Any(p => p.Name == "ATTACH"));
+        if (attach > 0) warnings.Add($"{attach} eventi con allegati: gli allegati vengono ignorati.");
+        var badRule = raws.Count(r => r.Get("RRULE") is { } rr && RecurrenceRule.Parse(rr.Value) is null);
+        if (badRule > 0) warnings.Add($"{badRule} eventi con una ripetizione non supportata: la regola viene conservata ma potrebbe non essere mostrata correttamente.");
+        var skipped = raws.Count(r => r.Get("DTSTART") is null);
+        if (skipped > 0) warnings.Add($"{skipped} eventi senza data di inizio sono stati saltati.");
+
         var events = new List<CalendarEvent>();
         var masters = new Dictionary<string, CalendarEvent>();
 
@@ -46,7 +62,7 @@ public static class IcsParser
             }
         }
 
-        return events;
+        return new IcsImport(events, warnings);
     }
 
     private static CalendarEvent? Build(Raw raw, string calendarId, string? masterId, DateTime? originalStart)
@@ -88,6 +104,7 @@ public static class IcsParser
             Unescape(raw.Get("LOCATION")?.Value ?? ""), Unescape(raw.Get("DESCRIPTION")?.Value ?? ""))
         {
             Attendees = attendees,
+            IcsUid = raw.Get("UID")?.Value,
             Reminders = reminders,
             Recurrence = masterId is null ? NormalizeRule(raw.Get("RRULE")?.Value) : null,
             ExcludedStarts = exdates,

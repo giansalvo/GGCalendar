@@ -34,6 +34,8 @@ public sealed record CalendarEvent(
     public IReadOnlyList<EventAttendee> Attendees { get; init; } = [];
     public IReadOnlyList<EventReminder> Reminders { get; init; } = [new EventReminder(ReminderMethod.Popup, 30)];
 
+    /// <summary>UID of the .ics file the event was imported from; used to recognise it when the same file is imported again.</summary>
+    public string? IcsUid { get; init; }
     /// <summary>RFC 5545 RRULE value (without the "RRULE:" prefix), or null when the event does not repeat.</summary>
     public string? Recurrence { get; init; }
 

@@ -297,14 +297,29 @@ public partial class MainWindow : Window
         return await reader.ReadToEndAsync();
     }
 
-    private void ImportInto(string calendarId, string calendarName, string text)
+    private async Task ImportIntoAsync(string calendarId, string calendarName, string text)
     {
         if (Vm is not { } vm) return;
-        var events = IcsParser.Parse(text, calendarId);
-        var count = vm.ImportEvents(events);
-        vm.SyncStatus = count == 0
-            ? "Nessun evento trovato nel file .ics."
-            : $"Importati {count} eventi nel calendario \"{calendarName}\".";
+        var parsed = IcsParser.Analyze(text, calendarId);
+        var total = parsed.Events.Count(e => e.SeriesMasterId is null);
+        if (total == 0)
+        {
+            vm.SyncStatus = "Nessun evento trovato nel file .ics.";
+            return;
+        }
+
+        var existing = vm.FindExisting(calendarId, parsed.Events).Count;
+        var mode = ImportDuplicates.Skip;
+        if (existing > 0 || parsed.Warnings.Count > 0)
+        {
+            if (await new ImportSummaryWindow(calendarName, total, existing, parsed.Warnings).ShowDialog<ImportDuplicates?>(this) is not { } chosen) return;
+            mode = chosen;
+        }
+
+        var (imported, skipped) = vm.ImportEvents(calendarId, parsed.Events, mode);
+        vm.SyncStatus = $"Importati {imported} eventi nel calendario \"{calendarName}\"" +
+            (skipped > 0 ? $", {skipped} già presenti saltati" : "") +
+            (parsed.Warnings.Count > 0 ? ". Avvisi: " + string.Join(" ", parsed.Warnings) : ".");
     }
 
     private async void OnImportIntoCalendar(object? sender, RoutedEventArgs e)
@@ -312,7 +327,7 @@ public partial class MainWindow : Window
         if (CalendarOf(sender) is not { } cal) return;
         try
         {
-            if (await PickIcsAsync() is { } text) ImportInto(cal.Id, cal.Name, text);
+            if (await PickIcsAsync() is { } text) await ImportIntoAsync(cal.Id, cal.Name, text);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
@@ -328,7 +343,7 @@ public partial class MainWindow : Window
             if (await PickIcsAsync() is not { } text) return;
             var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", "Importato").ShowDialog<string?>(this);
             if (name is null) return;
-            ImportInto(vm.CreateLocalCalendar(name), name, text);
+            await ImportIntoAsync(vm.CreateLocalCalendar(name), name, text);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {

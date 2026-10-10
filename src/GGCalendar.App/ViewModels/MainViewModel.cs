@@ -37,6 +37,8 @@ public sealed record DayHeader(string Label, int Number, bool IsToday);
 
 public enum SeriesScope { This, ThisAndFollowing, All }
 
+public enum ImportDuplicates { Skip, Replace, Copy }
+
 public sealed partial class MainViewModel : ViewModelBase
 {
     private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("it-IT");
@@ -198,17 +200,57 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsSyncing { get; set; }
 
-    public int ImportEvents(IReadOnlyList<CalendarEvent> events)
+    /// <summary>Events of <paramref name="incoming"/> that already exist in the calendar (same file UID, or same title and times).</summary>
+    public IReadOnlyList<(CalendarEvent Incoming, CalendarEvent Existing)> FindExisting(string calendarId, IReadOnlyList<CalendarEvent> incoming)
     {
-        foreach (var ev in events)
+        var current = _allEvents.Where(e => e.CalendarId == calendarId && e.SeriesMasterId is null).ToList();
+        var byUid = current.Where(e => e.IcsUid is not null).GroupBy(e => e.IcsUid!).ToDictionary(g => g.Key, g => g.First());
+        var bySignature = current.GroupBy(Signature).ToDictionary(g => g.Key, g => g.First());
+        var found = new List<(CalendarEvent, CalendarEvent)>();
+        foreach (var ev in incoming.Where(e => e.SeriesMasterId is null))
         {
-            _allEvents.Add(ev);
-            _store.UpsertEvent(ev);
-            if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
+            if (ev.IcsUid is not null && byUid.TryGetValue(ev.IcsUid, out var match)) found.Add((ev, match));
+            else if (bySignature.TryGetValue(Signature(ev), out match)) found.Add((ev, match));
         }
 
-        Refresh();
-        return events.Count(e => e.SeriesMasterId is null);
+        return found;
+    }
+
+    private static string Signature(CalendarEvent e) => $"{e.Title.Trim().ToLowerInvariant()}|{e.Start:O}|{e.End:O}";
+
+    /// <summary>
+    /// Adds the events to the calendar. Events already present are skipped, replaced by the imported version,
+    /// or imported again as copies, depending on <paramref name="onExisting"/>. Returns (imported, skipped).
+    /// </summary>
+    public (int Imported, int Skipped) ImportEvents(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
+    {
+        var existing = FindExisting(calendarId, events).ToDictionary(p => p.Incoming.Id, p => p.Existing);
+        var skippedMasters = new HashSet<string>();
+        var imported = 0;
+        var skipped = 0;
+        foreach (var ev in events)
+        {
+            if (ev.SeriesMasterId is { } masterId)
+            {
+                if (skippedMasters.Contains(masterId)) continue;
+            }
+            else if (existing.TryGetValue(ev.Id, out var old) && onExisting != ImportDuplicates.Copy)
+            {
+                if (onExisting == ImportDuplicates.Skip)
+                {
+                    skippedMasters.Add(ev.Id);
+                    skipped++;
+                    continue;
+                }
+
+                DeleteEvent(old);
+            }
+
+            AddEvent(ev);
+            if (ev.SeriesMasterId is null) imported++;
+        }
+
+        return (imported, skipped);
     }
 
     public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();
