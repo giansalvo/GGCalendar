@@ -6,8 +6,9 @@
 
 <p align="center">
   <a href="https://github.com/giansalvo/GGCalendar/releases/latest">Scarica l'ultima versione</a> ·
-  <a href="website/privacy.html">Privacy</a> ·
-  <a href="website/terms.html">Termini</a> ·
+  <a href="https://profgusinu.altervista.org/GGCalendar/">Sito</a> ·
+  <a href="https://profgusinu.altervista.org/GGCalendar/privacy.html">Privacy</a> ·
+  <a href="https://profgusinu.altervista.org/GGCalendar/terms.html">Termini</a> ·
   <a href="LICENSE">Licenza GPL v3 o successive</a>
 </p>
 
@@ -81,7 +82,7 @@ Lo script pubblica l'app self-contained per `win-x64` e crea `website/downloads/
 
 ## Privacy
 
-GGCalendar non ha server propri e non raccoglie telemetria. I dati restano sul tuo computer e, se colleghi un account Google, viaggiano solo tra il computer e Google. I dettagli sono nell'[informativa sulla privacy](website/privacy.html).
+GGCalendar non ha server propri e non raccoglie telemetria. I dati restano sul tuo computer e, se colleghi un account Google, viaggiano solo tra il computer e Google. I dettagli sono nell'[informativa sulla privacy](https://profgusinu.altervista.org/GGCalendar/privacy.html); le condizioni d'uso nei [termini di servizio](https://profgusinu.altervista.org/GGCalendar/terms.html).
 
 ## Licenza
 
