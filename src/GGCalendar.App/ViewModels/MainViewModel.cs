@@ -291,8 +291,35 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // Dragging one occurrence of a series moves only that occurrence.
+        // Callers ask for the scope first (see MoveOccurrence); a single occurrence is the safe default.
         SaveOccurrence(ev, ev with { Start = start, End = end }, SeriesScope.This);
+    }
+
+    /// <summary>Drags one occurrence of a series: only it, it and the following ones, or the whole series.</summary>
+    public void MoveOccurrence(CalendarEvent occurrence, DateTime start, DateTime end, SeriesScope scope)
+    {
+        var master = ResolveMaster(occurrence);
+        var delta = start - occurrence.Start;
+        var dayShift = (start.Date - occurrence.Start.Date).Days;
+        var rule = master.Recurrence;
+        // Moving a weekly "on these days" series to another weekday shifts the days too.
+        if (scope != SeriesScope.This && dayShift != 0
+            && RecurrenceRule.Parse(rule) is { Frequency: RecurrenceFrequency.Weekly, Days.Count: > 0 } parsed)
+            rule = (parsed with { Days = parsed.Days.Select(d => (DayOfWeek)((((int)d + dayShift) % 7 + 7) % 7)).ToList() }).ToRrule(master.IsAllDay);
+
+        switch (scope)
+        {
+            case SeriesScope.This:
+                SaveOccurrence(occurrence, occurrence with { Start = start, End = end }, scope);
+                break;
+            case SeriesScope.All:
+                var newStart = master.Start + delta;
+                SaveOccurrence(occurrence, master with { Start = newStart, End = newStart + (end - start), Recurrence = rule }, scope);
+                break;
+            default:
+                SaveOccurrence(occurrence, occurrence with { Start = start, End = end, Recurrence = rule }, scope);
+                break;
+        }
     }
 
     /// <summary>Moves an event (the whole series for recurring ones) to another calendar, possibly of another account.</summary>
@@ -340,7 +367,8 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         var newRule = edited.Recurrence;
-        if (newRule is not null && newRule == master.Recurrence && occurrence.OccurrenceIndex is { } index
+        if (newRule is not null && occurrence.OccurrenceIndex is { } index
+            && RecurrenceRule.Parse(newRule)?.Count is not null
             && RecurrenceRule.Parse(master.Recurrence)?.Count is { } total)
             newRule = RecurrenceRule.WithCount(newRule, Math.Max(1, total - index));
 

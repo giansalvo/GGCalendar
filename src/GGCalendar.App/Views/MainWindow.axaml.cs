@@ -30,7 +30,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
         Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
-        Grid.EventChanged += (ev, s, e) => Vm?.MoveEvent(ev, s, e);
+        Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
         Grid.EventDragging += HighlightDropTarget;
@@ -205,6 +205,14 @@ public partial class MainWindow : Window
         if (Vm is not { } vm) return;
         var hour = Math.Max(0, vm.Settings.DayStartHour - vm.FirstHour);
         GridScroll.Offset = new Avalonia.Vector(0, hour * Controls.WeekGrid.HourHeight);
+    }
+
+    private async Task MoveAsync(CalendarEvent ev, DateTime start, DateTime end)
+    {
+        if (Vm is not { } vm) return;
+        if (!vm.IsRecurring(ev)) { vm.MoveEvent(ev, start, end); return; }
+        var scope = await new SeriesScopeWindow("Sposta evento ricorrente").ShowDialog<SeriesScope?>(this);
+        if (scope is { } s) vm.MoveOccurrence(ev, start, end, s);
     }
 
     private CalendarItemViewModel? CalendarAt(Avalonia.Point point) =>
