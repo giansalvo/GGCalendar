@@ -22,6 +22,9 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public partial bool IsVisible { get; set; } = info.IsVisible;
 
     partial void OnIsVisibleChanged(bool value) => changed();
+
+    [ObservableProperty]
+    public partial bool IsDropTarget { get; set; }
 }
 
 public sealed record AccountGroup(string AccountName, IReadOnlyList<CalendarItemViewModel> Calendars);

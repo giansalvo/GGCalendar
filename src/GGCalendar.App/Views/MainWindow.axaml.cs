@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         Grid.EventChanged += (ev, s, e) => Vm?.MoveEvent(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
+        Grid.EventDragging += HighlightDropTarget;
         Grid.EventOpened += async ev => await EditAsync(ev, isNew: false);
         Grid.EventCreated += async (s, e) =>
         {
@@ -206,12 +207,22 @@ public partial class MainWindow : Window
         GridScroll.Offset = new Avalonia.Vector(0, hour * Controls.WeekGrid.HourHeight);
     }
 
+    private CalendarItemViewModel? CalendarAt(Avalonia.Point point) =>
+        (Avalonia.VisualTree.VisualExtensions.GetVisualAt(this, point) is { } hit
+            ? Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(hit) : [])
+        .OfType<Avalonia.StyledElement>().Select(x => x.DataContext).OfType<CalendarItemViewModel>().FirstOrDefault();
+
+    private void HighlightDropTarget(Avalonia.Point? point)
+    {
+        if (Vm is not { } vm) return;
+        var target = point is { } p ? CalendarAt(p) : null;
+        foreach (var c in vm.Accounts.SelectMany(a => a.Calendars)) c.IsDropTarget = ReferenceEquals(c, target);
+    }
+
     private async Task DropOnCalendarAsync(CalendarEvent ev, Avalonia.Point point)
     {
         if (Vm is not { } vm) return;
-        var target = (Avalonia.VisualTree.VisualExtensions.GetVisualAt(this, point) is { } hit
-                ? Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(hit) : [])
-            .OfType<Avalonia.StyledElement>().Select(x => x.DataContext).OfType<CalendarItemViewModel>().FirstOrDefault();
+        var target = CalendarAt(point);
         if (target is null) return;
 
         var master = vm.ResolveMaster(ev);

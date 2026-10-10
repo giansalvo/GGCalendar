@@ -27,6 +27,9 @@
         <Style Selector="TextBlock.muted">
             <Setter Property="Opacity" Value="0.65" />
         </Style>
+        <Style Selector="Border.drop">
+            <Setter Property="Background" Value="#331A73E8" />
+        </Style>
     </Window.Styles>
 
     <DockPanel>
@@ -87,7 +90,9 @@
                                     <ItemsControl ItemsSource="{Binding Calendars}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:CalendarItemViewModel">
-                                                <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
+                                                <Border Classes.drop="{Binding IsDropTarget}" CornerRadius="6" Padding="0,2">
+                                                    <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
+                                                </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

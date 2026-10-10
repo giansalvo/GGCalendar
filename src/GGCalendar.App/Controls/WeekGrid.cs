@@ -99,6 +99,9 @@ public sealed class WeekGrid : Control
     /// <summary>Raised when an event is dropped to the left of the grid (the calendar list); carries the window position.</summary>
     public event Action<CalendarEvent, Point>? EventDroppedOutside;
 
+    /// <summary>Raised while an event is dragged (window position), and with null when the drag ends.</summary>
+    public event Action<Point?>? EventDragging;
+
     private double ColumnWidth => (Bounds.Width - Gutter) / Math.Max(1, DayCount);
     private double Y(double hours) => (hours - FirstHour) * HourHeight;
 
@@ -169,6 +172,7 @@ public sealed class WeekGrid : Control
         {
             case DragMode.Move when _active is not null:
             {
+                if (TopLevel.GetTopLevel(this) is { } top) EventDragging?.Invoke(e.GetPosition(top));
                 var duration = _active.End - _active.Start;
                 var start = Snap(PointToTime(p, snap: false) - _grabOffset, snap);
                 _preview = _active with { Start = start, End = start + duration };
@@ -213,12 +217,13 @@ public sealed class WeekGrid : Control
         var windowPoint = TopLevel.GetTopLevel(this) is { } top ? e.GetPosition(top) : default;
         Reset();
         e.Pointer.Capture(null);
+        EventDragging?.Invoke(null);
 
         if (preview is not null)
         {
             if (mode == DragMode.Create)
                 EventCreated?.Invoke(preview.Start, preview.End);
-            else if (mode == DragMode.Move && outside && active is not null)
+            else if (mode == DragMode.Move && active is not null && (outside || !new Rect(Bounds.Size).Contains(e.GetPosition(this))))
                 EventDroppedOutside?.Invoke(active, windowPoint);
             else if (active is not null && (preview.Start != active.Start || preview.End != active.End))
                 EventChanged?.Invoke(active, preview.Start, preview.End);
@@ -233,6 +238,7 @@ public sealed class WeekGrid : Control
         if (_mode != DragMode.None)
         {
             Reset();
+            EventDragging?.Invoke(null);
             InvalidateVisual();
         }
     }
