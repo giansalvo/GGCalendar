@@ -309,9 +309,31 @@ public sealed class WeekGrid : Control
         if (Events is null && _preview is null) return;
         var colors = CalendarColors;
 
-        var source = (Events ?? []).Select(e => _active is not null && e.Id == _active.Id && _preview is not null && _mode != DragMode.Create ? _preview : e).ToList();
-        var isCreating = _mode == DragMode.Create && _preview is not null;
-        if (isCreating) source.Add(_preview!);
+        // Layout always uses the original positions so other events stay still while dragging.
+        var source = Events ?? [];
+        var hideId = _preview is not null && _mode is DragMode.Move or DragMode.Resize ? _active?.Id : null;
+
+        void DrawBlock(CalendarEvent ev, Rect rect, bool translucent, bool selected)
+        {
+            var hex = colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8";
+            var color = Color.Parse(hex);
+            var fillColor = translucent ? Color.FromArgb(215, color.R, color.G, color.B) : color;
+            var pen = selected
+                ? new Pen(new SolidColorBrush(Color.Parse("#1A73E8")), 2)
+                : new Pen(new SolidColorBrush(background), 1);
+            context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
+
+            using (context.PushClip(rect.Deflate(new Thickness(6, 3))))
+            {
+                var title = Text(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
+                context.DrawText(title, new Point(rect.X + 6, rect.Y + 3));
+                if (rect.Height >= 38)
+                {
+                    var time = Text($"{ev.Start:HH:mm} - {ev.End:HH:mm}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
+                    context.DrawText(time, new Point(rect.X + 6, rect.Y + 3 + title.Height));
+                }
+            }
+        }
 
         for (var d = 0; d < days; d++)
         {
@@ -331,28 +353,18 @@ public sealed class WeekGrid : Control
                 var height = Math.Max((e - s).TotalHours * HourHeight - 2, 20);
                 var rect = new Rect(x, y, slotW - (p.ColumnCount > 1 ? 1 : 0) + 2, height);
 
-                var isDragged = _active is not null && ev.Id == _active.Id && _mode != DragMode.None && _mode != DragMode.Pending;
-                if (ev.Id != "") _hits.Add((rect, ev));
+                _hits.Add((rect, ev));
+                if (ev.Id == hideId) continue;
+                DrawBlock(ev, rect, false, ev.Id == _selectedId);
+            }
 
-                var hex = colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8";
-                var color = Color.Parse(hex);
-                var fillColor = isDragged || ev.Id == "" ? Color.FromArgb(215, color.R, color.G, color.B) : color;
-                var selected = ev.Id == _selectedId && ev.Id != "";
-                var pen = selected
-                    ? new Pen(new SolidColorBrush(Color.Parse("#1A73E8")), 2)
-                    : new Pen(new SolidColorBrush(background), 1);
-                context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
-
-                using (context.PushClip(rect.Deflate(new Thickness(6, 3))))
-                {
-                    var title = Text(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
-                    context.DrawText(title, new Point(rect.X + 6, rect.Y + 3));
-                    if (height >= 38)
-                    {
-                        var time = Text($"{ev.Start:HH:mm} - {ev.End:HH:mm}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
-                        context.DrawText(time, new Point(rect.X + 6, rect.Y + 3 + title.Height));
-                    }
-                }
+            if (_preview is { } pv && pv.Start < next && pv.End > day)
+            {
+                var s = pv.Start < day ? day : pv.Start;
+                var e = pv.End > next ? next : pv.End;
+                var y = (s - day).TotalHours * HourHeight + 1;
+                var height = Math.Max((e - s).TotalHours * HourHeight - 2, 20);
+                DrawBlock(pv, new Rect(Gutter + d * colW + 2, y, colW - 6, height), true, false);
             }
         }
     }
