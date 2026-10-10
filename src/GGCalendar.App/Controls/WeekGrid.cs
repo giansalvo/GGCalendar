@@ -347,6 +347,9 @@ public sealed class WeekGrid : Control
         using var clip = context.PushClip(new Rect(0, 0, w, h));
         context.FillRectangle(new SolidColorBrush(bg), new Rect(0, 0, w, h));
 
+        context.DrawLine(linePen, new Point(Gutter - 8, 0.5), new Point(w, 0.5));
+        context.DrawLine(linePen, new Point(Gutter - 8, h - 0.5), new Point(w, h - 0.5));
+
         for (var hour = FirstHour + 1; hour < LastHour; hour++)
         {
             var y = Math.Round(Y(hour)) + 0.5;
