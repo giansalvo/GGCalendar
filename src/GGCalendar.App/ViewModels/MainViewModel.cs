@@ -214,6 +214,16 @@ public sealed partial class MainViewModel : ViewModelBase
                 Queue(() => _store.EnqueueDelete(ev.Id, old.CalendarId, oldRemote));
             _store.ClearRemote(ev.Id);
             if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
+
+            // Modified occurrences follow their series; they are recreated after it (Google dropped them with the old series).
+            foreach (var child in _allEvents.Where(e => e.SeriesMasterId == ev.Id).ToList())
+            {
+                var moved = child with { CalendarId = ev.CalendarId };
+                _allEvents[_allEvents.FindIndex(e => e.Id == child.Id)] = moved;
+                _store.UpsertEvent(moved);
+                _store.ClearRemote(child.Id);
+                if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(moved.Id, moved.CalendarId, OutboxOperation.Create, moved));
+            }
         }
         else if (IsRemote(ev.CalendarId))
         {
@@ -280,6 +290,14 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // Dragging one occurrence of a series moves only that occurrence.
         SaveOccurrence(ev, ev with { Start = start, End = end }, SeriesScope.This);
+    }
+
+    /// <summary>Moves an event (the whole series for recurring ones) to another calendar, possibly of another account.</summary>
+    public void ChangeCalendar(CalendarEvent ev, string calendarId)
+    {
+        var master = ev.SeriesMasterId is { } m ? _allEvents.FirstOrDefault(e => e.Id == m) ?? ResolveMaster(ev) : ResolveMaster(ev);
+        if (master.CalendarId == calendarId) return;
+        UpdateEvent(master with { CalendarId = calendarId, MeetLink = null, OccurrenceIndex = null });
     }
 
     public CalendarEvent ResolveMaster(CalendarEvent ev) => _allEvents.FirstOrDefault(e => e.Id == ev.Id) ?? ev;

@@ -96,6 +96,9 @@ public sealed class WeekGrid : Control
     public event Action<CalendarEvent>? EventDeleted;
     public event Action<CalendarEvent>? EventOpened;
 
+    /// <summary>Raised when an event is dropped to the left of the grid (the calendar list); carries the window position.</summary>
+    public event Action<CalendarEvent, Point>? EventDroppedOutside;
+
     private double ColumnWidth => (Bounds.Width - Gutter) / Math.Max(1, DayCount);
     private double Y(double hours) => (hours - FirstHour) * HourHeight;
 
@@ -206,6 +209,8 @@ public sealed class WeekGrid : Control
         var mode = _mode;
         var active = _active;
         var preview = _preview;
+        var outside = e.GetPosition(this).X < 0;
+        var windowPoint = TopLevel.GetTopLevel(this) is { } top ? e.GetPosition(top) : default;
         Reset();
         e.Pointer.Capture(null);
 
@@ -213,6 +218,8 @@ public sealed class WeekGrid : Control
         {
             if (mode == DragMode.Create)
                 EventCreated?.Invoke(preview.Start, preview.End);
+            else if (mode == DragMode.Move && outside && active is not null)
+                EventDroppedOutside?.Invoke(active, windowPoint);
             else if (active is not null && (preview.Start != active.Start || preview.End != active.End))
                 EventChanged?.Invoke(active, preview.Start, preview.End);
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
         Grid.EventChanged += (ev, s, e) => Vm?.MoveEvent(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
+        Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
         Grid.EventOpened += async ev => await EditAsync(ev, isNew: false);
         Grid.EventCreated += async (s, e) =>
         {
@@ -202,6 +204,28 @@ public partial class MainWindow : Window
         if (Vm is not { } vm) return;
         var hour = Math.Max(0, vm.Settings.DayStartHour - vm.FirstHour);
         GridScroll.Offset = new Avalonia.Vector(0, hour * Controls.WeekGrid.HourHeight);
+    }
+
+    private async Task DropOnCalendarAsync(CalendarEvent ev, Avalonia.Point point)
+    {
+        if (Vm is not { } vm) return;
+        var target = (Avalonia.VisualTree.VisualExtensions.GetVisualAt(this, point) is { } hit
+                ? Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(hit) : [])
+            .OfType<Avalonia.StyledElement>().Select(x => x.DataContext).OfType<CalendarItemViewModel>().FirstOrDefault();
+        if (target is null) return;
+
+        var master = vm.ResolveMaster(ev);
+        if (master.CalendarId == target.Id) return;
+        if (!string.IsNullOrEmpty(master.Recurrence) || master.SeriesMasterId is not null || master.Attendees.Count > 0)
+        {
+            var message = $"L'evento verrà spostato nel calendario \"{target.Name}\".\n\n" +
+                (string.IsNullOrEmpty(master.Recurrence) ? "" : "• Verrà spostata l'intera serie.\n") +
+                (master.Attendees.Count > 0 ? "• Se il calendario è di un altro account, l'evento viene ricreato: gli invitati riceveranno un nuovo invito e le risposte già date si perdono.\n" : "") +
+                "• Un eventuale link Meet verrà rimosso.";
+            if (!await new ConfirmWindow("Spostare in un altro calendario?", message, "Sposta").ShowDialog<bool>(this)) return;
+        }
+
+        vm.ChangeCalendar(ev, target.Id);
     }
 
     private async Task DeleteAsync(CalendarEvent ev)
