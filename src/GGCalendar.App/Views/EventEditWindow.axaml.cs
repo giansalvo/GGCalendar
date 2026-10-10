@@ -53,7 +53,7 @@ public partial class EventEditWindow : Window
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Esporta evento",
-            SuggestedFileName = string.IsNullOrWhiteSpace(ev.Title) ? "evento" : ev.Title,
+            SuggestedFileName = (string.IsNullOrWhiteSpace(ev.Title) ? "evento" : string.Concat(ev.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c))) + ".ics",
             DefaultExtension = "ics",
             FileTypeChoices = [new FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
         });

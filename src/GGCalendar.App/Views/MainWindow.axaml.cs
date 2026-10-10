@@ -358,13 +358,16 @@ public partial class MainWindow : Window
         if (name is not null) vm.CreateLocalCalendar(name);
     }
 
+    private static string SafeFileName(string name) =>
+        string.Concat(name.Select(c => System.IO.Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+
     private async void OnExportCalendar(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
             Title = "Esporta calendario",
-            SuggestedFileName = cal.Name,
+            SuggestedFileName = SafeFileName(cal.Name) + ".ics",
             DefaultExtension = "ics",
             FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
         });
