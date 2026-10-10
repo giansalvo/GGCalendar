@@ -191,6 +191,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public partial string SyncStatus { get; set; } = "";
 
     [ObservableProperty]
+    public partial bool SyncIsError { get; set; }
+
+    partial void OnSyncStatusChanged(string value) => SyncIsError = value.StartsWith("Errore", StringComparison.Ordinal);
+
+    [ObservableProperty]
     public partial bool IsSyncing { get; set; }
 
     public void AddEvent(CalendarEvent ev)

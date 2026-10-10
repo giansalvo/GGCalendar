@@ -27,12 +27,23 @@
         <Style Selector="TextBlock.muted">
             <Setter Property="Opacity" Value="0.65" />
         </Style>
+        <Style Selector="SelectableTextBlock.muted">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
+        <Style Selector="SelectableTextBlock.error">
+            <Setter Property="Foreground" Value="#D93025" />
+        </Style>
         <Style Selector="Border.drop">
             <Setter Property="Background" Value="#331A73E8" />
         </Style>
     </Window.Styles>
 
     <DockPanel>
+        <Border DockPanel.Dock="Bottom" Padding="16,4" BorderThickness="0,1,0,0" BorderBrush="#33808080"
+                IsVisible="{Binding SyncStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <SelectableTextBlock Text="{Binding SyncStatus}" FontSize="12" TextWrapping="Wrap" MaxHeight="72"
+                                 Classes.error="{Binding SyncIsError}" Classes.muted="{Binding !SyncIsError}" />
+        </Border>
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,10">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,24,0" VerticalAlignment="Center" />
@@ -45,7 +56,6 @@
                 </Border>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="{Binding SyncStatus}" Classes="muted" FontSize="12" VerticalAlignment="Center" MaxWidth="320" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SyncStatus}" />
                 <Button Classes="nav" Padding="0" Click="OnSyncNow" IsEnabled="{Binding !IsSyncing}" ToolTip.Tip="Sincronizza ora">
                     <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
