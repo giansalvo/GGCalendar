@@ -32,11 +32,26 @@ public partial class MainWindow : Window
         {
             if (Vm is { } vm) await EditAsync(vm.NewEvent(day, day.AddDays(1), allDay: true), isNew: true);
         };
+        Month.EventOpened += async ev => await EditAsync(ev, isNew: false);
+        Month.DayDoubleClicked += async day =>
+        {
+            if (Vm is { } vm) await EditAsync(vm.NewEvent(day.AddHours(vm.Settings.DayStartHour), day.AddHours(vm.Settings.DayStartHour).AddMinutes(vm.Settings.DefaultEventMinutes)), isNew: true);
+        };
+        Month.DayNumberClicked += day => Vm?.ShowDay(day);
+        Year.DayClicked += day => Vm?.ShowDay(day);
+        KeyDown += OnShortcut;
         Opened += (_, _) =>
         {
             if (Vm is { } vm)
             {
                 vm.Settings = _store.Load();
+                vm.ViewModeIndex = Math.Clamp(vm.Settings.DefaultView, 0, 5);
+                vm.PropertyChanged += (_, a) =>
+                {
+                    if (a.PropertyName is not (nameof(MainViewModel.ViewModeIndex) or nameof(MainViewModel.ShowWeekends))) return;
+                    vm.Settings.DefaultView = vm.ViewModeIndex;
+                    _store.Save(vm.Settings);
+                };
                 _scheduler = new ReminderScheduler(() => vm.AllEvents) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
                 _scheduler.Start();
@@ -68,6 +83,29 @@ public partial class MainWindow : Window
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    private void OnViewModeSelected(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm && sender is MenuItem { Tag: string t } && int.TryParse(t, out var i)) vm.ViewModeIndex = i;
+    }
+
+    private async void OnAgendaItemOpened(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: AgendaItem item }) await EditAsync(item.Event, isNew: false);
+    }
+
+    private void OnShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (Vm is not { } vm || e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Source is TextBox) return;
+        var mode = e.Key switch
+        {
+            Avalonia.Input.Key.D => 0, Avalonia.Input.Key.W => 1, Avalonia.Input.Key.M => 2,
+            Avalonia.Input.Key.Y => 3, Avalonia.Input.Key.A => 4, Avalonia.Input.Key.X => 5, _ => -1,
+        };
+        if (mode < 0) return;
+        vm.ViewModeIndex = mode;
+        e.Handled = true;
+    }
 
     private void ScrollToDayStart()
     {
@@ -101,6 +139,8 @@ public partial class MainWindow : Window
         var dialog = new SettingsWindow { DataContext = new SettingsViewModel(vm.Settings, _sound) };
         var result = await dialog.ShowDialog<AppSettings?>(this);
         if (result is null) return;
+        result.ShowWeekends = vm.Settings.ShowWeekends;
+        result.DefaultView = vm.Settings.DefaultView;
         _store.Save(result);
         vm.Settings = result;
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;

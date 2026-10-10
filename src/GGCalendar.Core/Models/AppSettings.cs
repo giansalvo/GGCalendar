@@ -7,6 +7,10 @@ public sealed class AppSettings
     public bool HideOutsideHours { get; set; }
     public DayOfWeek FirstDayOfWeek { get; set; } = DayOfWeek.Monday;
     public bool ShowWeekNumbers { get; set; } = true;
+    public bool ShowWeekends { get; set; } = true;
+
+    /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
+    public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;
     public int DefaultEventMinutes { get; set; } = 60;
     public int SnapMinutes { get; set; } = 15;

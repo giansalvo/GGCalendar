@@ -25,6 +25,10 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
 
 public sealed record AccountGroup(string AccountName, IReadOnlyList<CalendarItemViewModel> Calendars);
 
+public sealed record AgendaItem(CalendarEvent Event, string Time, string Title, string ColorHex);
+
+public sealed record AgendaDay(string Label, bool IsToday, IReadOnlyList<AgendaItem> Items);
+
 public sealed record DayHeader(string Label, int Number, bool IsToday);
 
 public sealed partial class MainViewModel : ViewModelBase
@@ -75,6 +79,46 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial AppSettings Settings { get; set; } = new();
 
+    /// <summary>0 = giorno, 1 = settimana, 2 = mese, 3 = anno, 4 = programma, 5 = 6 giorni.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName))]
+    public partial int ViewModeIndex { get; set; } = 1;
+
+    public static IReadOnlyList<string> ViewModeNames { get; } = ["Giorno", "Settimana", "Mese", "Anno", "Programma", "6 giorni"];
+
+    public string ViewModeName => ViewModeNames[ViewModeIndex];
+    public bool IsTimeGrid => ViewModeIndex is 0 or 1 or 5;
+    public bool IsMonth => ViewModeIndex == 2;
+    public bool IsYear => ViewModeIndex == 3;
+    public bool IsAgenda => ViewModeIndex == 4;
+
+    public bool ShowWeekends
+    {
+        get => Settings.ShowWeekends;
+        set
+        {
+            if (Settings.ShowWeekends == value) return;
+            Settings.ShowWeekends = value;
+            OnPropertyChanged();
+            Refresh();
+        }
+    }
+
+    [ObservableProperty]
+    public partial int YearNumber { get; set; }
+
+    [ObservableProperty]
+    public partial int DayCount { get; set; } = 7;
+
+    [ObservableProperty]
+    public partial DateTime MonthGridStart { get; set; }
+
+    [ObservableProperty]
+    public partial int MonthNumber { get; set; }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<AgendaDay> AgendaDays { get; set; } = [];
+
     [ObservableProperty]
     public partial int FirstHour { get; set; }
 
@@ -109,6 +153,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     partial void OnSettingsChanged(AppSettings value)
     {
+        OnPropertyChanged(nameof(ShowWeekends));
         FirstHour = value.HideOutsideHours ? value.DayStartHour : 0;
         LastHour = value.HideOutsideHours ? value.DayEndHour : 24;
         var zone = TimeZoneInfo.TryFindSystemTimeZoneById(value.PrimaryTimeZoneId ?? "", out var z) ? z : TimeZoneInfo.Local;
@@ -142,8 +187,30 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand] private void Today() => SelectedDate = DateTime.Today;
-    [RelayCommand] private void Previous() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(-7);
-    [RelayCommand] private void Next() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(7);
+    [RelayCommand] private void Previous() => Step(-1);
+    [RelayCommand] private void Next() => Step(1);
+
+    private void Step(int direction)
+    {
+        var d = SelectedDate ?? DateTime.Today;
+        SelectedDate = ViewModeIndex switch
+        {
+            0 => d.AddDays(direction),
+            2 or 4 => d.AddMonths(direction),
+            3 => d.AddYears(direction),
+            5 => d.AddDays(6 * direction),
+            _ => d.AddDays(7 * direction),
+        };
+    }
+
+    /// <summary>Switches to the day view for the given date.</summary>
+    public void ShowDay(DateTime day)
+    {
+        ViewModeIndex = 0;
+        SelectedDate = day.Date;
+    }
+
+    partial void OnViewModeIndexChanged(int value) => Refresh();
 
     public void MoveEvent(CalendarEvent ev, DateTime start, DateTime end)
     {
@@ -170,10 +237,31 @@ public sealed partial class MainViewModel : ViewModelBase
     private void Refresh()
     {
         var date = SelectedDate ?? DateTime.Today;
-        WeekStart = StartOfWeek(date);
-        Title = Culture.TextInfo.ToTitleCase(date.ToString("MMMM yyyy", Culture));
-        WeekNumber = ISOWeek.GetWeekOfYear(WeekStart.AddDays(3));
-        Days = Enumerable.Range(0, 7).Select(i =>
+        var weekStart = StartOfWeek(date);
+        var first = weekStart;
+        var count = 7;
+        switch (ViewModeIndex)
+        {
+            case 0: first = date.Date; count = 1; break;
+            case 5: first = date.Date; count = 6; break;
+            default:
+                if (!Settings.ShowWeekends)
+                {
+                    while (first.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) first = first.AddDays(1);
+                    count = 5;
+                }
+
+                break;
+        }
+
+        WeekStart = first;
+        DayCount = count;
+        MonthGridStart = StartOfWeek(new DateTime(date.Year, date.Month, 1));
+        MonthNumber = date.Month;
+        YearNumber = date.Year;
+        Title = Culture.TextInfo.ToTitleCase(date.ToString(ViewModeIndex switch { 0 => "d MMMM yyyy", 3 => "yyyy", _ => "MMMM yyyy" }, Culture));
+        WeekNumber = ISOWeek.GetWeekOfYear(weekStart.AddDays(3));
+        Days = Enumerable.Range(0, DayCount).Select(i =>
         {
             var d = WeekStart.AddDays(i);
             return new DayHeader(Culture.DateTimeFormat.GetAbbreviatedDayName(d.DayOfWeek).ToUpperInvariant(), d.Day, d.Date == DateTime.Today);
@@ -182,6 +270,28 @@ public sealed partial class MainViewModel : ViewModelBase
         var visible = _calendars.Where(c => c.IsVisible).Select(c => c.Id).ToHashSet();
         VisibleEvents = _allEvents.Where(e => visible.Contains(e.CalendarId)).ToList();
         CalendarColors = _calendars.ToDictionary(c => c.Id, c => c.ColorHex);
+        if (ViewModeIndex == 4) BuildAgenda(date.Date);
+    }
+
+    private void BuildAgenda(DateTime from)
+    {
+        var fmt = Settings.Use24HourClock ? "HH:mm" : "h:mm tt";
+        var to = from.AddDays(30);
+        var groups = new List<AgendaDay>();
+        for (var d = from; d < to; d = d.AddDays(1))
+        {
+            var items = VisibleEvents.Where(e => e.Start < d.AddDays(1) && e.End > d)
+                .OrderBy(e => !e.IsAllDay).ThenBy(e => e.Start)
+                .Select(e => new AgendaItem(e,
+                    e.IsAllDay ? "Tutto il giorno" : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
+                    string.IsNullOrWhiteSpace(e.Title) ? "(Senza titolo)" : e.Title,
+                    e.ColorHex ?? (CalendarColors.TryGetValue(e.CalendarId, out var c) ? c : "#1A73E8")))
+                .ToList();
+            if (items.Count > 0)
+                groups.Add(new AgendaDay(Culture.TextInfo.ToTitleCase(d.ToString("dddd d MMMM", Culture)), d.Date == DateTime.Today, items));
+        }
+
+        AgendaDays = groups;
     }
 }
 
