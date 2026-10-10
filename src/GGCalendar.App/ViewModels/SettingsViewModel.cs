@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Ollama;
 
@@ -17,8 +19,18 @@ public sealed partial class SettingsViewModel : ViewModelBase
 {
     private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.GetCultureInfo("it-IT");
 
-    public SettingsViewModel(AppSettings s)
+    public SettingsViewModel(AppSettings s, SoundService? sound = null)
     {
+        _sound = sound;
+        NotificationsEnabled = s.NotificationsEnabled;
+        ReminderVolumePercent = s.ReminderVolumePercent;
+        if (Directory.Exists(SoundService.MediaFolder))
+        {
+            foreach (var f in Directory.EnumerateFiles(SoundService.MediaFolder, "*.wav").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+                Sounds.Add(new SoundOption("Windows: " + Path.GetFileNameWithoutExtension(f), f));
+        }
+
+        DefaultSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultReminderSound) ?? AddCustomSound(s.DefaultReminderSound);
         DayStartHour = s.DayStartHour;
         DayEndHour = s.DayEndHour;
         HideOutsideHours = s.HideOutsideHours;
@@ -43,6 +55,28 @@ public sealed partial class SettingsViewModel : ViewModelBase
         OllamaFallbackModel = s.OllamaFallbackModel ?? NoFallback;
         Models.Add(NoFallback);
     }
+
+    private readonly SoundService? _sound;
+
+    public ObservableCollection<SoundOption> Sounds { get; } = [];
+
+    [ObservableProperty] public partial bool NotificationsEnabled { get; set; }
+    [ObservableProperty] public partial int ReminderVolumePercent { get; set; }
+    [ObservableProperty] public partial SoundOption DefaultSound { get; set; }
+
+    public SoundOption AddCustomSound(string path)
+    {
+        var existing = Sounds.FirstOrDefault(o => o.Path == path);
+        if (existing is not null) return existing;
+        var option = new SoundOption("File: " + Path.GetFileName(path), path);
+        Sounds.Add(option);
+        return option;
+    }
+
+    [RelayCommand]
+    private void PreviewDefaultSound() => _sound?.Play(DefaultSound.Path, ReminderVolumePercent);
+
+    public void StopSound() => _sound?.Stop();
 
     public const string NoFallback = "(nessuno)";
     public static TimeZoneOption NoSecondaryZone { get; } = new("", "(nessun fuso secondario)");
@@ -110,6 +144,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
             ShowWeekNumbers = ShowWeekNumbers,
             Use24HourClock = Use24HourClock,
             DefaultEventMinutes = DefaultEventMinutes,
+            NotificationsEnabled = NotificationsEnabled,
+            ReminderVolumePercent = ReminderVolumePercent,
+            DefaultReminderSound = DefaultSound.Path ?? new AppSettings().DefaultReminderSound,
             SnapMinutes = SnapMinutes,
             PrimaryTimeZoneId = PrimaryTimeZone.Id,
             SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == PrimaryTimeZone.Id ? null : SecondaryTimeZone.Id,

@@ -358,7 +358,7 @@ public sealed class WeekGrid : Control
 
         void DrawBlock(CalendarEvent ev, Rect rect, bool translucent, bool selected)
         {
-            var hex = colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8";
+            var hex = ev.ColorHex ?? (colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8");
             var color = Color.Parse(hex);
             var fillColor = translucent ? Color.FromArgb(215, color.R, color.G, color.B) : color;
             var pen = selected

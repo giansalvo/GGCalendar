@@ -119,7 +119,7 @@ public sealed class AllDayStrip : Control
             var rect = new Rect(WeekGrid.Gutter + first * colW + 2, 2 + row * (RowHeight + RowGap),
                 (last - first + 1) * colW - 5, RowHeight);
             _hits.Add((rect, ev));
-            var hex = CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8";
+            var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8");
             context.DrawRectangle(new SolidColorBrush(Color.Parse(hex)), null, rect, 5, 5);
             using (context.PushClip(rect.Deflate(new Thickness(6, 0))))
             {

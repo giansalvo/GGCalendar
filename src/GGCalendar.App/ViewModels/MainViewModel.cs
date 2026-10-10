@@ -48,6 +48,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<AccountGroup> Accounts { get; } = [];
     public IReadOnlyList<CalendarItemViewModel> Calendars => _calendars;
+    public IReadOnlyList<CalendarEvent> AllEvents => _allEvents;
 
     [ObservableProperty]
     public partial AppSettings Settings { get; set; } = new();

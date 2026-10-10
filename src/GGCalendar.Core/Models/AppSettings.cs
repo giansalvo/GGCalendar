@@ -12,6 +12,9 @@ public sealed class AppSettings
     public int SnapMinutes { get; set; } = 15;
     public string PrimaryTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
     public string? SecondaryTimeZoneId { get; set; }
+    public bool NotificationsEnabled { get; set; } = true;
+    public string DefaultReminderSound { get; set; } = @"C:\Windows\Media\Windows Notify Calendar.wav";
+    public int ReminderVolumePercent { get; set; } = 80;
     public string OllamaUrl { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "qwen3.6:latest";
     public string? OllamaFallbackModel { get; set; } = "gemma4:latest";
