@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
@@ -56,10 +57,36 @@ public sealed partial class MainViewModel : ViewModelBase
         SelectedDate = DateTime.Today;
     }
 
-    /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
-    public void Reload()
+    // Bumped by every local change, so a background reload can tell that what it read is already stale.
+    private int _changeCount;
+
+    /// <summary>Raised when events or calendars change (not on navigation), e.g. to refresh cached reminders.</summary>
+    public event Action? EventsChanged;
+
+    private void Changed()
     {
-        var hidden = _calendars.Where(c => !c.IsVisible).Select(c => c.Id).ToHashSet();
+        _changeCount++;
+        EventsChanged?.Invoke();
+    }
+
+    /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
+    public void Reload() => Apply(Load());
+
+    /// <summary>Like <see cref="Reload"/>, but reads the store off the UI thread; retried if the user edits meanwhile.</summary>
+    public async Task ReloadAsync()
+    {
+        while (true)
+        {
+            var before = _changeCount;
+            var data = await Task.Run(Load);
+            if (before != _changeCount) continue;
+            Apply(data);
+            return;
+        }
+    }
+
+    private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events) Load()
+    {
         var infos = _store.GetCalendars();
         if (infos.Count == 0)
         {
@@ -69,6 +96,12 @@ public sealed partial class MainViewModel : ViewModelBase
             infos = [local];
         }
 
+        return (infos, _store.GetAllEvents());
+    }
+
+    private void Apply((IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events) data)
+    {
+        var (infos, events) = data;
         _calendars.Clear();
         Accounts.Clear();
         foreach (var g in infos.GroupBy(c => c.AccountName))
@@ -79,6 +112,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 item = new CalendarItemViewModel(info, () =>
                 {
                     _store.SetCalendarVisible(info.Id, item!.IsVisible);
+                    _changeCount++;
                     Refresh();
                 });
                 return item;
@@ -88,7 +122,8 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         _allEvents.Clear();
-        _allEvents.AddRange(_store.GetAllEvents());
+        _allEvents.AddRange(events);
+        EventsChanged?.Invoke();
         if (SelectedDate is not null) Refresh();
     }
 
@@ -278,6 +313,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         _allEvents.Add(ev);
         _store.UpsertEvent(ev);
+        Changed();
         if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
         Refresh();
     }
@@ -290,6 +326,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var oldRemote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents[i] = ev;
         _store.UpsertEvent(ev);
+        Changed();
 
         if (old.CalendarId != ev.CalendarId)
         {
@@ -527,6 +564,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var remote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents.RemoveAll(e => e.Id == ev.Id);
         _store.DeleteEvent(ev.Id);
+        Changed();
         if (IsRemote(ev.CalendarId) && remote is not null) Queue(() => _store.EnqueueDelete(ev.Id, ev.CalendarId, remote));
 
         // Removing a series removes its modified occurrences too (Google does the same remotely).

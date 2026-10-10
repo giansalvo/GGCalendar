@@ -82,6 +82,71 @@ public class CalendarStoreTests
     }
 
     [Fact]
+    public void PendingQueriesAndDiscard()
+    {
+        var store = Create();
+        var ev = Ev("e1", DateTime.Today);
+        var first = store.Enqueue("e1", "c1", OutboxOperation.Update, ev);
+        Assert.True(store.HasPending("e1"));
+        Assert.False(store.HasPendingAfter("e1", first));
+        store.Enqueue("e1", "c1", OutboxOperation.Update, ev);
+        store.Enqueue("e2", "c1", OutboxOperation.Update, ev);
+        Assert.True(store.HasPendingAfter("e1", first));
+        store.DiscardPending("e1");
+        Assert.False(store.HasPending("e1"));
+        Assert.Equal("e2", Assert.Single(store.GetPending()).EventId);
+    }
+
+    [Fact]
+    public void DeleteSeriesRemovesModifiedOccurrences()
+    {
+        var store = Create();
+        var start = new DateTime(2026, 5, 4, 9, 0, 0);
+        store.UpsertEvent(Ev("master", start, rrule: "FREQ=DAILY"));
+        store.UpsertEvent(Ev("child", start.AddDays(1).AddHours(2)) with { SeriesMasterId = "master", OriginalStart = start.AddDays(1) });
+        store.UpsertEvent(Ev("other", start));
+        store.DeleteSeries("master");
+        Assert.Equal("other", Assert.Single(store.GetAllEvents()).Id);
+    }
+
+    [Fact]
+    public void ApplyRemoteChangesStoresEventsDeletesAndToken()
+    {
+        var store = Create();
+        store.UpsertEvent(Ev("gone", DateTime.Today), "r-gone", "1");
+        store.ApplyRemoteChanges("c1", [new RemoteEvent(Ev("new", DateTime.Today), "r-new", "7")], ["gone"], "tok");
+        Assert.Equal("new", Assert.Single(store.GetAllEvents()).Id);
+        Assert.Equal(("r-new", "7"), store.GetRemoteInfo("new"));
+        Assert.Equal("tok", store.GetSyncToken("c1"));
+    }
+
+    [Fact]
+    public void ReminderStateRoundTrip()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"ggcal-rem-{Guid.NewGuid():N}.json");
+        try
+        {
+            var ev = Ev("e1", new DateTime(2026, 5, 4, 9, 0, 0));
+            var due = new Reminders.DueReminder(ev, ev.Reminders[0], ev.Start.AddMinutes(-15));
+            var state = new ReminderState { LastCheck = new DateTime(2026, 5, 4, 8, 0, 0) };
+            state.Fired[due.Key] = due.FireAt;
+            state.Snoozed.Add(new SnoozedReminder(new DateTime(2026, 5, 4, 8, 50, 0), due));
+            new ReminderStateStore(path).Save(state);
+
+            var back = new ReminderStateStore(path).Load();
+            Assert.Equal(state.LastCheck, back.LastCheck);
+            Assert.Equal(due.FireAt, back.Fired[due.Key]);
+            var snoozed = Assert.Single(back.Snoozed);
+            Assert.Equal(due.Key, snoozed.Reminder.Key);
+            Assert.Equal("Titolo e1", snoozed.Reminder.Event.Title);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void FileDatabasePersistsAcrossInstances()
     {
         var path = Path.Combine(Path.GetTempPath(), $"ggcal-{Guid.NewGuid():N}.db");

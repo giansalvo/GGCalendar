@@ -68,6 +68,7 @@ public partial class MainWindow : Window
                 };
                 _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now.AddDays(30), visibleOnly: false)) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
+                vm.EventsChanged += _scheduler.Invalidate;
                 _scheduler.Start();
                 StartSync();
             }
@@ -151,10 +152,11 @@ public partial class MainWindow : Window
         try
         {
             var result = await Task.Run(() => _google.SyncAllAsync(CancellationToken.None));
-            if (result.Changed) vm.Reload();
+            if (result.Changed) await vm.ReloadAsync();
+            var conflicts = result.Conflicts.Count > 0 ? " Conflitti: " + string.Join(" | ", result.Conflicts) : "";
             vm.SyncStatus = result.Errors.Count > 0
-                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors)
-                : $"Sincronizzato alle {DateTime.Now:HH:mm}";
+                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts
+                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
         {
@@ -418,7 +420,7 @@ public partial class MainWindow : Window
         var accountsChanged = (dialog.DataContext as SettingsViewModel)?.AccountsChanged == true;
         if (result is null)
         {
-            if (accountsChanged) { vm.Reload(); await SyncAsync(); }
+            if (accountsChanged) { await vm.ReloadAsync(); await SyncAsync(); }
             return;
         }
         result.ShowWeekends = vm.Settings.ShowWeekends;
@@ -428,7 +430,7 @@ public partial class MainWindow : Window
         ApplyTheme(result);
         ConfigureGoogle();
         ApplySyncInterval();
-        if (accountsChanged) vm.Reload();
+        if (accountsChanged) await vm.ReloadAsync();
         if (result.SyncIntervalMinutes > 0 || accountsChanged) _ = SyncAsync();
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;
         ScrollToDayStart();

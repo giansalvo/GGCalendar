@@ -115,8 +115,15 @@ public sealed class GoogleCalendarClient
     public Task<JsonElement> InsertAsync(string calendarId, CalendarEvent ev, CancellationToken ct) =>
         SendAsync(HttpMethod.Post, EventsUrl(calendarId, ev, null), GoogleEventMapper.ToGoogle(ev, ev.AddMeet && ev.MeetLink is null), ct);
 
-    public Task<JsonElement> PatchAsync(string calendarId, string remoteId, CalendarEvent ev, CancellationToken ct) =>
-        SendAsync(HttpMethod.Patch, EventsUrl(calendarId, ev, remoteId), GoogleEventMapper.ToGoogle(ev, ev.AddMeet && ev.MeetLink is null), ct);
+    /// <summary>
+    /// Updates an event. With <paramref name="etag"/> the update only succeeds if the event has not changed on Google since
+    /// that version; otherwise Google answers 412 (<see cref="HttpStatusCode.PreconditionFailed"/>).
+    /// </summary>
+    public Task<JsonElement> PatchAsync(string calendarId, string remoteId, CalendarEvent ev, CancellationToken ct, string? etag = null) =>
+        SendAsync(HttpMethod.Patch, EventsUrl(calendarId, ev, remoteId), GoogleEventMapper.ToGoogle(ev, ev.AddMeet && ev.MeetLink is null), ct, etag);
+
+    public Task<JsonElement> GetEventAsync(string calendarId, string remoteId, CancellationToken ct) =>
+        SendAsync(HttpMethod.Get, $"{Base}/calendars/{Uri.EscapeDataString(calendarId)}/events/{Uri.EscapeDataString(remoteId)}", null, ct);
 
     public async Task DeleteAsync(string calendarId, string remoteId, CancellationToken ct)
     {

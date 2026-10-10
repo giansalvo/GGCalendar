@@ -7,13 +7,16 @@ namespace GGCalendar.Data;
 
 public enum OutboxOperation { Create, Update, Delete }
 
+/// <summary>An event received from the remote provider, with the identifiers needed to keep it linked.</summary>
+public sealed record RemoteEvent(CalendarEvent Event, string RemoteId, string? Etag);
+
 /// <summary>A local change not yet pushed to the remote provider.</summary>
 public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload);
 
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
 
     private static readonly JsonSerializerOptions Json = new() { Converters = { new JsonStringEnumConverter() } };
 
@@ -92,6 +95,7 @@ public sealed class CalendarStore
                     payload TEXT,
                     created_at TEXT NOT NULL
                 );
+                CREATE INDEX IF NOT EXISTS ix_outbox_event ON outbox(event_id);
                 CREATE TABLE IF NOT EXISTS sync_state (
                     calendar_id TEXT PRIMARY KEY,
                     sync_token TEXT NOT NULL
@@ -135,9 +139,9 @@ public sealed class CalendarStore
     public void SetCalendarVisible(string calendarId, bool visible) =>
         WithConnection(c => Run(c, "UPDATE calendars SET is_visible = $v WHERE id = $id", ("$v", visible ? 1 : 0), ("$id", calendarId)));
 
-    /// <summary>Deletes a calendar together with its events.</summary>
     public void ClearSyncTokens() => WithConnection(c => Run(c, "DELETE FROM sync_state", []));
 
+    /// <summary>Deletes a calendar together with its events.</summary>
     public void DeleteCalendar(string calendarId) =>
         WithConnection(c => Run(c, "DELETE FROM calendars WHERE id = $id", ("$id", calendarId)));
 
@@ -163,7 +167,9 @@ public sealed class CalendarStore
         return list;
     }
 
-    public void UpsertEvent(CalendarEvent ev, string? remoteId = null, string? etag = null) => WithConnection(c => Run(c, """
+    public void UpsertEvent(CalendarEvent ev, string? remoteId = null, string? etag = null) => WithConnection(c => Upsert(c, ev, remoteId, etag));
+
+    private void Upsert(SqliteConnection c, CalendarEvent ev, string? remoteId, string? etag) => Run(c, """
         INSERT INTO events (id, calendar_id, start_at, end_at, is_recurring, remote_id, etag, data)
         VALUES ($id, $cal, $start, $end, $rec, $remote, $etag, $data)
         ON CONFLICT(id) DO UPDATE SET calendar_id = $cal, start_at = $start, end_at = $end, is_recurring = $rec,
@@ -171,9 +177,31 @@ public sealed class CalendarStore
         """,
         ("$id", ev.Id), ("$cal", ev.CalendarId), ("$start", Stamp(ev.Start)), ("$end", Stamp(ev.End)),
         ("$rec", string.IsNullOrEmpty(ev.Recurrence) ? 0 : 1), ("$remote", remoteId), ("$etag", etag),
-        ("$data", JsonSerializer.Serialize(ev, Json))));
+        ("$data", JsonSerializer.Serialize(ev, Json)));
 
     public void DeleteEvent(string eventId) => WithConnection(c => Run(c, "DELETE FROM events WHERE id = $id", ("$id", eventId)));
+
+    /// <summary>Deletes an event together with the modified or cancelled occurrences that belong to it.</summary>
+    public void DeleteSeries(string eventId) => WithConnection(c => RemoveSeries(c, eventId));
+
+    private void RemoveSeries(SqliteConnection c, string eventId) =>
+        Run(c, "DELETE FROM events WHERE id = $id OR json_extract(data, '$.SeriesMasterId') = $id", ("$id", eventId));
+
+    /// <summary>
+    /// Applies the result of a remote pull in one transaction: upserts, deletions (with their occurrences) and the new
+    /// sync token, so an interrupted pull never stores a token for changes that were not saved.
+    /// </summary>
+    public void ApplyRemoteChanges(string calendarId, IReadOnlyList<RemoteEvent> upserts, IReadOnlyList<string> deletes, string? syncToken) =>
+        WithConnection(c =>
+        {
+            using var tx = c.BeginTransaction();
+            foreach (var u in upserts) Upsert(c, u.Event, u.RemoteId, u.Etag);
+            foreach (var id in deletes) RemoveSeries(c, id);
+            if (syncToken is null) Run(c, "DELETE FROM sync_state WHERE calendar_id = $c", ("$c", calendarId));
+            else Run(c, "INSERT INTO sync_state (calendar_id, sync_token) VALUES ($c, $t) ON CONFLICT(calendar_id) DO UPDATE SET sync_token = $t",
+                ("$c", calendarId), ("$t", syncToken));
+            tx.Commit();
+        });
 
     public (string? RemoteId, string? Etag)? GetRemoteInfo(string eventId) => WithConnection(c =>
     {
@@ -211,7 +239,17 @@ public sealed class CalendarStore
     public static CalendarEvent? ReadSnapshot(OutboxItem item) =>
         item.Payload is null ? null : JsonSerializer.Deserialize<CalendarEvent>(item.Payload, Json);
 
-    public bool HasPending(string eventId) => GetPending().Any(p => p.EventId == eventId);
+    public bool HasPending(string eventId) => HasPendingAfter(eventId, 0);
+
+    /// <summary>True when the event has queued changes newer than <paramref name="seq"/>.</summary>
+    public bool HasPendingAfter(string eventId, long seq) => WithConnection(c =>
+    {
+        using var cmd = Command(c, "SELECT EXISTS (SELECT 1 FROM outbox WHERE event_id = $e AND seq > $s)", [("$e", eventId), ("$s", seq)]);
+        return Convert.ToInt64(cmd.ExecuteScalar()) != 0;
+    });
+
+    /// <summary>Drops every queued change of an event (used when a conflict replaces the local version).</summary>
+    public void DiscardPending(string eventId) => WithConnection(c => Run(c, "DELETE FROM outbox WHERE event_id = $e", ("$e", eventId)));
 
     /// <summary>Queues a remote deletion; the payload carries the remote id because the local row is already gone.</summary>
     public long EnqueueDelete(string eventId, string calendarId, string remoteId) => WithConnection(c =>
@@ -229,12 +267,6 @@ public sealed class CalendarStore
 
     public void SetRemote(string eventId, string remoteId, string? etag) =>
         WithConnection(c => Run(c, "UPDATE events SET remote_id = $r, etag = $e WHERE id = $id", ("$r", remoteId), ("$e", etag), ("$id", eventId)));
-
-    public string? FindLocalId(string calendarId, string remoteId) => WithConnection(c =>
-    {
-        using var cmd = Command(c, "SELECT id FROM events WHERE calendar_id = $c AND remote_id = $r", [("$c", calendarId), ("$r", remoteId)]);
-        return cmd.ExecuteScalar() as string;
-    });
 
     /// <summary>Events of a calendar that exist remotely: (local id, remote id).</summary>
     public IReadOnlyList<(string Id, string RemoteId)> GetSyncedEvents(string calendarId) => WithConnection(c =>

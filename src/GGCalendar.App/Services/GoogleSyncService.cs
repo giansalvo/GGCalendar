@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using GGCalendar.Core.Models;
@@ -11,7 +12,7 @@ using GGCalendar.Providers.Google;
 
 namespace GGCalendar.App.Services;
 
-public sealed record SyncResult(int Pulled, int Pushed, IReadOnlyList<string> Errors, bool Changed);
+public sealed record SyncResult(int Pulled, int Pushed, IReadOnlyList<string> Errors, IReadOnlyList<string> Conflicts, bool Changed);
 
 /// <summary>
 /// Two-way sync with Google Calendar. Local calendar ids are "{email}|{googleCalendarId}".
@@ -59,6 +60,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     public async Task<SyncResult> SyncAllAsync(CancellationToken ct)
     {
         var errors = new List<string>();
+        var conflicts = new List<string>();
         int pulled = 0, pushed = 0;
         var changed = false;
         foreach (var account in accounts.Load())
@@ -66,10 +68,14 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             try
             {
                 var client = new GoogleCalendarClient(http, _config, GoogleAccountStore.Unprotect(account.ProtectedRefreshToken));
-                pushed += await PushAsync(client, account.Email, errors, ct);
-                var (p, c) = await PullAsync(client, account.Email, ct);
+                var calendars = await client.ListCalendarsAsync(ct);
+                var conflictsBefore = conflicts.Count;
+                pushed += await PushAsync(client, account.Email, calendars, errors, conflicts, ct);
+                var (p, c) = await PullAsync(client, account.Email, calendars, ct);
                 pulled += p;
                 changed |= c;
+                // Conflict copies are queued during the push: send them now rather than on the next sync.
+                if (conflicts.Count > conflictsBefore) pushed += await PushAsync(client, account.Email, calendars, errors, conflicts, ct);
             }
             catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException or TaskCanceledException)
             {
@@ -77,12 +83,11 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             }
         }
 
-        return new SyncResult(pulled, pushed, errors, changed || pushed > 0);
+        return new SyncResult(pulled, pushed, errors, conflicts, changed || pushed > 0 || conflicts.Count > 0);
     }
 
-    private async Task<(int Pulled, bool Changed)> PullAsync(GoogleCalendarClient client, string email, CancellationToken ct)
+    private async Task<(int Pulled, bool Changed)> PullAsync(GoogleCalendarClient client, string email, IReadOnlyList<GoogleCalendarEntry> remote, CancellationToken ct)
     {
-        var remote = await client.ListCalendarsAsync(ct);
         var existing = store.GetCalendars().ToDictionary(c => c.Id);
         var changed = false;
         var pulled = 0;
@@ -137,9 +142,12 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         }
 
         var pending = store.GetPending().Select(p => p.EventId).ToHashSet();
+        var synced = store.GetSyncedEvents(localCalendarId);
+        var localIds = new Dictionary<string, string>();
+        foreach (var (id, remoteId) in synced) localIds[remoteId] = id;
         var seen = new HashSet<string>();
-        var changed = false;
-        var count = 0;
+        var upserts = new List<RemoteEvent>();
+        var deletes = new List<string>();
 
         // Masters first, so the occurrences of a series can be linked to their master within the same page.
         var ordered = page.Items.Where(i => !i.TryGetProperty("recurringEventId", out _))
@@ -148,50 +156,39 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         {
             var remoteId = item.GetProperty("id").GetString()!;
             seen.Add(remoteId);
-            var localId = store.FindLocalId(localCalendarId, remoteId);
+            var localId = localIds.GetValueOrDefault(remoteId);
             if (localId is not null && pending.Contains(localId)) continue;
 
             string? masterLocalId = null;
             if (item.TryGetProperty("recurringEventId", out var rid) && rid.GetString() is { } masterRemoteId)
-                masterLocalId = store.FindLocalId(localCalendarId, masterRemoteId);
+                masterLocalId = localIds.GetValueOrDefault(masterRemoteId);
 
-            var mapped = GoogleEventMapper.FromGoogle(item, localId ?? Guid.NewGuid().ToString("N"), localCalendarId, cal.DefaultReminders, masterLocalId);
+            var id = localId ?? Guid.NewGuid().ToString("N");
+            var mapped = GoogleEventMapper.FromGoogle(item, id, localCalendarId, cal.DefaultReminders, masterLocalId);
             if (mapped is null)
             {
-                if (localId is not null) { DeleteWithOccurrences(localId); changed = true; }
+                if (localId is not null) deletes.Add(localId);
                 continue;
             }
 
             var etag = item.TryGetProperty("etag", out var et) ? et.GetString() : null;
-            store.UpsertEvent(mapped, remoteId, etag);
-            changed = true;
-            count++;
+            upserts.Add(new RemoteEvent(mapped, remoteId, etag));
+            localIds[remoteId] = id;
         }
 
         // After a full sync, anything we hold that Google no longer lists was deleted remotely.
         if (token is null)
-        {
-            foreach (var (id, remoteId) in store.GetSyncedEvents(localCalendarId))
-            {
-                if (seen.Contains(remoteId) || pending.Contains(id)) continue;
-                store.DeleteEvent(id);
-                changed = true;
-            }
-        }
+            deletes.AddRange(synced.Where(s => !seen.Contains(s.RemoteId) && !pending.Contains(s.Id)).Select(s => s.Id));
 
-        store.SetSyncToken(localCalendarId, page.NextSyncToken);
-        return (count, changed);
+        store.ApplyRemoteChanges(localCalendarId, upserts, deletes, page.NextSyncToken);
+        return (upserts.Count, upserts.Count > 0 || deletes.Count > 0);
     }
 
-    private void DeleteWithOccurrences(string localId)
-    {
-        foreach (var child in store.GetAllEvents().Where(e => e.SeriesMasterId == localId)) store.DeleteEvent(child.Id);
-        store.DeleteEvent(localId);
-    }
-
-    private async Task<int> PushAsync(GoogleCalendarClient client, string email, List<string> errors, CancellationToken ct)
+    private async Task<int> PushAsync(GoogleCalendarClient client, string email, IReadOnlyList<GoogleCalendarEntry> calendars,
+        List<string> errors, List<string> conflicts, CancellationToken ct)
     {
         var done = 0;
+        var conflicted = new HashSet<string>();
         foreach (var item in store.GetPending().Where(p => !IsGoogleCalendar(p.CalendarId) || AccountOf(p.CalendarId) == email))
         {
             if (!IsGoogleCalendar(item.CalendarId))
@@ -199,6 +196,8 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                 store.Complete(item.Seq);
                 continue;
             }
+
+            if (conflicted.Contains(item.EventId)) continue; // its queue was dropped when the conflict was resolved
 
             try
             {
@@ -211,8 +210,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
 
                     default:
                         var snapshot = CalendarStore.ReadSnapshot(item);
-                        if (snapshot is null || store.GetRemoteInfo(item.EventId) is null) break; // deleted meanwhile
-                        var current = store.GetRemoteInfo(item.EventId)!.Value;
+                        if (snapshot is null || store.GetRemoteInfo(item.EventId) is not { } current) break; // deleted meanwhile
                         var target = current.RemoteId;
                         if (target is null && snapshot.SeriesMasterId is not null && snapshot.OriginalStart is { } originalStart)
                         {
@@ -224,13 +222,31 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                             target = GoogleEventMapper.InstanceId(masterRemote, originalStart, snapshot.IsAllDay);
                         }
 
-                        var result = target is null
-                            ? await client.InsertAsync(remoteCal, snapshot, ct)
-                            : await client.PatchAsync(remoteCal, target, snapshot, ct);
+                        JsonElement result;
+                        if (target is null)
+                        {
+                            result = await client.InsertAsync(remoteCal, snapshot, ct);
+                        }
+                        else
+                        {
+                            // Patch only the version we last saw; a modified occurrence's instance id has no known version.
+                            var baseEtag = target == current.RemoteId ? current.Etag : null;
+                            try
+                            {
+                                result = await client.PatchAsync(remoteCal, target, snapshot, ct, baseEtag);
+                            }
+                            catch (GoogleApiException ex) when (ex.Status == HttpStatusCode.PreconditionFailed)
+                            {
+                                conflicts.Add(await ResolveConflictAsync(client, item, target, calendars, ct));
+                                conflicted.Add(item.EventId);
+                                continue;
+                            }
+                        }
+
                         var remoteId = result.GetProperty("id").GetString()!;
                         var etag = result.TryGetProperty("etag", out var et) ? et.GetString() : null;
                         var meet = result.TryGetProperty("hangoutLink", out var hl) ? hl.GetString() : null;
-                        if (store.GetPending().Any(p => p.EventId == item.EventId && p.Seq != item.Seq))
+                        if (store.HasPendingAfter(item.EventId, item.Seq))
                             store.SetRemote(item.EventId, remoteId, etag);
                         else
                             store.UpsertEvent(meet is null ? snapshot : snapshot with { MeetLink = meet }, remoteId, etag);
@@ -249,5 +265,56 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         }
 
         return done;
+    }
+
+    /// <summary>
+    /// The event changed on Google after the version the local edit was based on. Google's version is applied and the
+    /// local edit is kept as a separate "(conflitto)" event in the same calendar, so neither is lost. Returns the message for the user.
+    /// </summary>
+    private async Task<string> ResolveConflictAsync(GoogleCalendarClient client, OutboxItem item, string remoteId,
+        IReadOnlyList<GoogleCalendarEntry> calendars, CancellationToken ct)
+    {
+        // The last queued snapshot carries every local edit made since the last sync.
+        var local = store.GetPending().Where(p => p.EventId == item.EventId && p.Operation != OutboxOperation.Delete)
+            .Select(CalendarStore.ReadSnapshot).LastOrDefault(s => s is not null) ?? CalendarStore.ReadSnapshot(item)!;
+        store.DiscardPending(item.EventId);
+
+        var remoteCal = RemoteCalendarId(item.CalendarId);
+        var defaults = calendars.FirstOrDefault(c => c.Id == remoteCal)?.DefaultReminders ?? [];
+        CalendarEvent? remote = null;
+        string? etag = null;
+        try
+        {
+            var e = await client.GetEventAsync(remoteCal, remoteId, ct);
+            remote = GoogleEventMapper.FromGoogle(e, item.EventId, item.CalendarId, defaults, local.SeriesMasterId);
+            etag = e.TryGetProperty("etag", out var et) ? et.GetString() : null;
+        }
+        catch (GoogleApiException ex) when (ex.Status is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            // Deleted on Google meanwhile: only the local copy below remains.
+        }
+
+        if (remote is null) store.DeleteSeries(item.EventId);
+        else store.UpsertEvent(remote, remoteId, etag);
+
+        var title = string.IsNullOrWhiteSpace(local.Title) ? "(Senza titolo)" : local.Title;
+        if (local.IsCancelled) return $"\"{title}\" è stato modificato anche su Google: tenuta la versione di Google.";
+
+        var copy = local with
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = title + " (conflitto)",
+            Attendees = [],
+            SendInvites = false,
+            AddMeet = false,
+            MeetLink = null,
+            IcsUid = null,
+            SeriesMasterId = null,
+            OriginalStart = null,
+            OccurrenceIndex = null,
+        };
+        store.UpsertEvent(copy);
+        store.Enqueue(copy.Id, copy.CalendarId, OutboxOperation.Create, copy);
+        return $"\"{title}\" è stato modificato sia qui sia su Google: tenuta la versione di Google, la tua è salvata come \"{copy.Title}\".";
     }
 }
