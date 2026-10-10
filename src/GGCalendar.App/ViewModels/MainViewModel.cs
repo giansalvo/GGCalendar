@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -6,6 +6,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
+using GGCalendar.Data;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -32,16 +33,37 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
-    public MainViewModel()
+    private readonly CalendarStore _store;
+
+    public MainViewModel(CalendarStore store)
     {
-        foreach (var g in SampleData.Calendars().GroupBy(c => c.AccountName))
+        _store = store;
+        var infos = store.GetCalendars();
+        if (infos.Count == 0)
         {
-            var items = g.Select(c => new CalendarItemViewModel(c, Refresh)).ToList();
+            // First run: a local calendar so the app is usable before any account is connected.
+            var local = new CalendarInfo("local-personale", "Locale", "Personale", "#1A73E8");
+            store.UpsertCalendar(local);
+            infos = [local];
+        }
+
+        foreach (var g in infos.GroupBy(c => c.AccountName))
+        {
+            var items = g.Select(info =>
+            {
+                CalendarItemViewModel? item = null;
+                item = new CalendarItemViewModel(info, () =>
+                {
+                    _store.SetCalendarVisible(info.Id, item!.IsVisible);
+                    Refresh();
+                });
+                return item;
+            }).ToList();
             _calendars.AddRange(items);
             Accounts.Add(new AccountGroup(g.Key, items));
         }
 
-        _allEvents = SampleData.Events(StartOfWeek(DateTime.Today));
+        _allEvents = store.GetAllEvents().ToList();
         SelectedDate = DateTime.Today;
         Settings = new AppSettings();
     }
@@ -100,6 +122,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public void AddEvent(CalendarEvent ev)
     {
         _allEvents.Add(ev);
+        _store.UpsertEvent(ev);
         Refresh();
     }
 
@@ -108,6 +131,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
         _allEvents[i] = ev;
+        _store.UpsertEvent(ev);
         Refresh();
     }
 
@@ -126,12 +150,14 @@ public sealed partial class MainViewModel : ViewModelBase
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
         _allEvents[i] = ev with { Start = start, End = end };
+        _store.UpsertEvent(_allEvents[i]);
         Refresh();
     }
 
     public void DeleteEvent(CalendarEvent ev)
     {
         _allEvents.RemoveAll(e => e.Id == ev.Id);
+        _store.DeleteEvent(ev.Id);
         Refresh();
     }
 
@@ -158,3 +184,4 @@ public sealed partial class MainViewModel : ViewModelBase
         CalendarColors = _calendars.ToDictionary(c => c.Id, c => c.ColorHex);
     }
 }
+
