@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -17,6 +18,8 @@ public sealed class WeekGrid : Control
 {
     public const double Gutter = 56;
     public const double HourHeight = 48;
+    private const double ResizeEdge = 7;
+    private const double DragThreshold = 4;
 
     public static readonly StyledProperty<DateTime> WeekStartProperty =
         AvaloniaProperty.Register<WeekGrid, DateTime>(nameof(WeekStart), DateTime.Today);
@@ -30,6 +33,23 @@ public sealed class WeekGrid : Control
     public static readonly StyledProperty<int> DayCountProperty =
         AvaloniaProperty.Register<WeekGrid, int>(nameof(DayCount), 7);
 
+    public static readonly StyledProperty<int> SnapMinutesProperty =
+        AvaloniaProperty.Register<WeekGrid, int>(nameof(SnapMinutes), 15);
+
+    public static readonly StyledProperty<int> DefaultMinutesProperty =
+        AvaloniaProperty.Register<WeekGrid, int>(nameof(DefaultMinutes), 60);
+
+    private enum DragMode { None, Pending, Move, Resize, Create }
+
+    private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
+    private DragMode _mode;
+    private CalendarEvent? _active;
+    private CalendarEvent? _preview;
+    private Point _pressPoint;
+    private TimeSpan _grabOffset;
+    private DateTime _createAnchor;
+    private string? _selectedId;
+
     static WeekGrid()
     {
         AffectsRender<WeekGrid>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty);
@@ -38,6 +58,7 @@ public sealed class WeekGrid : Control
     public WeekGrid()
     {
         Height = 24 * HourHeight;
+        Focusable = true;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         timer.Tick += (_, _) => InvalidateVisual();
         AttachedToVisualTree += (_, _) => timer.Start();
@@ -49,6 +70,204 @@ public sealed class WeekGrid : Control
     public IReadOnlyList<CalendarEvent>? Events { get => GetValue(EventsProperty); set => SetValue(EventsProperty, value); }
     public IReadOnlyDictionary<string, string>? CalendarColors { get => GetValue(CalendarColorsProperty); set => SetValue(CalendarColorsProperty, value); }
     public int DayCount { get => GetValue(DayCountProperty); set => SetValue(DayCountProperty, value); }
+    public int SnapMinutes { get => GetValue(SnapMinutesProperty); set => SetValue(SnapMinutesProperty, value); }
+    public int DefaultMinutes { get => GetValue(DefaultMinutesProperty); set => SetValue(DefaultMinutesProperty, value); }
+
+    public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
+    public event Action<DateTime, DateTime>? EventCreated;
+    public event Action<CalendarEvent>? EventDeleted;
+
+    private double ColumnWidth => (Bounds.Width - Gutter) / Math.Max(1, DayCount);
+
+    // ---------- Pointer handling ----------
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        var props = e.GetCurrentPoint(this).Properties;
+        if (!props.IsLeftButtonPressed) return;
+        Focus();
+
+        var p = e.GetPosition(this);
+        if (p.X < Gutter) return;
+        _pressPoint = p;
+
+        var hit = HitTest(p);
+        if (hit is { } h)
+        {
+            _active = h.Event;
+            _selectedId = h.Event.Id;
+            var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge;
+            _grabOffset = PointToTime(p, snap: false) - h.Event.Start;
+            _mode = nearBottom ? DragMode.Resize : DragMode.Pending;
+        }
+        else
+        {
+            _selectedId = null;
+            _createAnchor = PointToTime(p, snap: true, floor: true);
+            _mode = DragMode.Create;
+        }
+
+        e.Pointer.Capture(this);
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        var p = e.GetPosition(this);
+
+        if (_mode == DragMode.None)
+        {
+            UpdateCursor(p);
+            return;
+        }
+
+        var snap = Math.Max(1, SnapMinutes);
+        if (_mode == DragMode.Pending)
+        {
+            if (Math.Abs(p.Y - _pressPoint.Y) + Math.Abs(p.X - _pressPoint.X) < DragThreshold) return;
+            _mode = DragMode.Move;
+        }
+
+        switch (_mode)
+        {
+            case DragMode.Move when _active is not null:
+            {
+                var duration = _active.End - _active.Start;
+                var start = Snap(PointToTime(p, snap: false) - _grabOffset, snap);
+                _preview = _active with { Start = start, End = start + duration };
+                break;
+            }
+
+            case DragMode.Resize when _active is not null:
+            {
+                var end = Snap(PointToTime(p, snap: false), snap);
+                var minEnd = _active.Start.AddMinutes(snap);
+                if (end < minEnd) end = minEnd;
+                var dayEnd = _active.Start.Date.AddDays(1);
+                if (end > dayEnd) end = dayEnd;
+                _preview = _active with { End = end };
+                break;
+            }
+
+            case DragMode.Create:
+            {
+                if (_preview is null && Math.Abs(p.Y - _pressPoint.Y) < DragThreshold) return;
+                var current = PointToTime(p, snap: true);
+                var start = current < _createAnchor ? current : _createAnchor;
+                var end = current < _createAnchor ? _createAnchor : current;
+                if (end - start < TimeSpan.FromMinutes(snap)) end = start.AddMinutes(snap);
+                _preview = new CalendarEvent("", "", "", start, end);
+                break;
+            }
+        }
+
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (_mode == DragMode.None) return;
+
+        var mode = _mode;
+        var active = _active;
+        var preview = _preview;
+        Reset();
+        e.Pointer.Capture(null);
+
+        if (preview is not null)
+        {
+            if (mode == DragMode.Create)
+                EventCreated?.Invoke(preview.Start, preview.End);
+            else if (active is not null && (preview.Start != active.Start || preview.End != active.End))
+                EventChanged?.Invoke(active, preview.Start, preview.End);
+        }
+
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        if (_mode != DragMode.None)
+        {
+            Reset();
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Key == Key.Escape && _mode != DragMode.None)
+        {
+            Reset();
+            InvalidateVisual();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete && _selectedId is not null)
+        {
+            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId);
+            if (ev is not null)
+            {
+                _selectedId = null;
+                EventDeleted?.Invoke(ev);
+                e.Handled = true;
+            }
+        }
+    }
+
+    protected override void OnDoubleTapped(TappedEventArgs e)
+    {
+        base.OnDoubleTapped(e);
+        var p = e.GetPosition(this);
+        if (p.X < Gutter || HitTest(p) is not null) return;
+        var start = PointToTime(p, snap: true, floor: true);
+        EventCreated?.Invoke(start, start.AddMinutes(DefaultMinutes));
+    }
+
+    private void Reset()
+    {
+        _mode = DragMode.None;
+        _active = null;
+        _preview = null;
+    }
+
+    private void UpdateCursor(Point p)
+    {
+        var hit = p.X < Gutter ? null : HitTest(p);
+        Cursor = hit is null
+            ? Cursor.Default
+            : new Cursor(p.Y >= hit.Value.Rect.Bottom - ResizeEdge ? StandardCursorType.SizeNorthSouth : StandardCursorType.SizeAll);
+    }
+
+    private (Rect Rect, CalendarEvent Event)? HitTest(Point p)
+    {
+        for (var i = _hits.Count - 1; i >= 0; i--)
+            if (_hits[i].Rect.Contains(p))
+                return _hits[i];
+        return null;
+    }
+
+    private DateTime PointToTime(Point p, bool snap, bool floor = false)
+    {
+        var days = Math.Max(1, DayCount);
+        var day = (int)Math.Clamp(Math.Floor((p.X - Gutter) / ColumnWidth), 0, days - 1);
+        var minutes = Math.Clamp(p.Y / HourHeight * 60, 0, 24 * 60);
+        var t = WeekStart.Date.AddDays(day).AddMinutes(minutes);
+        return snap ? Snap(t, Math.Max(1, SnapMinutes), floor) : t;
+    }
+
+    private static DateTime Snap(DateTime t, int minutes, bool floor = false)
+    {
+        var ticks = TimeSpan.FromMinutes(minutes).Ticks;
+        var rounded = floor ? t.Ticks / ticks * ticks : (long)Math.Round((double)t.Ticks / ticks) * ticks;
+        return new DateTime(rounded, t.Kind);
+    }
+
+    // ---------- Rendering ----------
 
     public override void Render(DrawingContext context)
     {
@@ -62,19 +281,16 @@ public sealed class WeekGrid : Control
         var w = Bounds.Width;
         var h = Bounds.Height;
         var days = Math.Max(1, DayCount);
-        var colW = (w - Gutter) / days;
+        var colW = ColumnWidth;
 
         context.FillRectangle(new SolidColorBrush(bg), new Rect(0, 0, w, h));
 
-        for (var hour = 0; hour < 24; hour++)
+        for (var hour = 1; hour < 24; hour++)
         {
             var y = Math.Round(hour * HourHeight) + 0.5;
-            if (hour > 0)
-            {
-                context.DrawLine(linePen, new Point(Gutter - 8, y), new Point(w, y));
-                var text = Text($"{hour:00}:00", 11, labelBrush);
-                context.DrawText(text, new Point(Gutter - 12 - text.Width, y - text.Height / 2));
-            }
+            context.DrawLine(linePen, new Point(Gutter - 8, y), new Point(w, y));
+            var text = Text($"{hour:00}:00", 11, labelBrush);
+            context.DrawText(text, new Point(Gutter - 12 - text.Width, y - text.Height / 2));
         }
 
         for (var d = 0; d <= days; d++)
@@ -83,20 +299,25 @@ public sealed class WeekGrid : Control
             context.DrawLine(linePen, new Point(x, 0), new Point(x, h));
         }
 
-        DrawEvents(context, colW, days);
+        DrawEvents(context, colW, days, bg);
         DrawNowLine(context, colW, days);
     }
 
-    private void DrawEvents(DrawingContext context, double colW, int days)
+    private void DrawEvents(DrawingContext context, double colW, int days, Color background)
     {
-        if (Events is null) return;
+        _hits.Clear();
+        if (Events is null && _preview is null) return;
         var colors = CalendarColors;
+
+        var source = (Events ?? []).Select(e => _active is not null && e.Id == _active.Id && _preview is not null && _mode != DragMode.Create ? _preview : e).ToList();
+        var isCreating = _mode == DragMode.Create && _preview is not null;
+        if (isCreating) source.Add(_preview!);
 
         for (var d = 0; d < days; d++)
         {
             var day = WeekStart.Date.AddDays(d);
             var next = day.AddDays(1);
-            var items = Events
+            var items = source
                 .Where(e => !e.IsAllDay && e.Start < next && e.End > day)
                 .Select(e => (Ev: e, S: e.Start < day ? day : e.Start, E: e.End > next ? next : e.End))
                 .ToList();
@@ -110,13 +331,21 @@ public sealed class WeekGrid : Control
                 var height = Math.Max((e - s).TotalHours * HourHeight - 2, 20);
                 var rect = new Rect(x, y, slotW - (p.ColumnCount > 1 ? 1 : 0) + 2, height);
 
-                var hex = colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#039BE5";
-                var fill = new SolidColorBrush(Color.Parse(hex));
-                context.DrawRectangle(fill, new Pen(new SolidColorBrush(ActualThemeVariant == ThemeVariant.Dark ? Color.Parse("#202124") : Colors.White), 1), rect, 6, 6);
+                var isDragged = _active is not null && ev.Id == _active.Id && _mode != DragMode.None && _mode != DragMode.Pending;
+                if (ev.Id != "") _hits.Add((rect, ev));
+
+                var hex = colors is not null && colors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8";
+                var color = Color.Parse(hex);
+                var fillColor = isDragged || ev.Id == "" ? Color.FromArgb(215, color.R, color.G, color.B) : color;
+                var selected = ev.Id == _selectedId && ev.Id != "";
+                var pen = selected
+                    ? new Pen(new SolidColorBrush(Color.Parse("#1A73E8")), 2)
+                    : new Pen(new SolidColorBrush(background), 1);
+                context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
 
                 using (context.PushClip(rect.Deflate(new Thickness(6, 3))))
                 {
-                    var title = Text(ev.Title, 12, Brushes.White, FontWeight.SemiBold);
+                    var title = Text(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
                     context.DrawText(title, new Point(rect.X + 6, rect.Y + 3));
                     if (height >= 38)
                     {

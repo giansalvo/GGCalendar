@@ -103,9 +103,12 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <ScrollViewer Name="GridScroll">
-                <ctl:WeekGrid WeekStart="{Binding WeekStart}"
+                <ctl:WeekGrid Name="Grid"
+                              WeekStart="{Binding WeekStart}"
                               Events="{Binding VisibleEvents}"
-                              CalendarColors="{Binding CalendarColors}" />
+                              CalendarColors="{Binding CalendarColors}"
+                              SnapMinutes="{Binding Settings.SnapMinutes}"
+                              DefaultMinutes="{Binding Settings.DefaultEventMinutes}" />
             </ScrollViewer>
         </DockPanel>
     </DockPanel>

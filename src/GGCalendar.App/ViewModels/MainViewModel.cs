@@ -75,6 +75,28 @@ public sealed partial class MainViewModel : ViewModelBase
     [RelayCommand] private void Previous() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(-7);
     [RelayCommand] private void Next() => SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(7);
 
+    public void MoveEvent(CalendarEvent ev, DateTime start, DateTime end)
+    {
+        var i = _allEvents.FindIndex(e => e.Id == ev.Id);
+        if (i < 0) return;
+        _allEvents[i] = ev with { Start = start, End = end };
+        Refresh();
+    }
+
+    public void CreateEvent(DateTime start, DateTime end)
+    {
+        var calendar = _calendars.FirstOrDefault(c => c.IsVisible) ?? _calendars.FirstOrDefault();
+        if (calendar is null) return;
+        _allEvents.Add(new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end));
+        Refresh();
+    }
+
+    public void DeleteEvent(CalendarEvent ev)
+    {
+        _allEvents.RemoveAll(e => e.Id == ev.Id);
+        Refresh();
+    }
+
     private DateTime StartOfWeek(DateTime date)
     {
         var diff = (7 + (int)date.DayOfWeek - (int)Settings.FirstDayOfWeek) % 7;
