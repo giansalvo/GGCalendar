@@ -118,6 +118,15 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Clears the sync tokens; the main window runs a full sync when the dialog closes.</summary>
+    public void ResyncAll()
+    {
+        if (_google is null) return;
+        _google.ResetSync();
+        AccountsChanged = true;
+        GoogleStatus = "Risincronizzazione completa programmata: partirà alla chiusura delle impostazioni.";
+    }
+
     [RelayCommand]
     private void CancelSignIn() => _signIn?.Cancel();
 

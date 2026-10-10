@@ -136,6 +136,8 @@ public sealed class CalendarStore
         WithConnection(c => Run(c, "UPDATE calendars SET is_visible = $v WHERE id = $id", ("$v", visible ? 1 : 0), ("$id", calendarId)));
 
     /// <summary>Deletes a calendar together with its events.</summary>
+    public void ClearSyncTokens() => WithConnection(c => Run(c, "DELETE FROM sync_state", []));
+
     public void DeleteCalendar(string calendarId) =>
         WithConnection(c => Run(c, "DELETE FROM calendars WHERE id = $id", ("$id", calendarId)));
 

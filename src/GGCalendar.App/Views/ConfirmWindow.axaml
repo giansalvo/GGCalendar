@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GGCalendar.App.Views.ConfirmWindow"
+        Icon="/Assets/GGCalendar.ico"
+        Width="460" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="24" Spacing="12">
+        <TextBlock Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Name="Message" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Annulla" Click="OnCancel" IsCancel="True" />
+            <Button Name="OkButton" Classes="accent" Click="OnOk" />
+        </StackPanel>
+    </StackPanel>
+</Window>

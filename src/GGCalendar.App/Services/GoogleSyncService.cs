@@ -51,6 +51,9 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             store.DeleteCalendar(c.Id);
     }
 
+    /// <summary>Forgets the incremental sync position: the next sync downloads everything again.</summary>
+    public void ResetSync() => store.ClearSyncTokens();
+
     public IReadOnlyList<string> AccountEmails => accounts.Load().Select(a => a.Email).ToList();
 
     public async Task<SyncResult> SyncAllAsync(CancellationToken ct)
