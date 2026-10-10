@@ -344,7 +344,7 @@ public sealed partial class MainViewModel : ViewModelBase
             && RecurrenceRule.Parse(master.Recurrence)?.Count is { } total)
             newRule = RecurrenceRule.WithCount(newRule, Math.Max(1, total - index));
 
-        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.AddSeconds(-1);
+        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.Date.AddSeconds(-1);
         var tail = master.ExcludedStarts.Where(d => d >= occurrence.Start).ToList();
         UpdateEvent(master with
         {
@@ -380,7 +380,7 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.AddSeconds(-1);
+        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.Date.AddSeconds(-1);
         UpdateEvent(master with
         {
             Recurrence = RecurrenceRule.WithUntil(master.Recurrence!, last, master.IsAllDay),
