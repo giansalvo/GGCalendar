@@ -1,0 +1,53 @@
+; Inno Setup script for GGCalendar. Build with installer\build-installer.ps1, which publishes the app first.
+
+#ifndef AppVersion
+  #define AppVersion "1.0"
+#endif
+#define AppExe "GGCalendar.App.exe"
+
+[Setup]
+; AppId identifies the installation for upgrades and uninstall: never change it.
+AppId={{037D6627-E8E5-4A43-AA0D-AE5656F6ED8C}
+AppName=GGCalendar
+AppVersion={#AppVersion}
+AppVerName=GGCalendar {#AppVersion}
+AppPublisher=Giansalvo Gusinu
+AppCopyright=© 2026 Giansalvo Gusinu
+VersionInfoVersion={#AppVersion}
+DefaultDirName={autopf}\GGCalendar
+DefaultGroupName=GGCalendar
+DisableProgramGroupPage=yes
+; Installs for the current user without admin rights; the user can choose "all users" in the first page.
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+; Windows 11 (build 22000) or later.
+MinVersion=10.0.22000
+OutputDir=..\website\downloads
+OutputBaseFilename=GGCalendar-v{#AppVersion}-Setup
+SetupIconFile=..\src\GGCalendar.App\Assets\GGCalendar.ico
+UninstallDisplayIcon={app}\{#AppExe}
+UninstallDisplayName=GGCalendar
+Compression=lzma2/max
+SolidCompression=yes
+WizardStyle=modern
+CloseApplications=yes
+
+[Languages]
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[Files]
+Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: "{autoprograms}\GGCalendar"; Filename: "{app}\{#AppExe}"
+Name: "{autodesktop}\GGCalendar"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,GGCalendar}"; Flags: nowait postinstall skipifsilent
+
+; User data in %AppData%\GGCalendar (calendar, settings, Google accounts) is kept on uninstall.

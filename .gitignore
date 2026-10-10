@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 *.swp
 
 OAuth/
+
+# Installer output (built by installer/build-installer.ps1; too large for git)
+website/downloads/*.exe
