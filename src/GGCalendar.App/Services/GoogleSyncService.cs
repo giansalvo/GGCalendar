@@ -45,11 +45,18 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         return email;
     }
 
-    public void RemoveAccount(string email)
+    /// <summary>
+    /// Revokes the app's access on Google, then forgets the account and its calendars on this PC (even if Google could
+    /// not be reached). Returns whether the access was revoked.
+    /// </summary>
+    public async Task<bool> RemoveAccountAsync(string email, CancellationToken ct)
     {
+        var account = accounts.Load().FirstOrDefault(a => a.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+        var revoked = account is not null && await GoogleAuth.RevokeAsync(http, GoogleAccountStore.Unprotect(account.ProtectedRefreshToken), ct);
         accounts.Remove(email);
         foreach (var c in store.GetCalendars().Where(c => IsGoogleCalendar(c.Id) && AccountOf(c.Id) == email))
             store.DeleteCalendar(c.Id);
+        return revoked;
     }
 
     /// <summary>Forgets the incremental sync position: the next sync downloads everything again.</summary>

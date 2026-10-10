@@ -131,13 +131,16 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private void CancelSignIn() => _signIn?.Cancel();
 
     [RelayCommand]
-    private void RemoveGoogleAccount(string? email)
+    private async Task RemoveGoogleAccount(string? email)
     {
         if (_google is null || email is null) return;
-        _google.RemoveAccount(email);
+        GoogleStatus = $"Scollegamento di {email}...";
+        var revoked = await _google.RemoveAccountAsync(email, CancellationToken.None);
         GoogleAccounts.Remove(email);
         AccountsChanged = true;
-        GoogleStatus = $"Account {email} scollegato.";
+        GoogleStatus = revoked
+            ? $"Account {email} scollegato e accesso di GGCalendar revocato su Google."
+            : $"Account {email} scollegato da questo PC, ma non è stato possibile revocare l'accesso su Google (connessione assente?). Puoi revocarlo da myaccount.google.com/permissions.";
     }
 
     public ObservableCollection<SoundOption> Sounds { get; } = [];

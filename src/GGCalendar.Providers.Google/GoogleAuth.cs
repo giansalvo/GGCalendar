@@ -17,6 +17,7 @@ public static class GoogleAuth
     public const string CalendarScope = "https://www.googleapis.com/auth/calendar";
     private const string AuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
+    private const string RevokeEndpoint = "https://oauth2.googleapis.com/revoke";
 
     private sealed class TokenResponse
     {
@@ -97,6 +98,21 @@ public static class GoogleAuth
             ["refresh_token"] = refreshToken,
             ["grant_type"] = "refresh_token",
         }, ct);
+
+    /// <summary>Revokes a token on Google (a refresh token also revokes its access tokens). False if Google could not be reached or refused.</summary>
+    public static async Task<bool> RevokeAsync(HttpClient http, string token, CancellationToken ct)
+    {
+        try
+        {
+            using var response = await http.PostAsync(RevokeEndpoint, new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = token }), ct);
+            // 400 invalid_token: already revoked or expired, which is the outcome we want.
+            return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.BadRequest;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return false;
+        }
+    }
 
     private static async Task<GoogleTokens> PostTokenAsync(HttpClient http, Dictionary<string, string> form, CancellationToken ct)
     {

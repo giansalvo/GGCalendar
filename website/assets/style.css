@@ -81,6 +81,9 @@ footer.site a:hover{color:var(--text)}
 .legal h2{font-size:1.3rem;margin:36px 0 8px}
 .legal p,.legal li{color:#3a4048}
 .legal ul{padding-left:22px}
+.legal h3{font-size:1.05rem;margin:22px 0 6px}
+.legal code{font-size:.88em;background:#eef1f5;border-radius:4px;padding:1px 5px;word-break:break-all}
+.legal blockquote{margin:16px 0;padding:12px 16px;border-left:4px solid #1a56b8;background:#f3f6fb;color:#3a4048}
 .legal .updated{color:var(--muted);font-size:.9rem;margin-bottom:28px}
 .back{display:inline-block;margin-bottom:20px;font-size:.92rem}
 
