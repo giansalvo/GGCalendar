@@ -32,6 +32,8 @@ public sealed record AgendaDay(string Label, bool IsToday, IReadOnlyList<AgendaI
 
 public sealed record DayHeader(string Label, int Number, bool IsToday);
 
+public enum DeleteScope { This, ThisAndFollowing, All }
+
 public sealed partial class MainViewModel : ViewModelBase
 {
     private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("it-IT");
@@ -291,6 +293,34 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     public CalendarEvent ResolveMaster(CalendarEvent ev) => _allEvents.FirstOrDefault(e => e.Id == ev.Id) ?? ev;
+
+    public bool IsRecurring(CalendarEvent ev) =>
+        ev.OccurrenceIndex is not null || !string.IsNullOrEmpty(ResolveMaster(ev).Recurrence);
+
+    /// <summary>Deletes one occurrence, the occurrence and all following ones, or the whole series.</summary>
+    public void DeleteOccurrence(CalendarEvent occurrence, DeleteScope scope)
+    {
+        var master = ResolveMaster(occurrence);
+        var isFirst = occurrence.OccurrenceIndex is null || occurrence.Start == master.Start;
+        if (scope == DeleteScope.All || (scope == DeleteScope.ThisAndFollowing && isFirst))
+        {
+            DeleteEvent(master);
+            return;
+        }
+
+        if (scope == DeleteScope.This)
+        {
+            UpdateEvent(master with { ExcludedStarts = [.. master.ExcludedStarts, occurrence.Start] });
+            return;
+        }
+
+        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.AddSeconds(-1);
+        UpdateEvent(master with
+        {
+            Recurrence = RecurrenceRule.WithUntil(master.Recurrence!, last, master.IsAllDay),
+            ExcludedStarts = master.ExcludedStarts.Where(d => d < occurrence.Start).ToList(),
+        });
+    }
 
     public IEnumerable<CalendarEvent> ExpandedBetween(DateTime from, DateTime to, bool visibleOnly = true)
     {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GGCalendar.Core.Models;
 
 namespace GGCalendar.Core.Recurrence;
@@ -22,6 +23,7 @@ public static class RecurrenceExpander
             yield break;
         }
 
+        var excluded = master.ExcludedStarts.Count > 0 ? master.ExcludedStarts.ToHashSet() : null;
         var duration = master.End - master.Start;
         var emitted = 0;
         foreach (var start in Starts(master.Start, rule))
@@ -30,6 +32,7 @@ public static class RecurrenceExpander
             if (rule.Until is { } until && start.Date > until.Date) yield break;
             if (rule.Count is { } count && emitted >= count) yield break;
             emitted++;
+            if (excluded?.Contains(start) == true) continue;
             if (start + duration > from)
                 yield return master with { Start = start, End = start + duration, OccurrenceIndex = emitted - 1 };
         }
@@ -51,11 +54,10 @@ public static class RecurrenceExpander
 
                 case RecurrenceFrequency.Weekly:
                 {
-                    var weekStart = date.AddDays(-(((int)date.DayOfWeek + 6) % 7)).AddDays(7L * i * interval);
+                    var offset = ((int)date.DayOfWeek - (int)rule.WeekStart + 7) % 7;
+                    var weekStart = date.AddDays(-offset).AddDays(7L * i * interval);
                     var days = rule.Days.Count > 0 ? rule.Days : [first.DayOfWeek];
-                    var ordered = new List<DateTime>();
-                    foreach (var d in days) ordered.Add(weekStart.AddDays(((int)d + 6) % 7));
-                    ordered.Sort();
+                    var ordered = days.Select(d => weekStart.AddDays(((int)d - (int)rule.WeekStart + 7) % 7)).OrderBy(d => d);
                     foreach (var d in ordered)
                         if (d >= date) yield return d + time;
                     break;
@@ -63,9 +65,8 @@ public static class RecurrenceExpander
 
                 case RecurrenceFrequency.Monthly:
                 {
-                    var monthStart = new DateTime(date.Year, date.Month, 1).AddMonths(i * interval);
-                    if (date.Day <= DateTime.DaysInMonth(monthStart.Year, monthStart.Month))
-                        yield return new DateTime(monthStart.Year, monthStart.Month, date.Day) + time;
+                    var month = new DateTime(date.Year, date.Month, 1).AddMonths(i * interval);
+                    if (DayInMonth(month.Year, month.Month, date.Day, rule) is { } d && d >= date) yield return d + time;
                     break;
                 }
 
@@ -73,11 +74,33 @@ public static class RecurrenceExpander
                 {
                     var year = date.Year + i * interval;
                     if (year > 9998) yield break;
-                    if (date.Day <= DateTime.DaysInMonth(year, date.Month))
-                        yield return new DateTime(year, date.Month, date.Day) + time;
+                    if (DayInMonth(year, date.Month, date.Day, rule) is { } d && d >= date) yield return d + time;
                     break;
                 }
             }
         }
+    }
+
+    /// <summary>The date of the occurrence inside the given month, or null when the month has no such day.</summary>
+    private static DateTime? DayInMonth(int year, int month, int masterDay, RecurrenceRule rule)
+    {
+        var dim = DateTime.DaysInMonth(year, month);
+        if (rule.NthWeekday is { } nth)
+        {
+            if (nth.Ordinal > 0)
+            {
+                var firstOfMonth = new DateTime(year, month, 1);
+                var day = 1 + ((int)nth.Day - (int)firstOfMonth.DayOfWeek + 7) % 7 + 7 * (nth.Ordinal - 1);
+                return day <= dim ? new DateTime(year, month, day) : null;
+            }
+
+            var last = new DateTime(year, month, dim);
+            var back = ((int)last.DayOfWeek - (int)nth.Day + 7) % 7 + 7 * (-nth.Ordinal - 1);
+            var result = dim - back;
+            return result >= 1 ? new DateTime(year, month, result) : null;
+        }
+
+        var target = rule.MonthDay is { } md ? (md > 0 ? md : dim + md + 1) : masterDay;
+        return target >= 1 && target <= dim ? new DateTime(year, month, target) : null;
     }
 }

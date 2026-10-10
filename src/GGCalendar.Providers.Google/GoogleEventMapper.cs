@@ -62,11 +62,20 @@ public static class GoogleEventMapper
 
         var meet = Str(e, "hangoutLink");
         string? rrule = null;
+        var excluded = new List<DateTime>();
         if (e.TryGetProperty("recurrence", out var rec))
-            rrule = rec.EnumerateArray().Select(x => x.GetString()).FirstOrDefault(x => x?.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase) == true)?[6..];
+        {
+            foreach (var line in rec.EnumerateArray().Select(x => x.GetString()).Where(x => x is not null))
+            {
+                if (line!.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase)) rrule ??= line[6..];
+                else if (line.StartsWith("EXDATE", StringComparison.OrdinalIgnoreCase)) excluded.AddRange(ParseExDates(line));
+            }
+        }
+
         return new CalendarEvent(localId, calendarId, Str(e, "summary") ?? "", start, end, allDay, Str(e, "location") ?? "", Str(e, "description") ?? "")
         {
             Recurrence = rrule,
+            ExcludedStarts = excluded,
             Attendees = attendees,
             Reminders = reminders,
             Availability = Str(e, "transparency") == "transparent" ? EventAvailability.Free : EventAvailability.Busy,
@@ -77,6 +86,33 @@ public static class GoogleEventMapper
             GuestsCanInvite = Bool(e, "guestsCanInviteOthers", true),
             GuestsCanSeeList = Bool(e, "guestsCanSeeOtherGuests", true),
         };
+    }
+
+    private static IEnumerable<DateTime> ParseExDates(string line)
+    {
+        var colon = line.IndexOf(':');
+        if (colon < 0) yield break;
+        var header = line[..colon];
+        var tz = header.Split(';').FirstOrDefault(p => p.StartsWith("TZID=", StringComparison.OrdinalIgnoreCase))?[5..];
+        foreach (var raw in line[(colon + 1)..].Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var v = raw.Trim();
+            if (v.Length == 8 && DateTime.TryParseExact(v, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+            {
+                yield return day;
+            }
+            else if (v.EndsWith('Z') && DateTime.TryParseExact(v, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture,
+                         DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var utc))
+            {
+                yield return DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime();
+            }
+            else if (DateTime.TryParseExact(v, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
+            {
+                if (tz is not null && TimeZoneInfo.TryFindSystemTimeZoneById(tz, out var zone))
+                    yield return TimeZoneInfo.ConvertTime(local, zone, TimeZoneInfo.Local);
+                else yield return local;
+            }
+        }
     }
 
     public static IReadOnlyList<EventReminder> ParseDefaultReminders(JsonElement calendarListEntry)
@@ -125,7 +161,18 @@ public static class GoogleEventMapper
             },
         };
 
-        if (!string.IsNullOrEmpty(ev.Recurrence)) body["recurrence"] = new JsonArray("RRULE:" + ev.Recurrence);
+        if (!string.IsNullOrEmpty(ev.Recurrence))
+        {
+            var lines = new JsonArray("RRULE:" + ev.Recurrence);
+            if (ev.ExcludedStarts.Count > 0)
+            {
+                lines.Add(ev.IsAllDay
+                    ? "EXDATE;VALUE=DATE:" + string.Join(',', ev.ExcludedStarts.Select(d => d.ToString("yyyyMMdd", CultureInfo.InvariantCulture)))
+                    : "EXDATE:" + string.Join(',', ev.ExcludedStarts.Select(d => d.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture))));
+            }
+
+            body["recurrence"] = lines;
+        }
         if (includeMeetRequest)
         {
             body["conferenceData"] = new JsonObject

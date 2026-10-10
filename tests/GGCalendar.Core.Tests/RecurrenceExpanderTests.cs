@@ -78,7 +78,43 @@ public class RecurrenceExpanderTests
     [Fact]
     public void UnsupportedRuleFallsBackToMaster()
     {
-        var e = Make("FREQ=MONTHLY;BYDAY=2TU", new DateTime(2026, 10, 13, 9, 0, 0));
+        var e = Make("FREQ=MONTHLY;BYSETPOS=1;BYDAY=TU,WE", new DateTime(2026, 10, 13, 9, 0, 0));
         Assert.Single(Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)));
+    }
+
+    [Fact]
+    public void GoogleStyleWkstIsAccepted()
+    {
+        var e = Make("FREQ=WEEKLY;WKST=TU;UNTIL=20261101T215959Z", new DateTime(2026, 10, 7, 20, 0, 0));
+        Assert.Equal(4, Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)).Count);
+    }
+
+    [Fact]
+    public void MonthlySecondTuesdayAndLastFriday()
+    {
+        var second = Make("FREQ=MONTHLY;BYDAY=2TU", new DateTime(2026, 10, 13, 9, 0, 0));
+        Assert.Equal([new DateTime(2026, 10, 13, 9, 0, 0), new DateTime(2026, 11, 10, 9, 0, 0)],
+            Starts(second, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)));
+        var last = Make("FREQ=MONTHLY;BYDAY=-1FR", new DateTime(2026, 10, 30, 9, 0, 0));
+        Assert.Equal([new DateTime(2026, 10, 30, 9, 0, 0), new DateTime(2026, 11, 27, 9, 0, 0)],
+            Starts(last, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)));
+    }
+
+    [Fact]
+    public void ExcludedStartsAreSkippedButStillCount()
+    {
+        var e = Make("FREQ=DAILY;COUNT=3", new DateTime(2026, 10, 5, 9, 0, 0)) with
+        {
+            ExcludedStarts = [new DateTime(2026, 10, 6, 9, 0, 0)],
+        };
+        Assert.Equal([new DateTime(2026, 10, 5, 9, 0, 0), new DateTime(2026, 10, 7, 9, 0, 0)],
+            Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 11, 1)));
+    }
+
+    [Fact]
+    public void WithUntilReplacesCountAndKeepsOtherParts()
+    {
+        var r = RecurrenceRule.WithUntil("FREQ=WEEKLY;WKST=MO;COUNT=10;BYDAY=WE", new DateTime(2026, 10, 14), allDay: true);
+        Assert.Equal("FREQ=WEEKLY;WKST=MO;BYDAY=WE;UNTIL=20261014", r);
     }
 }

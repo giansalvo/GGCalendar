@@ -61,6 +61,7 @@ public sealed class WeekGrid : Control
     private TimeSpan _grabOffset;
     private DateTime _createAnchor;
     private string? _selectedId;
+    private DateTime _selectedStart;
 
     static WeekGrid()
     {
@@ -127,6 +128,7 @@ public sealed class WeekGrid : Control
         {
             _active = h.Event;
             _selectedId = h.Event.Id;
+            _selectedStart = h.Event.Start;
             var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge;
             _grabOffset = PointToTime(p, snap: false) - h.Event.Start;
             _mode = nearBottom ? DragMode.Resize : DragMode.Pending;
@@ -239,7 +241,7 @@ public sealed class WeekGrid : Control
         }
         else if (e.Key == Key.Delete && _selectedId is not null)
         {
-            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId);
+            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId && x.Start == _selectedStart);
             if (ev is not null)
             {
                 _selectedId = null;
@@ -249,7 +251,7 @@ public sealed class WeekGrid : Control
         }
         else if (e.Key == Key.Enter && _selectedId is not null)
         {
-            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId);
+            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId && x.Start == _selectedStart);
             if (ev is not null)
             {
                 EventOpened?.Invoke(ev);
@@ -403,7 +405,7 @@ public sealed class WeekGrid : Control
 
                 _hits.Add((rect, ev));
                 if (ev.Id == hideId && ev.Start == _active?.Start) continue;
-                DrawBlock(ev, rect, false, ev.Id == _selectedId);
+                DrawBlock(ev, rect, false, ev.Id == _selectedId && ev.Start == _selectedStart);
             }
 
             if (_preview is { } pv && pv.Start < next && pv.End > day)

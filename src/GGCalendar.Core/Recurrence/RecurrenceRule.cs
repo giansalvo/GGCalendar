@@ -18,6 +18,25 @@ public sealed record RecurrenceRule
     public IReadOnlyList<DayOfWeek> Days { get; init; } = [];
     public DateTime? Until { get; init; }
     public int? Count { get; init; }
+    public DayOfWeek WeekStart { get; init; } = DayOfWeek.Monday;
+
+    /// <summary>Monthly/yearly "n-th weekday" (e.g. 2TU = second Tuesday, -1FR = last Friday).</summary>
+    public (int Ordinal, DayOfWeek Day)? NthWeekday { get; init; }
+
+    /// <summary>Monthly BYMONTHDAY (single value, negative counts from the end of the month).</summary>
+    public int? MonthDay { get; init; }
+
+    /// <summary>Replaces COUNT/UNTIL in a raw RRULE with an UNTIL, keeping every other part untouched.</summary>
+    public static string WithUntil(string rrule, DateTime lastMoment, bool allDay)
+    {
+        var parts = rrule.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => !p.StartsWith("COUNT=", StringComparison.OrdinalIgnoreCase) && !p.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        parts.Add("UNTIL=" + (allDay
+            ? lastMoment.ToString("yyyyMMdd", CultureInfo.InvariantCulture)
+            : lastMoment.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture)));
+        return string.Join(';', parts);
+    }
 
     /// <summary>Parses an RRULE; returns null when it uses parts this model cannot represent.</summary>
     public static RecurrenceRule? Parse(string? rrule)
@@ -58,12 +77,28 @@ public sealed record RecurrenceRule
                     if (!TryParseDate(value, out var until)) return null;
                     rule = rule with { Until = until };
                     break;
+                case "WKST":
+                    var wk = Array.IndexOf(DayCodes, value.ToUpperInvariant());
+                    if (wk < 0) return null;
+                    rule = rule with { WeekStart = (DayOfWeek)wk };
+                    break;
+                case "BYMONTHDAY":
+                    if (!int.TryParse(value, out var md) || md == 0 || Math.Abs(md) > 31) return null;
+                    rule = rule with { MonthDay = md };
+                    break;
                 case "BYDAY":
-                    foreach (var code in value.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    foreach (var raw in value.Split(',', StringSplitOptions.RemoveEmptyEntries))
                     {
-                        var idx = Array.IndexOf(DayCodes, code.Trim().ToUpperInvariant());
+                        var code = raw.Trim().ToUpperInvariant();
+                        var ordinalText = code[..^Math.Min(2, code.Length)];
+                        var idx = Array.IndexOf(DayCodes, code.Length >= 2 ? code[^2..] : code);
                         if (idx < 0) return null;
-                        days.Add((DayOfWeek)idx);
+                        if (ordinalText.Length > 0)
+                        {
+                            if (!int.TryParse(ordinalText, out var ord) || ord == 0 || Math.Abs(ord) > 5) return null;
+                            rule = rule with { NthWeekday = (ord, (DayOfWeek)idx) };
+                        }
+                        else days.Add((DayOfWeek)idx);
                     }
 
                     break;
@@ -73,6 +108,7 @@ public sealed record RecurrenceRule
         }
 
         if (!hasFreq || (rule.Count is not null && rule.Until is not null)) return null;
+        if (rule.NthWeekday is not null && rule.Frequency is RecurrenceFrequency.Daily or RecurrenceFrequency.Weekly) return null;
         return rule with { Days = days };
     }
 
@@ -89,6 +125,8 @@ public sealed record RecurrenceRule
         if (Interval > 1) parts.Add("INTERVAL=" + Interval);
         if (Frequency == RecurrenceFrequency.Weekly && Days.Count > 0)
             parts.Add("BYDAY=" + string.Join(',', OrderedDays().Select(d => DayCodes[(int)d])));
+        if (NthWeekday is { } nth) parts.Add("BYDAY=" + nth.Ordinal + DayCodes[(int)nth.Day]);
+        if (MonthDay is { } md) parts.Add("BYMONTHDAY=" + md);
         if (Count is { } c) parts.Add("COUNT=" + c);
         else if (Until is { } u)
             parts.Add("UNTIL=" + (allDay ? u.ToString("yyyyMMdd", CultureInfo.InvariantCulture) : u.ToString("yyyyMMdd'T'235959'Z'", CultureInfo.InvariantCulture)));

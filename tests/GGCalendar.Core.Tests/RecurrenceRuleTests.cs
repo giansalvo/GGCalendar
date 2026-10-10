@@ -25,7 +25,7 @@ public class RecurrenceRuleTests
     }
 
     [Theory]
-    [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
+    [InlineData("FREQ=MONTHLY;BYSETPOS=1;BYDAY=MO")]
     [InlineData("FREQ=HOURLY")]
     [InlineData("FREQ=DAILY;COUNT=3;UNTIL=20270107")]
     [InlineData("")]

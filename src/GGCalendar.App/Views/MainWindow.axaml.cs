@@ -30,7 +30,7 @@ public partial class MainWindow : Window
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
         Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
         Grid.EventChanged += (ev, s, e) => Vm?.MoveEvent(ev, s, e);
-        Grid.EventDeleted += ev => Vm?.DeleteEvent(ev);
+        Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventOpened += async ev => await EditAsync(ev, isNew: false);
         Grid.EventCreated += async (s, e) =>
         {
@@ -204,15 +204,24 @@ public partial class MainWindow : Window
         GridScroll.Offset = new Avalonia.Vector(0, hour * Controls.WeekGrid.HourHeight);
     }
 
+    private async Task DeleteAsync(CalendarEvent ev)
+    {
+        if (Vm is not { } vm) return;
+        if (!vm.IsRecurring(ev)) { vm.DeleteEvent(ev); return; }
+        var scope = await new DeleteRecurringWindow().ShowDialog<DeleteScope?>(this);
+        if (scope is { } s) vm.DeleteOccurrence(ev, s);
+    }
+
     private async Task EditAsync(CalendarEvent ev, bool isNew)
     {
         if (Vm is not { } vm) return;
         // Editing a repeating event always edits the whole series (its first occurrence).
+        var occurrence = ev;
         if (!isNew) ev = vm.ResolveMaster(ev);
         var dialog = new EventEditWindow { DataContext = new EventEditViewModel(ev, vm.Calendars, isNew, vm.Settings, _sound) };
         var result = await dialog.ShowDialog<EventEditResult?>(this);
         if (result is null) return;
-        if (result.Delete) vm.DeleteEvent(ev);
+        if (result.Delete) await DeleteAsync(occurrence);
         else if (isNew) vm.AddEvent(result.Event!);
         else vm.UpdateEvent(result.Event!);
     }

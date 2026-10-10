@@ -37,6 +37,9 @@ public sealed record CalendarEvent(
     /// <summary>RFC 5545 RRULE value (without the "RRULE:" prefix), or null when the event does not repeat.</summary>
     public string? Recurrence { get; init; }
 
+    /// <summary>Start times of single occurrences removed from the series (RFC 5545 EXDATE).</summary>
+    public IReadOnlyList<DateTime> ExcludedStarts { get; init; } = [];
+
     /// <summary>Set only on expanded occurrences of a repeating event (0 = the first one); never persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public int? OccurrenceIndex { get; init; }
