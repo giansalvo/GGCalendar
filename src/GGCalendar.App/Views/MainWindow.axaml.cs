@@ -62,7 +62,7 @@ public partial class MainWindow : Window
                     vm.Settings.DefaultView = vm.ViewModeIndex;
                     _store.Save(vm.Settings);
                 };
-                _scheduler = new ReminderScheduler(() => vm.AllEvents) { Enabled = vm.Settings.NotificationsEnabled };
+                _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now.AddDays(30), visibleOnly: false)) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
                 _scheduler.Start();
                 StartSync();
@@ -207,6 +207,8 @@ public partial class MainWindow : Window
     private async Task EditAsync(CalendarEvent ev, bool isNew)
     {
         if (Vm is not { } vm) return;
+        // Editing a repeating event always edits the whole series (its first occurrence).
+        if (!isNew) ev = vm.ResolveMaster(ev);
         var dialog = new EventEditWindow { DataContext = new EventEditViewModel(ev, vm.Calendars, isNew, vm.Settings, _sound) };
         var result = await dialog.ShowDialog<EventEditResult?>(this);
         if (result is null) return;

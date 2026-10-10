@@ -6,6 +6,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Recurrence;
 using GGCalendar.Data;
 
 namespace GGCalendar.App.ViewModels;
@@ -268,7 +269,34 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
-        UpdateEvent(_allEvents[i] with { Start = start, End = end });
+        var master = _allEvents[i];
+        if (ev.OccurrenceIndex is null)
+        {
+            UpdateEvent(master with { Start = start, End = end });
+            return;
+        }
+
+        // Dragging one occurrence of a series moves the whole series by the same offset.
+        var delta = start - ev.Start;
+        var newStart = master.Start + delta;
+        var moved = master with { Start = newStart, End = newStart + (end - start) };
+        var dayShift = (start.Date - ev.Start.Date).Days;
+        if (dayShift != 0 && RecurrenceRule.Parse(master.Recurrence) is { Frequency: RecurrenceFrequency.Weekly, Days.Count: > 0 } rule)
+        {
+            var days = rule.Days.Select(d => (DayOfWeek)((((int)d + dayShift) % 7 + 7) % 7)).ToList();
+            moved = moved with { Recurrence = (rule with { Days = days }).ToRrule(master.IsAllDay) };
+        }
+
+        UpdateEvent(moved);
+    }
+
+    public CalendarEvent ResolveMaster(CalendarEvent ev) => _allEvents.FirstOrDefault(e => e.Id == ev.Id) ?? ev;
+
+    public IEnumerable<CalendarEvent> ExpandedBetween(DateTime from, DateTime to, bool visibleOnly = true)
+    {
+        var visible = _calendars.Where(c => c.IsVisible).Select(c => c.Id).ToHashSet();
+        return _allEvents.Where(e => !visibleOnly || visible.Contains(e.CalendarId))
+            .SelectMany(e => RecurrenceExpander.Expand(e, from, to)).ToList();
     }
 
     public void DeleteEvent(CalendarEvent ev)
@@ -320,7 +348,9 @@ public sealed partial class MainViewModel : ViewModelBase
         }).ToList();
 
         var visible = _calendars.Where(c => c.IsVisible).Select(c => c.Id).ToHashSet();
-        VisibleEvents = _allEvents.Where(e => visible.Contains(e.CalendarId)).ToList();
+        var rangeFrom = ViewModeIndex == 3 ? new DateTime(date.Year, 1, 1) : (MonthGridStart < WeekStart ? MonthGridStart : WeekStart);
+        var rangeTo = ViewModeIndex == 3 ? rangeFrom.AddYears(1) : MonthGridStart.AddDays(42) > date.AddDays(31) ? MonthGridStart.AddDays(42) : date.AddDays(31);
+        VisibleEvents = ExpandedBetween(rangeFrom, rangeTo).ToList();
         CalendarColors = _calendars.ToDictionary(c => c.Id, c => c.ColorHex);
         if (ViewModeIndex == 4) BuildAgenda(date.Date);
     }

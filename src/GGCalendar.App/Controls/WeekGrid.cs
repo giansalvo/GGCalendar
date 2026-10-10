@@ -402,7 +402,7 @@ public sealed class WeekGrid : Control
                 var rect = new Rect(x, y, slotW - (p.ColumnCount > 1 ? 1 : 0) + 2, height);
 
                 _hits.Add((rect, ev));
-                if (ev.Id == hideId) continue;
+                if (ev.Id == hideId && ev.Start == _active?.Start) continue;
                 DrawBlock(ev, rect, false, ev.Id == _selectedId);
             }
 
