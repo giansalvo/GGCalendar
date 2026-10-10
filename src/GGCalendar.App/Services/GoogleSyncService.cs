@@ -217,7 +217,9 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                         if (target is null && snapshot.SeriesMasterId is not null && snapshot.OriginalStart is { } originalStart)
                         {
                             // A modified occurrence is an existing Google "instance" of the series: patch it instead of inserting.
-                            var masterRemote = store.GetRemoteInfo(snapshot.SeriesMasterId)?.RemoteId;
+                            var masterInfo = snapshot.SeriesMasterId is null ? null : store.GetRemoteInfo(snapshot.SeriesMasterId);
+                            if (masterInfo is null) break; // the series was deleted meanwhile
+                            var masterRemote = masterInfo.Value.RemoteId;
                             if (masterRemote is null) continue; // the series has not been pushed yet; retry on the next sync
                             target = GoogleEventMapper.InstanceId(masterRemote, originalStart, snapshot.IsAllDay);
                         }
@@ -242,7 +244,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             {
                 // A permanent rejection must not block the rest of the queue.
                 store.Complete(item.Seq);
-                errors.Add($"{email}: modifica non accettata da Google ({(int)ex.Status}).");
+                errors.Add($"{email}: modifica non accettata da Google ({(int)ex.Status}): {ex.Message}");
             }
         }
 
