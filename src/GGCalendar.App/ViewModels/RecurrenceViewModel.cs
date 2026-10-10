@@ -38,7 +38,7 @@ public sealed partial class RecurrenceViewModel : ViewModelBase
         for (var i = 0; i < 7; i++) Days.Add(new WeekdayToggle(days[i], labels[i], selected.Contains(days[i])));
 
         UntilDate = rule.Until ?? startDay.AddMonths(3);
-        Count = rule.Count ?? 13;
+        Count = rule.Count ?? 2;
         EndsOnDate = rule.Until is not null;
         EndsAfter = rule.Count is not null;
         EndsNever = !EndsOnDate && !EndsAfter;
