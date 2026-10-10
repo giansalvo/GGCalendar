@@ -40,6 +40,16 @@ public sealed record CalendarEvent(
     /// <summary>Start times of single occurrences removed from the series (RFC 5545 EXDATE).</summary>
     public IReadOnlyList<DateTime> ExcludedStarts { get; init; } = [];
 
+    /// <summary>
+    /// Set on a single modified (or cancelled) occurrence of a series: the local id of the series' master event
+    /// and the start the occurrence had before it was modified.
+    /// </summary>
+    public string? SeriesMasterId { get; init; }
+    public DateTime? OriginalStart { get; init; }
+
+    /// <summary>A removed occurrence kept as a tombstone so the series does not show it again after a sync.</summary>
+    public bool IsCancelled { get; init; }
+
     /// <summary>Set only on expanded occurrences of a repeating event (0 = the first one); never persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public int? OccurrenceIndex { get; init; }

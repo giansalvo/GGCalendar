@@ -32,7 +32,7 @@ public sealed record AgendaDay(string Label, bool IsToday, IReadOnlyList<AgendaI
 
 public sealed record DayHeader(string Label, int Number, bool IsToday);
 
-public enum DeleteScope { This, ThisAndFollowing, All }
+public enum SeriesScope { This, ThisAndFollowing, All }
 
 public sealed partial class MainViewModel : ViewModelBase
 {
@@ -278,37 +278,82 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // Dragging one occurrence of a series moves the whole series by the same offset.
-        var delta = start - ev.Start;
-        var newStart = master.Start + delta;
-        var moved = master with { Start = newStart, End = newStart + (end - start) };
-        var dayShift = (start.Date - ev.Start.Date).Days;
-        if (dayShift != 0 && RecurrenceRule.Parse(master.Recurrence) is { Frequency: RecurrenceFrequency.Weekly, Days.Count: > 0 } rule)
-        {
-            var days = rule.Days.Select(d => (DayOfWeek)((((int)d + dayShift) % 7 + 7) % 7)).ToList();
-            moved = moved with { Recurrence = (rule with { Days = days }).ToRrule(master.IsAllDay) };
-        }
-
-        UpdateEvent(moved);
+        // Dragging one occurrence of a series moves only that occurrence.
+        SaveOccurrence(ev, ev with { Start = start, End = end }, SeriesScope.This);
     }
 
     public CalendarEvent ResolveMaster(CalendarEvent ev) => _allEvents.FirstOrDefault(e => e.Id == ev.Id) ?? ev;
 
+    /// <summary>True for an occurrence of a repeating series (not for the single modified occurrences, which are plain events).</summary>
     public bool IsRecurring(CalendarEvent ev) =>
-        ev.OccurrenceIndex is not null || !string.IsNullOrEmpty(ResolveMaster(ev).Recurrence);
+        ev.SeriesMasterId is null && !string.IsNullOrEmpty(ResolveMaster(ev).Recurrence);
+
+    /// <summary>
+    /// Saves an edit of <paramref name="occurrence"/>: a single modified occurrence, the occurrence and all following ones
+    /// (the series is split in two), or the whole series (<paramref name="edited"/> was made from the master).
+    /// </summary>
+    public void SaveOccurrence(CalendarEvent occurrence, CalendarEvent edited, SeriesScope scope)
+    {
+        var master = ResolveMaster(occurrence);
+        var isFirst = occurrence.Start == master.Start;
+        if (scope == SeriesScope.All || (scope == SeriesScope.ThisAndFollowing && isFirst))
+        {
+            UpdateEvent(edited with { Id = master.Id, OccurrenceIndex = null });
+            return;
+        }
+
+        if (scope == SeriesScope.This)
+        {
+            AddEvent(edited with
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                CalendarId = master.CalendarId,
+                Recurrence = null,
+                ExcludedStarts = [],
+                SeriesMasterId = master.Id,
+                OriginalStart = occurrence.Start,
+                IsCancelled = false,
+                OccurrenceIndex = null,
+            });
+            return;
+        }
+
+        var newRule = edited.Recurrence;
+        if (newRule is not null && newRule == master.Recurrence && occurrence.OccurrenceIndex is { } index
+            && RecurrenceRule.Parse(master.Recurrence)?.Count is { } total)
+            newRule = RecurrenceRule.WithCount(newRule, Math.Max(1, total - index));
+
+        var last = master.IsAllDay ? occurrence.Start.AddDays(-1) : occurrence.Start.AddSeconds(-1);
+        var tail = master.ExcludedStarts.Where(d => d >= occurrence.Start).ToList();
+        UpdateEvent(master with
+        {
+            Recurrence = RecurrenceRule.WithUntil(master.Recurrence!, last, master.IsAllDay),
+            ExcludedStarts = master.ExcludedStarts.Where(d => d < occurrence.Start).ToList(),
+        });
+        AddEvent(edited with
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Recurrence = newRule,
+            ExcludedStarts = tail,
+            SeriesMasterId = null,
+            OriginalStart = null,
+            MeetLink = null,
+            OccurrenceIndex = null,
+        });
+    }
 
     /// <summary>Deletes one occurrence, the occurrence and all following ones, or the whole series.</summary>
-    public void DeleteOccurrence(CalendarEvent occurrence, DeleteScope scope)
+    public void DeleteOccurrence(CalendarEvent occurrence, SeriesScope scope)
     {
         var master = ResolveMaster(occurrence);
         var isFirst = occurrence.OccurrenceIndex is null || occurrence.Start == master.Start;
-        if (scope == DeleteScope.All || (scope == DeleteScope.ThisAndFollowing && isFirst))
+        if (scope == SeriesScope.All || (scope == SeriesScope.ThisAndFollowing && isFirst))
         {
             DeleteEvent(master);
             return;
         }
 
-        if (scope == DeleteScope.This)
+        if (scope == SeriesScope.This)
         {
             UpdateEvent(master with { ExcludedStarts = [.. master.ExcludedStarts, occurrence.Start] });
             return;
@@ -325,7 +370,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public IEnumerable<CalendarEvent> ExpandedBetween(DateTime from, DateTime to, bool visibleOnly = true)
     {
         var visible = _calendars.Where(c => c.IsVisible).Select(c => c.Id).ToHashSet();
-        return _allEvents.Where(e => !visibleOnly || visible.Contains(e.CalendarId))
+        // Modified or cancelled occurrences replace the matching occurrence of their series.
+        var replaced = _allEvents.Where(e => e.SeriesMasterId is not null && e.OriginalStart is not null)
+            .GroupBy(e => e.SeriesMasterId!).ToDictionary(g => g.Key, g => g.Select(e => e.OriginalStart!.Value).ToList());
+        return _allEvents.Where(e => !e.IsCancelled && (!visibleOnly || visible.Contains(e.CalendarId)))
+            .Select(e => replaced.TryGetValue(e.Id, out var starts) ? e with { ExcludedStarts = [.. e.ExcludedStarts, .. starts] } : e)
             .SelectMany(e => RecurrenceExpander.Expand(e, from, to)).ToList();
     }
 
@@ -335,6 +384,18 @@ public sealed partial class MainViewModel : ViewModelBase
         _allEvents.RemoveAll(e => e.Id == ev.Id);
         _store.DeleteEvent(ev.Id);
         if (IsRemote(ev.CalendarId) && remote is not null) Queue(() => _store.EnqueueDelete(ev.Id, ev.CalendarId, remote));
+
+        // Removing a series removes its modified occurrences too (Google does the same remotely).
+        foreach (var child in _allEvents.Where(e => e.SeriesMasterId == ev.Id).ToList())
+        {
+            _allEvents.Remove(child);
+            _store.DeleteEvent(child.Id);
+        }
+
+        // Removing a modified occurrence cancels it in the series instead of bringing the original back.
+        if (ev.SeriesMasterId is { } masterId && ev.OriginalStart is { } original
+            && _allEvents.FirstOrDefault(e => e.Id == masterId) is { } owner)
+            UpdateEvent(owner with { ExcludedStarts = [.. owner.ExcludedStarts, original] });
         Refresh();
     }
 

@@ -10,10 +10,24 @@ public static class GoogleEventMapper
 {
     private const string DateFormat = "yyyy-MM-dd";
 
-    /// <summary>Returns null for cancelled events or events without usable dates.</summary>
-    public static CalendarEvent? FromGoogle(JsonElement e, string localId, string calendarId, IReadOnlyList<EventReminder> calendarDefaults)
+    /// <summary>
+    /// Returns null for cancelled events or events without usable dates. A cancelled occurrence of a series
+    /// (<paramref name="seriesMasterLocalId"/> set) is returned as a tombstone with <see cref="CalendarEvent.IsCancelled"/>.
+    /// </summary>
+    public static CalendarEvent? FromGoogle(JsonElement e, string localId, string calendarId, IReadOnlyList<EventReminder> calendarDefaults,
+        string? seriesMasterLocalId = null)
     {
-        if (Str(e, "status") == "cancelled") return null;
+        var originalStart = seriesMasterLocalId is null ? null : ParseOriginalStart(e, out _);
+        if (Str(e, "status") == "cancelled")
+        {
+            if (seriesMasterLocalId is null || originalStart is not { } os) return null;
+            ParseOriginalStart(e, out var originalAllDay);
+            return new CalendarEvent(localId, calendarId, "", os, os, originalAllDay)
+            {
+                SeriesMasterId = seriesMasterLocalId, OriginalStart = os, IsCancelled = true, Reminders = [],
+            };
+        }
+
         if (!e.TryGetProperty("start", out var s) || !e.TryGetProperty("end", out var en)) return null;
 
         bool allDay;
@@ -75,6 +89,8 @@ public static class GoogleEventMapper
         return new CalendarEvent(localId, calendarId, Str(e, "summary") ?? "", start, end, allDay, Str(e, "location") ?? "", Str(e, "description") ?? "")
         {
             Recurrence = rrule,
+            SeriesMasterId = seriesMasterLocalId,
+            OriginalStart = originalStart,
             ExcludedStarts = excluded,
             Attendees = attendees,
             Reminders = reminders,
@@ -87,6 +103,25 @@ public static class GoogleEventMapper
             GuestsCanSeeList = Bool(e, "guestsCanSeeOtherGuests", true),
         };
     }
+
+    private static DateTime? ParseOriginalStart(JsonElement e, out bool allDay)
+    {
+        allDay = false;
+        if (!e.TryGetProperty("originalStartTime", out var o)) return null;
+        if (Str(o, "date") is { } d)
+        {
+            allDay = true;
+            return DateTime.ParseExact(d, DateFormat, CultureInfo.InvariantCulture);
+        }
+
+        return Str(o, "dateTime") is { } dt ? DateTimeOffset.Parse(dt, CultureInfo.InvariantCulture).LocalDateTime : null;
+    }
+
+    /// <summary>Id of a single occurrence of a recurring event: the master id plus the original start (UTC, or the date for all-day events).</summary>
+    public static string InstanceId(string masterRemoteId, DateTime originalStart, bool allDay) =>
+        masterRemoteId + "_" + (allDay
+            ? originalStart.ToString("yyyyMMdd", CultureInfo.InvariantCulture)
+            : DateTime.SpecifyKind(originalStart, DateTimeKind.Local).ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture));
 
     private static IEnumerable<DateTime> ParseExDates(string line)
     {

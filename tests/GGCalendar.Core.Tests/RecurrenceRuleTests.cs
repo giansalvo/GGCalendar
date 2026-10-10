@@ -24,6 +24,13 @@ public class RecurrenceRuleTests
         Assert.Equal(new DateTime(2027, 1, 7), RecurrenceRule.Parse("FREQ=DAILY;UNTIL=20270107T235959Z")!.Until);
     }
 
+    [Fact]
+    public void WithCountReplacesCountAndUntil()
+    {
+        Assert.Equal("FREQ=WEEKLY;BYDAY=MO;COUNT=3", RecurrenceRule.WithCount("FREQ=WEEKLY;BYDAY=MO;COUNT=10", 3));
+        Assert.Equal("FREQ=DAILY;COUNT=2", RecurrenceRule.WithCount("FREQ=DAILY;UNTIL=20270107", 2));
+    }
+
     [Theory]
     [InlineData("FREQ=MONTHLY;BYSETPOS=1;BYDAY=MO")]
     [InlineData("FREQ=HOURLY")]

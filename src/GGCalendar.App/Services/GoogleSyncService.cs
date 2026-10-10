@@ -138,17 +138,24 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         var changed = false;
         var count = 0;
 
-        foreach (var item in page.Items)
+        // Masters first, so the occurrences of a series can be linked to their master within the same page.
+        var ordered = page.Items.Where(i => !i.TryGetProperty("recurringEventId", out _))
+            .Concat(page.Items.Where(i => i.TryGetProperty("recurringEventId", out _)));
+        foreach (var item in ordered)
         {
             var remoteId = item.GetProperty("id").GetString()!;
             seen.Add(remoteId);
             var localId = store.FindLocalId(localCalendarId, remoteId);
             if (localId is not null && pending.Contains(localId)) continue;
 
-            var mapped = GoogleEventMapper.FromGoogle(item, localId ?? Guid.NewGuid().ToString("N"), localCalendarId, cal.DefaultReminders);
+            string? masterLocalId = null;
+            if (item.TryGetProperty("recurringEventId", out var rid) && rid.GetString() is { } masterRemoteId)
+                masterLocalId = store.FindLocalId(localCalendarId, masterRemoteId);
+
+            var mapped = GoogleEventMapper.FromGoogle(item, localId ?? Guid.NewGuid().ToString("N"), localCalendarId, cal.DefaultReminders, masterLocalId);
             if (mapped is null)
             {
-                if (localId is not null) { store.DeleteEvent(localId); changed = true; }
+                if (localId is not null) { DeleteWithOccurrences(localId); changed = true; }
                 continue;
             }
 
@@ -171,6 +178,12 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
 
         store.SetSyncToken(localCalendarId, page.NextSyncToken);
         return (count, changed);
+    }
+
+    private void DeleteWithOccurrences(string localId)
+    {
+        foreach (var child in store.GetAllEvents().Where(e => e.SeriesMasterId == localId)) store.DeleteEvent(child.Id);
+        store.DeleteEvent(localId);
     }
 
     private async Task<int> PushAsync(GoogleCalendarClient client, string email, List<string> errors, CancellationToken ct)
@@ -197,9 +210,18 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                         var snapshot = CalendarStore.ReadSnapshot(item);
                         if (snapshot is null || store.GetRemoteInfo(item.EventId) is null) break; // deleted meanwhile
                         var current = store.GetRemoteInfo(item.EventId)!.Value;
-                        var result = current.RemoteId is null
+                        var target = current.RemoteId;
+                        if (target is null && snapshot.SeriesMasterId is not null && snapshot.OriginalStart is { } originalStart)
+                        {
+                            // A modified occurrence is an existing Google "instance" of the series: patch it instead of inserting.
+                            var masterRemote = store.GetRemoteInfo(snapshot.SeriesMasterId)?.RemoteId;
+                            if (masterRemote is null) continue; // the series has not been pushed yet; retry on the next sync
+                            target = GoogleEventMapper.InstanceId(masterRemote, originalStart, snapshot.IsAllDay);
+                        }
+
+                        var result = target is null
                             ? await client.InsertAsync(remoteCal, snapshot, ct)
-                            : await client.PatchAsync(remoteCal, current.RemoteId, snapshot, ct);
+                            : await client.PatchAsync(remoteCal, target, snapshot, ct);
                         var remoteId = result.GetProperty("id").GetString()!;
                         var etag = result.TryGetProperty("etag", out var et) ? et.GetString() : null;
                         var meet = result.TryGetProperty("hangoutLink", out var hl) ? hl.GetString() : null;

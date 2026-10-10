@@ -1,12 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="GGCalendar.App.Views.DeleteRecurringWindow"
+        x:Class="GGCalendar.App.Views.SeriesScopeWindow"
         Icon="/Assets/GGCalendar.ico"
         Width="360" SizeToContent="Height" CanResize="False"
-        WindowStartupLocation="CenterOwner"
-        Title="Elimina evento ricorrente">
+        WindowStartupLocation="CenterOwner">
     <StackPanel Margin="24" Spacing="12">
-        <TextBlock Text="Elimina evento ricorrente" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock Name="Heading" FontSize="18" FontWeight="SemiBold" />
         <RadioButton Name="ThisOne" GroupName="scope" IsChecked="True" Content="Solo questo evento" />
         <RadioButton Name="ThisAndFollowing" GroupName="scope" Content="Questo e gli eventi successivi" />
         <RadioButton Name="AllEvents" GroupName="scope" Content="Tutti gli eventi" />

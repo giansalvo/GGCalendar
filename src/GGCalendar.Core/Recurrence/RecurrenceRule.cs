@@ -26,6 +26,16 @@ public sealed record RecurrenceRule
     /// <summary>Monthly BYMONTHDAY (single value, negative counts from the end of the month).</summary>
     public int? MonthDay { get; init; }
 
+    /// <summary>Replaces COUNT/UNTIL in a raw RRULE with a COUNT, keeping every other part untouched.</summary>
+    public static string WithCount(string rrule, int count)
+    {
+        var parts = rrule.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => !p.StartsWith("COUNT=", StringComparison.OrdinalIgnoreCase) && !p.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        parts.Add("COUNT=" + count);
+        return string.Join(';', parts);
+    }
+
     /// <summary>Replaces COUNT/UNTIL in a raw RRULE with an UNTIL, keeping every other part untouched.</summary>
     public static string WithUntil(string rrule, DateTime lastMoment, bool allDay)
     {

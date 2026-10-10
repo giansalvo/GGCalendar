@@ -208,21 +208,29 @@ public partial class MainWindow : Window
     {
         if (Vm is not { } vm) return;
         if (!vm.IsRecurring(ev)) { vm.DeleteEvent(ev); return; }
-        var scope = await new DeleteRecurringWindow().ShowDialog<DeleteScope?>(this);
+        var scope = await new SeriesScopeWindow("Elimina evento ricorrente").ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.DeleteOccurrence(ev, s);
     }
 
     private async Task EditAsync(CalendarEvent ev, bool isNew)
     {
         if (Vm is not { } vm) return;
-        // Editing a repeating event always edits the whole series (its first occurrence).
         var occurrence = ev;
-        if (!isNew) ev = vm.ResolveMaster(ev);
+        SeriesScope? scope = null;
+        if (!isNew && vm.IsRecurring(ev))
+        {
+            scope = await new SeriesScopeWindow("Modifica evento ricorrente").ShowDialog<SeriesScope?>(this);
+            if (scope is null) return;
+        }
+
+        // Editing the whole series (or a plain event) works on the master; otherwise the dialog opens on the occurrence.
+        if (!isNew && scope is null or SeriesScope.All) ev = vm.ResolveMaster(ev);
         var dialog = new EventEditWindow { DataContext = new EventEditViewModel(ev, vm.Calendars, isNew, vm.Settings, _sound) };
         var result = await dialog.ShowDialog<EventEditResult?>(this);
         if (result is null) return;
         if (result.Delete) await DeleteAsync(occurrence);
         else if (isNew) vm.AddEvent(result.Event!);
+        else if (scope is { } s) vm.SaveOccurrence(occurrence, result.Event!, s);
         else vm.UpdateEvent(result.Event!);
     }
 
