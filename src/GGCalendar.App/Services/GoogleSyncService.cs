@@ -136,6 +136,10 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     private async Task<(int Pulled, bool Changed)> PullCalendarAsync(GoogleCalendarClient client, string localCalendarId, GoogleCalendarEntry cal, CancellationToken ct)
     {
         var token = store.GetSyncToken(localCalendarId);
+        var synced = store.GetSyncedEvents(localCalendarId);
+        // A token without any local event means the events were lost (e.g. the calendar was removed and re-added by an
+        // older version that kept the token): an incremental sync would never bring them back. Listing an empty calendar is cheap.
+        if (token is not null && synced.Count == 0) token = null;
         GoogleSyncPage page;
         try
         {
@@ -149,7 +153,6 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         }
 
         var pending = store.GetPending().Select(p => p.EventId).ToHashSet();
-        var synced = store.GetSyncedEvents(localCalendarId);
         var localIds = new Dictionary<string, string>();
         foreach (var (id, remoteId) in synced) localIds[remoteId] = id;
         var seen = new HashSet<string>();

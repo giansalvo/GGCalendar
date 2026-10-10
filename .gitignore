@@ -485,3 +485,6 @@ OAuth/
 
 # Installer output (built by installer/build-installer.ps1; too large for git)
 website/downloads/*.exe
+
+# Google OAuth verification material (videos, screenshots): local only
+Google_verifica_app/

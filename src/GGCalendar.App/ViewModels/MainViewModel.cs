@@ -362,7 +362,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public CalendarEvent NewEvent(DateTime start, DateTime end, bool allDay = false)
     {
-        var calendar = _calendars.FirstOrDefault(c => c.IsVisible) ?? _calendars.First();
+        // Prefer a Google account's primary calendar (its remote id is the account email), so new events sync by default;
+        // the local calendar sorts first ("Locale") but is only the fallback.
+        var visible = _calendars.Where(c => c.IsVisible).ToList();
+        var calendar = visible.FirstOrDefault(c => IsRemote(c.Id) && c.Id == Services.GoogleSyncService.LocalCalendarId(c.AccountName, c.AccountName))
+            ?? visible.FirstOrDefault(c => IsRemote(c.Id))
+            ?? visible.FirstOrDefault()
+            ?? _calendars.First();
         return new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end)
         {
             IsAllDay = allDay,
