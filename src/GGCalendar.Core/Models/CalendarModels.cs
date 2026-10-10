@@ -6,7 +6,8 @@ public enum EventAvailability { Busy, Free }
 
 public enum EventVisibility { Default, Public, Private }
 
-public enum ReminderMethod { Popup, Email }
+/// <summary>Popup = toast; Email = sent by the provider; Alarm = toast with a sound that loops until dismissed.</summary>
+public enum ReminderMethod { Popup, Email, Alarm }
 
 public sealed record EventAttendee(string Email, bool IsOptional = false);
 

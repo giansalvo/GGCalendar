@@ -12,17 +12,27 @@ public sealed class SoundService : IDisposable
 
     public static string MediaFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
 
-    public void Play(string? path, int volumePercent = 80)
+    public void Play(string? path, int volumePercent = 80, bool loop = false)
     {
         Stop();
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
         try
         {
-            _reader = new AudioFileReader(path) { Volume = Math.Clamp(volumePercent, 0, 100) / 100f };
-            _output = new WaveOutEvent();
-            _output.PlaybackStopped += (_, _) => Stop();
-            _output.Init(_reader);
-            _output.Play();
+            var reader = new AudioFileReader(path) { Volume = Math.Clamp(volumePercent, 0, 100) / 100f };
+            var output = new WaveOutEvent();
+            _reader = reader;
+            _output = output;
+            output.PlaybackStopped += (_, _) =>
+            {
+                if (loop && ReferenceEquals(_output, output))
+                {
+                    reader.Position = 0;
+                    output.Play();
+                }
+                else if (ReferenceEquals(_output, output)) Stop();
+            };
+            output.Init(reader);
+            output.Play();
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or FormatException or IOException or NAudio.MmException)
         {

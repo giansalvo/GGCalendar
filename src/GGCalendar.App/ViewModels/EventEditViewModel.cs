@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Recurrence;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -20,7 +21,7 @@ public sealed record ColorOption(string? Hex, string Label);
 public sealed partial class ReminderItemViewModel : ObservableObject
 {
     public static IReadOnlyList<ReminderMethodOption> Methods { get; } =
-        [new(ReminderMethod.Popup, "Notifica"), new(ReminderMethod.Email, "Email")];
+        [new(ReminderMethod.Popup, "Notifica"), new(ReminderMethod.Alarm, "Sveglia"), new(ReminderMethod.Email, "Email")];
 
     public static IReadOnlyList<ReminderUnitOption> Units { get; } =
         [new("minuti", 1), new("ore", 60), new("giorni", 1440), new("settimane", 10080)];
@@ -42,7 +43,7 @@ public sealed partial class ReminderItemViewModel : ObservableObject
     [ObservableProperty] public partial ReminderUnitOption Unit { get; set; }
     [ObservableProperty] public partial SoundOption Sound { get; set; }
 
-    public bool IsPopup => Method.Method == ReminderMethod.Popup;
+    public bool IsPopup => Method.Method != ReminderMethod.Email;
 
     partial void OnMethodChanged(ReminderMethodOption value) => OnPropertyChanged(nameof(IsPopup));
 
@@ -91,7 +92,14 @@ public sealed partial class EventEditViewModel : ViewModelBase
         foreach (var r in ev.Reminders) Reminders.Add(new ReminderItemViewModel(r, SoundOptions));
         foreach (var a in ev.Attendees) Attendees.Add(new AttendeeViewModel(a));
 
-        Recurrence = RecurrenceOptions.FirstOrDefault(o => o.Value == ev.Recurrence) ?? RecurrenceOptions[0];
+        var current = RecurrenceOptions.FirstOrDefault(o => o.Value == ev.Recurrence);
+        if (current is null)
+        {
+            current = new ChoiceOption<string?>(ev.Recurrence, RecurrenceRule.Parse(ev.Recurrence)?.Describe() ?? ev.Recurrence ?? "");
+            RecurrenceOptions.Insert(RecurrenceOptions.Count - 1, current);
+        }
+
+        Recurrence = current;
         Availability = AvailabilityOptions.First(o => o.Value == ev.Availability);
         Visibility = VisibilityOptions.First(o => o.Value == ev.Visibility);
         EventColor = ColorOptions.FirstOrDefault(c => c.Hex == ev.ColorHex) ?? ColorOptions[0];
@@ -113,7 +121,14 @@ public sealed partial class EventEditViewModel : ViewModelBase
     public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
     public ObservableCollection<SoundOption> SoundOptions { get; } = [];
 
-    public IReadOnlyList<ChoiceOption<string?>> RecurrenceOptions { get; } =
+    public const string CustomRecurrence = "__custom__";
+
+    private ChoiceOption<string?> _previousRecurrence = null!;
+
+    /// <summary>Raised when the user picks "Personalizza…" so the view can open the custom recurrence dialog.</summary>
+    public event Action? CustomRecurrenceRequested;
+
+    public ObservableCollection<ChoiceOption<string?>> RecurrenceOptions { get; } =
     [
         new(null, "Non si ripete"),
         new("FREQ=DAILY", "Ogni giorno"),
@@ -121,6 +136,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
         new("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Tutti i giorni feriali (lun-ven)"),
         new("FREQ=MONTHLY", "Ogni mese"),
         new("FREQ=YEARLY", "Ogni anno"),
+        new(CustomRecurrence, "Personalizza…"),
     ];
 
     public IReadOnlyList<ChoiceOption<EventAvailability>> AvailabilityOptions { get; } =
@@ -163,6 +179,30 @@ public sealed partial class EventEditViewModel : ViewModelBase
     public bool HasMeetLink => !string.IsNullOrEmpty(MeetLink);
     public bool HasAttendees => Attendees.Count > 0;
     public bool CanAddReminder => Reminders.Count < 5;
+
+    partial void OnRecurrenceChanged(ChoiceOption<string?> value)
+    {
+        if (value.Value == CustomRecurrence) CustomRecurrenceRequested?.Invoke();
+        else _previousRecurrence = value;
+    }
+
+    public string? CurrentRecurrenceRule => _previousRecurrence.Value;
+    public DateTime StartDay => (StartDate ?? DateTime.Today).Date;
+
+    /// <summary>Applies the dialog outcome; a null rule means the dialog was cancelled.</summary>
+    public void ApplyCustomRecurrence(RecurrenceRule? rule)
+    {
+        if (rule is null) { Recurrence = _previousRecurrence; return; }
+        var rrule = rule.ToRrule(IsAllDay);
+        var option = RecurrenceOptions.FirstOrDefault(o => o.Value == rrule);
+        if (option is null)
+        {
+            option = new ChoiceOption<string?>(rrule, rule.Describe());
+            RecurrenceOptions.Insert(RecurrenceOptions.Count - 1, option);
+        }
+
+        Recurrence = option;
+    }
 
     partial void OnIsAllDayChanged(bool value) => OnPropertyChanged(nameof(IsTimed));
     partial void OnMeetLinkChanged(string? value) => OnPropertyChanged(nameof(HasMeetLink));
@@ -295,3 +335,5 @@ public sealed partial class EventEditViewModel : ViewModelBase
         };
     }
 }
+
+

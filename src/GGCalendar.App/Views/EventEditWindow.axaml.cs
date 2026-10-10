@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Recurrence;
 
 namespace GGCalendar.App.Views;
 
@@ -21,6 +22,17 @@ public partial class EventEditWindow : Window
         InitializeComponent();
         Opened += (_, _) => TitleBox.Focus();
         Closed += (_, _) => Vm?.StopSound();
+        DataContextChanged += (_, _) =>
+        {
+            if (Vm is { } vm) vm.CustomRecurrenceRequested += () => OpenCustomRecurrence(vm);
+        };
+    }
+
+    private async void OpenCustomRecurrence(EventEditViewModel vm)
+    {
+        var dialog = new RecurrenceWindow(RecurrenceRule.Parse(vm.CurrentRecurrenceRule), vm.StartDay);
+        var rule = await dialog.ShowDialog<RecurrenceRule?>(this);
+        vm.ApplyCustomRecurrence(rule);
     }
 
     private EventEditViewModel? Vm => DataContext as EventEditViewModel;

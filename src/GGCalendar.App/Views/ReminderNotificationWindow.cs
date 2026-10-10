@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -14,26 +14,29 @@ public sealed class ReminderNotificationWindow : Window
 {
     public ReminderAction Result { get; private set; } = ReminderAction.Dismiss;
 
-    public ReminderNotificationWindow(CalendarEvent ev, bool use24Hour)
+    private static readonly System.Collections.Generic.List<ReminderNotificationWindow> OpenToasts = [];
+
+    public ReminderNotificationWindow(CalendarEvent ev, bool use24Hour, bool isAlarm = false)
     {
         Width = 360;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
         Topmost = true;
-        ShowInTaskbar = true;
+        ShowInTaskbar = false;
+        ShowActivated = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
-        Title = "Promemoria";
+        Title = isAlarm ? "Sveglia" : "Promemoria";
 
         var fmt = use24Hour ? "HH:mm" : "h:mm tt";
         var when = ev.IsAllDay ? ev.Start.ToString("dddd d MMMM") : $"{ev.Start.ToString("ddd d MMM")}, {ev.Start.ToString(fmt)} – {ev.End.ToString(fmt)}";
 
         var snooze = new Button { Content = "Posticipa 5 min" };
-        var dismiss = new Button { Content = "Chiudi" };
+        var dismiss = new Button { Content = isAlarm ? "Spegni" : "Chiudi" };
         snooze.Click += (_, _) => { Result = ReminderAction.Snooze; Close(); };
         dismiss.Click += (_, _) => { Result = ReminderAction.Dismiss; Close(); };
 
         var panel = new StackPanel { Margin = new Thickness(20), Spacing = 8 };
-        panel.Children.Add(new TextBlock { Text = "🔔 Promemoria", Opacity = 0.7, FontSize = 12 });
+        panel.Children.Add(new TextBlock { Text = isAlarm ? "⏰ Sveglia" : "🔔 Promemoria", Opacity = 0.7, FontSize = 12 });
         panel.Children.Add(new TextBlock
         {
             Text = string.IsNullOrWhiteSpace(ev.Title) ? "(Senza titolo)" : ev.Title,
@@ -58,9 +61,14 @@ public sealed class ReminderNotificationWindow : Window
             var area = Screens.Primary?.WorkingArea;
             if (area is null) return;
             var scale = Screens.Primary!.Scaling;
+            var stacked = 0.0;
+            foreach (var other in OpenToasts) stacked += other.Bounds.Height + 8;
+            OpenToasts.Add(this);
             Position = new PixelPoint(
                 area.Value.Right - (int)((Width + 16) * scale),
-                area.Value.Bottom - (int)((Bounds.Height + 16) * scale));
+                area.Value.Bottom - (int)((Bounds.Height + 16 + stacked) * scale));
         };
+        Closed += (_, _) => OpenToasts.Remove(this);
     }
 }
+

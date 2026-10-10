@@ -48,18 +48,20 @@ public partial class MainWindow : Window
     private void OnReminderFired(DueReminder due)
     {
         if (Vm is not { } vm) return;
+        var isAlarm = due.Reminder.Method == ReminderMethod.Alarm;
         var sound = due.Reminder.SoundPath switch
         {
             null => vm.Settings.DefaultReminderSound,
-            EventReminder.NoSound => null,
+            EventReminder.NoSound => isAlarm ? vm.Settings.DefaultReminderSound : null,
             var p => p,
         };
-        _sound.Play(sound, vm.Settings.ReminderVolumePercent);
+        var player = new SoundService();
+        player.Play(sound, vm.Settings.ReminderVolumePercent, loop: isAlarm);
 
-        var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock);
+        var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm);
         toast.Closed += (_, _) =>
         {
-            _sound.Stop();
+            player.Dispose();
             if (toast.Result == ReminderAction.Snooze) _scheduler?.Snooze(due, TimeSpan.FromMinutes(5));
         };
         toast.Show();

@@ -1,0 +1,33 @@
+using GGCalendar.Core.Recurrence;
+using Xunit;
+
+namespace GGCalendar.Core.Tests;
+
+public class RecurrenceRuleTests
+{
+    [Fact]
+    public void ParsesAndRebuildsWeeklyWithCount()
+    {
+        var rule = RecurrenceRule.Parse("FREQ=WEEKLY;INTERVAL=2;BYDAY=TH,MO;COUNT=13")!;
+        Assert.Equal(2, rule.Interval);
+        Assert.Equal(13, rule.Count);
+        Assert.Equal("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;COUNT=13", rule.ToRrule(false));
+        Assert.Equal("Ogni 2 settimane il lunedì, giovedì, 13 volte", rule.Describe());
+    }
+
+    [Fact]
+    public void UntilIsDateOnlyForAllDayAndUtcForTimed()
+    {
+        var rule = new RecurrenceRule { Frequency = RecurrenceFrequency.Daily, Until = new DateTime(2027, 1, 7) };
+        Assert.Equal("FREQ=DAILY;UNTIL=20270107", rule.ToRrule(true));
+        Assert.Equal("FREQ=DAILY;UNTIL=20270107T235959Z", rule.ToRrule(false));
+        Assert.Equal(new DateTime(2027, 1, 7), RecurrenceRule.Parse("FREQ=DAILY;UNTIL=20270107T235959Z")!.Until);
+    }
+
+    [Theory]
+    [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
+    [InlineData("FREQ=HOURLY")]
+    [InlineData("FREQ=DAILY;COUNT=3;UNTIL=20270107")]
+    [InlineData("")]
+    public void UnsupportedRulesReturnNull(string rrule) => Assert.Null(RecurrenceRule.Parse(rrule));
+}

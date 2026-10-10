@@ -44,7 +44,7 @@ public static class IcsWriter
             foreach (var r in e.Reminders)
             {
                 Line(sb, "BEGIN:VALARM");
-                Line(sb, "ACTION:" + (r.Method == ReminderMethod.Email ? "EMAIL" : "DISPLAY"));
+                Line(sb, "ACTION:" + (r.Method == ReminderMethod.Email ? "EMAIL" : r.Method == ReminderMethod.Alarm ? "AUDIO" : "DISPLAY"));
                 Line(sb, $"TRIGGER:-PT{r.Minutes}M");
                 Line(sb, "DESCRIPTION:" + Escape(e.Title));
                 Line(sb, "END:VALARM");

@@ -125,7 +125,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button Content="Aggiungi notifica" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
-                            <TextBlock Classes="hint" Text="Le notifiche email sono inviate da Google Calendar; quelle con suono vengono mostrate da GGCalendar mentre è in esecuzione." />
+                            <TextBlock Classes="hint" Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta." />
                         </StackPanel>
                     </StackPanel>
 
@@ -207,3 +207,4 @@
         </Grid>
     </DockPanel>
 </Window>
+

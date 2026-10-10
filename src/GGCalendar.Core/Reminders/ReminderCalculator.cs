@@ -17,7 +17,7 @@ public static class ReminderCalculator
             if (ev.End <= after) continue;
             foreach (var r in ev.Reminders)
             {
-                if (r.Method != ReminderMethod.Popup) continue;
+                if (r.Method == ReminderMethod.Email) continue;
                 var fire = ev.Start.AddMinutes(-r.Minutes);
                 if (fire > after && fire <= until) yield return new DueReminder(ev, r, fire);
             }
