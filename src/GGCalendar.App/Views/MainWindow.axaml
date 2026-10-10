@@ -91,6 +91,11 @@
                 <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
                     <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
+                    <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="＋  Nuovo calendario locale" Click="OnNewLocalCalendar" />
+                    <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="⭳  Importa file .ics…" Click="OnImportAsNewCalendar" />
+                    <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta, elimina" TextWrapping="Wrap" />
+                </StackPanel>
                 <ScrollViewer Margin="0,16,0,0">
                     <ItemsControl ItemsSource="{Binding Accounts}">
                         <ItemsControl.ItemTemplate>
@@ -101,6 +106,14 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:CalendarItemViewModel">
                                                 <Border Classes.drop="{Binding IsDropTarget}" CornerRadius="6" Padding="0,2">
+                                                    <Border.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="Importa file .ics qui…" Click="OnImportIntoCalendar" />
+                                                            <MenuItem Header="Esporta calendario in .ics…" Click="OnExportCalendar" />
+                                                            <Separator />
+                                                            <MenuItem Header="Elimina calendario…" Click="OnDeleteCalendar" />
+                                                        </ContextMenu>
+                                                    </Border.ContextMenu>
                                                     <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
                                                 </Border>
                                             </DataTemplate>

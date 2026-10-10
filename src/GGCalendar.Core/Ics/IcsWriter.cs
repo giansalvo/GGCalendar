@@ -14,11 +14,15 @@ public static class IcsWriter
         Line(sb, $"PRODID:{productId}");
         Line(sb, "CALSCALE:GREGORIAN");
 
-        foreach (var e in events)
+        var all = events.ToList();
+        foreach (var e in all.Where(x => !x.IsCancelled))
         {
+            var isException = e.SeriesMasterId is not null;
             Line(sb, "BEGIN:VEVENT");
-            Line(sb, $"UID:{e.Id}@ggcalendar");
+            Line(sb, $"UID:{e.SeriesMasterId ?? e.Id}@ggcalendar");
             Line(sb, $"DTSTAMP:{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}");
+            if (isException && e.OriginalStart is { } original)
+                Line(sb, e.IsAllDay ? $"RECURRENCE-ID;VALUE=DATE:{original:yyyyMMdd}" : $"RECURRENCE-ID:{original:yyyyMMdd'T'HHmmss}");
             if (e.IsAllDay)
             {
                 Line(sb, $"DTSTART;VALUE=DATE:{e.Start:yyyyMMdd}");
@@ -35,7 +39,15 @@ public static class IcsWriter
             var description = e.MeetLink is null ? e.Description : $"{e.Description}\nGoogle Meet: {e.MeetLink}".Trim();
             if (description.Length > 0) Line(sb, "DESCRIPTION:" + Escape(description));
             if (e.MeetLink is not null) Line(sb, "URL:" + e.MeetLink);
-            if (e.Recurrence is { Length: > 0 }) Line(sb, "RRULE:" + e.Recurrence);
+            if (e.Recurrence is { Length: > 0 })
+            {
+                Line(sb, "RRULE:" + e.Recurrence);
+                var excluded = e.ExcludedStarts
+                    .Concat(all.Where(x => x.IsCancelled && x.SeriesMasterId == e.Id && x.OriginalStart is not null).Select(x => x.OriginalStart!.Value))
+                    .Distinct().OrderBy(d => d).ToList();
+                foreach (var d in excluded)
+                    Line(sb, e.IsAllDay ? $"EXDATE;VALUE=DATE:{d:yyyyMMdd}" : $"EXDATE:{d:yyyyMMdd'T'HHmmss}");
+            }
             Line(sb, "TRANSP:" + (e.Availability == EventAvailability.Free ? "TRANSPARENT" : "OPAQUE"));
             if (e.Visibility != EventVisibility.Default)
                 Line(sb, "CLASS:" + (e.Visibility == EventVisibility.Private ? "PRIVATE" : "PUBLIC"));

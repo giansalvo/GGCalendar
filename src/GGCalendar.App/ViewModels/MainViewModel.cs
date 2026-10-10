@@ -198,6 +198,40 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsSyncing { get; set; }
 
+    public int ImportEvents(IReadOnlyList<CalendarEvent> events)
+    {
+        foreach (var ev in events)
+        {
+            _allEvents.Add(ev);
+            _store.UpsertEvent(ev);
+            if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
+        }
+
+        Refresh();
+        return events.Count(e => e.SeriesMasterId is null);
+    }
+
+    public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();
+
+    private static readonly string[] CalendarPalette = ["#1A73E8", "#0B8043", "#E67C73", "#8E24AA", "#F6BF26", "#039BE5", "#D50000", "#616161"];
+
+    /// <summary>Creates a calendar that lives only on this PC (not synced).</summary>
+    public string CreateLocalCalendar(string name)
+    {
+        var id = "local-" + Guid.NewGuid().ToString("N")[..8];
+        var color = CalendarPalette[_calendars.Count % CalendarPalette.Length];
+        _store.UpsertCalendar(new CalendarInfo(id, "Locale", name, color));
+        Reload();
+        return id;
+    }
+
+    public void DeleteLocalCalendar(string calendarId)
+    {
+        if (IsRemote(calendarId)) return;
+        _store.DeleteCalendar(calendarId);
+        Reload();
+    }
+
     public void AddEvent(CalendarEvent ev)
     {
         _allEvents.Add(ev);

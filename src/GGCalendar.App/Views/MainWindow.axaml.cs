@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using GGCalendar.Providers.Google;
 using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
+using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Reminders;
 using GGCalendar.Data;
@@ -152,7 +153,7 @@ public partial class MainWindow : Window
             var result = await Task.Run(() => _google.SyncAllAsync(CancellationToken.None));
             if (result.Changed) vm.Reload();
             vm.SyncStatus = result.Errors.Count > 0
-                ? "Errore di sincronizzazione: " + result.Errors[0]
+                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors)
                 : $"Sincronizzato alle {DateTime.Now:HH:mm}";
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
@@ -275,6 +276,110 @@ public partial class MainWindow : Window
         else if (isNew) vm.AddEvent(result.Event!);
         else if (scope is { } s) vm.SaveOccurrence(occurrence, result.Event!, s);
         else vm.UpdateEvent(result.Event!);
+    }
+
+    private static CalendarItemViewModel? CalendarOf(object? sender) =>
+        sender is Control { DataContext: CalendarItemViewModel c }
+            ? c
+            : (sender as Avalonia.StyledElement)?.Parent is ContextMenu { PlacementTarget.DataContext: CalendarItemViewModel p } ? p : null;
+
+    private async Task<string?> PickIcsAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Importa file .ics",
+            AllowMultiple = false,
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics", "*.ical"] }],
+        });
+        if (files.Count == 0) return null;
+        await using var stream = await files[0].OpenReadAsync();
+        using var reader = new System.IO.StreamReader(stream, System.Text.Encoding.UTF8, true);
+        return await reader.ReadToEndAsync();
+    }
+
+    private void ImportInto(string calendarId, string calendarName, string text)
+    {
+        if (Vm is not { } vm) return;
+        var events = IcsParser.Parse(text, calendarId);
+        var count = vm.ImportEvents(events);
+        vm.SyncStatus = count == 0
+            ? "Nessun evento trovato nel file .ics."
+            : $"Importati {count} eventi nel calendario \"{calendarName}\".";
+    }
+
+    private async void OnImportIntoCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (CalendarOf(sender) is not { } cal) return;
+        try
+        {
+            if (await PickIcsAsync() is { } text) ImportInto(cal.Id, cal.Name, text);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            if (Vm is { } vm) vm.SyncStatus = "Errore di importazione: " + ex.Message;
+        }
+    }
+
+    private async void OnImportAsNewCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm) return;
+        try
+        {
+            if (await PickIcsAsync() is not { } text) return;
+            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", "Importato").ShowDialog<string?>(this);
+            if (name is null) return;
+            ImportInto(vm.CreateLocalCalendar(name), name, text);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            vm.SyncStatus = "Errore di importazione: " + ex.Message;
+        }
+    }
+
+    private async void OnNewLocalCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm) return;
+        var name = await new PromptWindow("Nuovo calendario", "Nome del nuovo calendario locale:").ShowDialog<string?>(this);
+        if (name is not null) vm.CreateLocalCalendar(name);
+    }
+
+    private async void OnExportCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
+        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Esporta calendario",
+            SuggestedFileName = cal.Name,
+            DefaultExtension = "ics",
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
+        });
+        if (file is null) return;
+        try
+        {
+            var events = vm.EventsOf(cal.Id);
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await using var writer = new System.IO.StreamWriter(stream, new System.Text.UTF8Encoding(false));
+            await writer.WriteAsync(IcsWriter.Write(events));
+            vm.SyncStatus = $"Esportati {events.Count(x => x.SeriesMasterId is null)} eventi del calendario \"{cal.Name}\".";
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            vm.SyncStatus = "Errore di esportazione: " + ex.Message;
+        }
+    }
+
+    private async void OnDeleteCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
+        if (Services.GoogleSyncService.IsGoogleCalendar(cal.Id))
+        {
+            vm.SyncStatus = "I calendari Google si rimuovono scollegando l'account dalle impostazioni.";
+            return;
+        }
+
+        if (await new ConfirmWindow("Eliminare il calendario?", $"Il calendario \"{cal.Name}\" e tutti i suoi eventi verranno eliminati da questo PC. L'operazione non è annullabile.", "Elimina").ShowDialog<bool>(this))
+            vm.DeleteLocalCalendar(cal.Id);
     }
 
     private async void OnNewEvent(object? sender, RoutedEventArgs e)
