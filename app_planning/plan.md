@@ -168,3 +168,13 @@ temporaneo (l'elenco degli account è solo letto) e con il Samsung. Stato inizia
 4. **Ripristino**: dal desktop si rimettono le quattro sveglie originali; Android le mostra tutte come sveglie: OK.
 Non provati: serie con occorrenza modificata, evento di tutto il giorno e la ricarica una tantum con un database esistente (coperti solo dai test automatici).
 L'evento "doze" è tornato com'era.
+
+## 11. Versione 1.0.1 (13/10/2026)
+- Versione portata a **1.0.1** (`Version`, `AssemblyVersion`, `FileVersion`, `InformationalVersion` in `GGCalendar.App.csproj`;
+  l'installer la legge da lì). La data di build mostrata in "Informazioni" si scrive da sola a ogni compilazione (13/10/2026).
+- `installer/Novita.txt`: le novità, incluse nell'installer (cartella del programma, voce "GGCalendar - Novita" nel menu
+  Start) e mostrate a fine installazione (`InfoAfterFile`). L'`AppId` non cambia: l'installer aggiorna l'installazione esistente
+  senza toccare `%AppData%\GGCalendar`.
+- Release GitHub **v1.0.1**: https://github.com/giansalvo/GGCalendar/releases/tag/v1.0.1 con `GGCalendar-v1.0.1-Setup.exe`,
+  `Novita.txt` e il file `.sha256`. Il sito non è stato toccato (lo aggiorna l'utente).
+- Non aggiornata l'app installata sul PC dell'utente perché in esecuzione: la aggiorna lui con l'installer.
