@@ -74,6 +74,15 @@ public static class GoogleEventMapper
             }
         }
 
+        // Alarms are popups listed in a private property (the same convention as GGCalendar Mobile).
+        var alarmsKnown = false;
+        if (e.TryGetProperty("extendedProperties", out var ext) && ext.TryGetProperty("private", out var priv)
+            && priv.TryGetProperty(EventReminder.AlarmProperty, out var alarmValue) && alarmValue.ValueKind == JsonValueKind.String)
+        {
+            alarmsKnown = true;
+            reminders = EventReminder.ApplyAlarmMinutes(reminders, EventReminder.ParseAlarmMinutes(alarmValue.GetString()));
+        }
+
         // Google creates the conference asynchronously: right after the request there is conferenceData but no link yet.
         var meet = Str(e, "hangoutLink") ?? MeetUri(e);
         var hasConference = meet is not null || e.TryGetProperty("conferenceData", out _);
@@ -96,6 +105,7 @@ public static class GoogleEventMapper
             ExcludedStarts = excluded,
             Attendees = attendees,
             Reminders = reminders,
+            AlarmsFromProvider = alarmsKnown,
             Availability = Str(e, "transparency") == "transparent" ? EventAvailability.Free : EventAvailability.Busy,
             Visibility = Str(e, "visibility") switch { "public" => EventVisibility.Public, "private" => EventVisibility.Private, _ => EventVisibility.Default },
             MeetLink = meet,
@@ -197,6 +207,11 @@ public static class GoogleEventMapper
             ["guestsCanInviteOthers"] = ev.GuestsCanInvite,
             ["guestsCanSeeOtherGuests"] = ev.GuestsCanSeeList,
             ["attendees"] = new JsonArray(ev.Attendees.Select(a => (JsonNode)new JsonObject { ["email"] = a.Email, ["optional"] = a.IsOptional }).ToArray()),
+            // Always sent, empty when there are no alarms: a PATCH then removes an alarm that was taken away.
+            ["extendedProperties"] = new JsonObject
+            {
+                ["private"] = new JsonObject { [EventReminder.AlarmProperty] = EventReminder.FormatAlarmMinutes(ev.Reminders) },
+            },
             ["reminders"] = new JsonObject
             {
                 ["useDefault"] = false,

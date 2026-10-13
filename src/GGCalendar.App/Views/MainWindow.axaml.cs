@@ -137,6 +137,13 @@ public partial class MainWindow : Window
         _syncTimer = new DispatcherTimer();
         _syncTimer.Tick += async (_, _) => await SyncAsync();
         ApplySyncInterval();
+        // Alarms now travel on Google: events synced before only come back with them after a full download, once.
+        if (vm.Settings.SyncSchema < 1)
+        {
+            _google.ResetSync();
+            vm.Settings.SyncSchema = 1;
+            _store.Save(vm.Settings);
+        }
         if (vm.Settings.SyncIntervalMinutes > 0) _ = SyncAsync();
     }
 

@@ -59,6 +59,13 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         return revoked;
     }
 
+    /// <summary>
+    /// What the local copy still decides about the reminders of an event that comes from Google: only the custom sounds
+    /// when Google told which reminders are alarms, otherwise alarms and sounds both (the older events).
+    /// </summary>
+    private static IReadOnlyList<EventReminder> KeepLocalReminderOptions(CalendarEvent remote, IReadOnlyList<EventReminder> local) =>
+        remote.AlarmsFromProvider ? EventReminder.KeepLocalSounds(remote.Reminders, local) : EventReminder.KeepLocalOptions(remote.Reminders, local);
+
     /// <summary>Forgets the incremental sync position: the next sync downloads everything again.</summary>
     public void ResetSync() => store.ClearSyncTokens();
 
@@ -182,7 +189,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             }
 
             if (localId is not null && store.GetEvent(localId) is { } local)
-                mapped = mapped with { Reminders = EventReminder.KeepLocalOptions(mapped.Reminders, local.Reminders) };
+                mapped = mapped with { Reminders = KeepLocalReminderOptions(mapped, local.Reminders) };
 
             var etag = item.TryGetProperty("etag", out var et) ? et.GetString() : null;
             upserts.Add(new RemoteEvent(mapped, remoteId, etag));
@@ -333,7 +340,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         store.DiscardPending(item.EventId);
 
         if (remote is null) store.DeleteSeries(item.EventId);
-        else store.UpsertEvent(remote with { Reminders = EventReminder.KeepLocalOptions(remote.Reminders, local.Reminders) }, remoteId, etag);
+        else store.UpsertEvent(remote with { Reminders = KeepLocalReminderOptions(remote, local.Reminders) }, remoteId, etag);
 
         var title = string.IsNullOrWhiteSpace(local.Title) ? "(Senza titolo)" : local.Title;
         if (local.IsCancelled) return $"\"{title}\" è stato modificato anche su Google: tenuta la versione di Google.";

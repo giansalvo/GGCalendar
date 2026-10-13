@@ -21,7 +21,7 @@
 - Scheda riassuntiva al clic su un evento (modifica, elimina, email agli invitati, esporta, partecipa a Meet); doppio clic per modificarlo
 - Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
 - Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo 2 minuti) e posticipo, conservati anche dopo un riavvio
-- Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti
+- Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti; le sveglie viaggiano con l'evento su Google e si condividono con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) per Android
 - Invitati, link Google Meet, promemoria via email (inviati da Google)
 - Calendari locali, importazione ed esportazione di file `.ics`
 - Tema chiaro e scuro

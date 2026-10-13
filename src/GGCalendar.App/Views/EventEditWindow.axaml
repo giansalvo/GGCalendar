@@ -143,7 +143,7 @@
                             </ItemsControl>
                             <Button Content="Aggiungi notifica" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
                             <TextBlock Classes="hint" MaxWidth="640" HorizontalAlignment="Left"
-                                       Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta, al massimo per 2 minuti." />
+                                       Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta, al massimo per 2 minuti, e si sincronizza con Google: la ritrovi anche su GGCalendar Mobile." />
                         </StackPanel>
                     </Grid>
 

@@ -19,8 +19,57 @@ public sealed record EventReminder(ReminderMethod Method, int Minutes, string? S
 {
     public const string NoSound = "none";
 
+    /// <summary>Private extended property of the Google event that lists, in minutes, the popup reminders that are alarms.</summary>
+    public const string AlarmProperty = "ggAlarm";
+
     /// <summary>
-    /// Google only knows popup and email reminders: alarms and custom sounds exist only in this app and come back from a
+    /// The value of <see cref="AlarmProperty"/>: the minutes of the alarms, ascending and without repeats ("10,30"), or
+    /// an empty string when there are none. Never null: Google refuses a null value with a 400.
+    /// </summary>
+    public static string FormatAlarmMinutes(IEnumerable<EventReminder> reminders) =>
+        string.Join(',', reminders.Where(r => r.Method == ReminderMethod.Alarm).Select(r => r.Minutes).Distinct().Order());
+
+    /// <summary>Reads <see cref="AlarmProperty"/>: spaces are allowed and anything that is not a number is ignored.</summary>
+    public static HashSet<int> ParseAlarmMinutes(string? value)
+    {
+        var minutes = new HashSet<int>();
+        if (value is null) return minutes;
+        foreach (var part in value.Split(','))
+            if (int.TryParse(part.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var m))
+                minutes.Add(m);
+        return minutes;
+    }
+
+    /// <summary>
+    /// Turns the popups of Google whose minutes are in <paramref name="alarmMinutes"/> into alarms. One popup per number
+    /// of minutes: a second popup with the same minutes stays a notification. Email reminders are not touched.
+    /// </summary>
+    public static IReadOnlyList<EventReminder> ApplyAlarmMinutes(IReadOnlyList<EventReminder> remote, IReadOnlySet<int> alarmMinutes)
+    {
+        var left = new HashSet<int>(alarmMinutes);
+        return remote.Select(r => r.Method == ReminderMethod.Popup && left.Remove(r.Minutes) ? r with { Method = ReminderMethod.Alarm } : r).ToList();
+    }
+
+    /// <summary>
+    /// For an event whose alarms Google has told (<see cref="AlarmProperty"/>): only the custom sounds are local, so each
+    /// reminder takes the sound of the local one with the same method and minutes.
+    /// </summary>
+    public static IReadOnlyList<EventReminder> KeepLocalSounds(IReadOnlyList<EventReminder> remote, IReadOnlyList<EventReminder> local)
+    {
+        var unused = local.Where(l => l.Method != ReminderMethod.Email).ToList();
+        return remote.Select(r =>
+        {
+            if (r.Method == ReminderMethod.Email) return r;
+            var match = unused.FirstOrDefault(l => l.Method == r.Method && l.Minutes == r.Minutes);
+            if (match is null) return r;
+            unused.Remove(match);
+            return r with { SoundPath = match.SoundPath };
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Fallback for events that carry no <see cref="AlarmProperty"/> (created before it, or by a program that does not
+    /// write it): Google only knows popup and email reminders, so alarms and custom sounds come back from a
     /// sync as plain popups. Each remote popup takes the method and sound of the local non-email reminder with the same
     /// minutes, so a sync does not turn an alarm back into a notification.
     /// </summary>
@@ -69,6 +118,13 @@ public sealed record CalendarEvent(
 
     /// <summary>A removed occurrence kept as a tombstone so the series does not show it again after a sync.</summary>
     public bool IsCancelled { get; init; }
+
+    /// <summary>
+    /// True when Google sent <see cref="EventReminder.AlarmProperty"/> for this event, even empty: the alarms in
+    /// <see cref="Reminders"/> then come from Google and are not guessed from the local copy. Never persisted.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool AlarmsFromProvider { get; init; }
 
     /// <summary>Set only on expanded occurrences of a repeating event (0 = the first one); never persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
