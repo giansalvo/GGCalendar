@@ -1,0 +1,36 @@
+﻿GGCalendar 1.0.1 - Novità
+=========================
+
+Le sveglie si sincronizzano con Google e con GGCalendar Mobile (Android)
+-------------------------------------------------------------------------
+Fino alla versione 1.0 la sveglia (il promemoria che suona finché non lo spegni) esisteva
+solo su questo computer: dopo una sincronizzazione tornava a essere una semplice notifica,
+e una sveglia impostata sul telefono arrivava qui come notifica.
+
+Da questa versione le sveglie viaggiano con l'evento su Google Calendar, come in
+GGCalendar Mobile per Android:
+
+  - una sveglia impostata qui suona anche sul telefono;
+  - una sveglia impostata sul telefono suona anche qui;
+  - se togli una sveglia da un lato, sparisce anche dall'altro.
+
+Cosa aspettarsi
+---------------
+  - Al primo avvio dopo l'aggiornamento GGCalendar scarica di nuovo tutti gli eventi da
+    Google, una sola volta: servirà qualche istante in più. Le modifiche non ancora
+    inviate non vanno perse.
+  - Sul computer, un evento non può avere una notifica e una sveglia con gli stessi minuti
+    di anticipo: in quel caso resta la sveglia.
+  - I suoni personalizzati dei promemoria restano su questo computer e non passano da Google.
+  - La sveglia è una proprietà privata della tua copia dell'evento: gli invitati non la
+    ricevono.
+
+Altre modifiche
+---------------
+  - Il testo di aiuto nell'editor dei promemoria ricorda che le sveglie si sincronizzano.
+  - README aggiornato.
+
+Aggiornamento
+-------------
+L'installer aggiorna la versione già presente, senza cancellare i tuoi dati
+(%AppData%\GGCalendar): calendari, impostazioni e account Google restano al loro posto.

@@ -1,7 +1,7 @@
 ; Inno Setup script for GGCalendar. Build with installer\build-installer.ps1, which publishes the app first.
 
 #ifndef AppVersion
-  #define AppVersion "1.0"
+  #define AppVersion "1.0.1"
 #endif
 #define AppExe "GGCalendar.App.exe"
 
@@ -28,6 +28,8 @@ OutputDir=..\website\downloads
 OutputBaseFilename=GGCalendar-v{#AppVersion}-Setup
 ; GPL v3 shown for information: the license does not require accepting it to install or run the program.
 InfoBeforeFile=..\LICENSE
+; What is new in this version, shown at the end of the setup and kept in the program folder.
+InfoAfterFile=Novita.txt
 SetupIconFile=..\src\GGCalendar.App\Assets\GGCalendar.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName=GGCalendar
@@ -44,9 +46,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "Novita.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\GGCalendar"; Filename: "{app}\{#AppExe}"
+Name: "{autoprograms}\GGCalendar - Novita"; Filename: "{app}\Novita.txt"
 Name: "{autodesktop}\GGCalendar"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
