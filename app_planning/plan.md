@@ -157,3 +157,14 @@ Fatto sul ramo `ggalarm-android` (locale, **nessun push**):
   `website/downloads/GGCalendar-v1.0-Setup.exe` (non tracciato da git).
 Domande aperte del punto 7: risposte implicite (limite accettato in silenzio, sito e README ora, versione 1.0 invariata).
 **Da fare con il telefono**: le prove a mano della sezione 5, e pubblicare il sito/installer se vuoi (non l'ho fatto).
+
+## 10. Prove desktop + Android insieme (13/10/2026, evento "doze" del calendario principale di profgusinu@gmail.com, indicato dall'utente)
+Eseguite con un programma di prova a parte (fuori dal repository) che usa il vero codice di sincronizzazione del desktop su un database
+temporaneo (l'elenco degli account è solo letto) e con il Samsung. Stato iniziale su Google (scritto da Android): quattro sveglie, 0, 60, 90 e 120 minuti.
+1. **Android → desktop**: il desktop legge le quattro sveglie dalla proprietà `ggAlarm` (prima questo arrivava come notifiche): OK.
+2. **Desktop → Android**: dal desktop si impostano sveglia 90, notifica 120, sveglia 30, email 60; dopo la sincronizzazione Android mostra
+   "Sveglia · 30 minuti prima", "Email · 1 ora prima", "Sveglia · 90 minuti prima", "Notifica · 2 ore prima": OK. Nessun conflitto.
+3. **Sveglia tolta su Android** (30 minuti, dall'editor): il desktop dopo la sincronizzazione vede sveglia 90, notifica 120, email 60: OK.
+4. **Ripristino**: dal desktop si rimettono le quattro sveglie originali; Android le mostra tutte come sveglie: OK.
+Non provati: serie con occorrenza modificata, evento di tutto il giorno e la ricarica una tantum con un database esistente (coperti solo dai test automatici).
+L'evento "doze" è tornato com'era.
