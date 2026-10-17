@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+
+  <Identity
+    Name="GGCalendar.App"
+    Publisher="CN=GiansalvoGusinu"
+    Version="1.0.1.0" />
+
+  <Properties>
+    <DisplayName>GGCalendar</DisplayName>
+    <PublisherDisplayName>Giansalvo Gusinu</PublisherDisplayName>
+    <Logo>Assets\GGCalendar_logo.jpg</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="it-IT" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="GGCalendar.App.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="GGCalendar"
+        Description="Calendario per Windows con sincronizzazione Google Calendar"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\GGCalendar_logo.jpg"
+        Square44x44Logo="Assets\GGCalendar_logo.jpg">
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
