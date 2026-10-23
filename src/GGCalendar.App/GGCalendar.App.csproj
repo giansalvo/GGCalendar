@@ -4,16 +4,18 @@
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<!-- Single source of the version: AssemblyVersion/FileVersion derive from it, build-installer.ps1 (Setup.exe) and build_msix.ps1 (MSIX) read it. -->
 		<Version>1.0.1</Version>
-		<AssemblyVersion>1.0.1.0</AssemblyVersion>
-		<FileVersion>1.0.1.0</FileVersion>
-		<InformationalVersion>1.0.1</InformationalVersion>
+		<InformationalVersion>$(Version)</InformationalVersion>
 		<ApplicationIcon>Assets\GGCalendar.ico</ApplicationIcon>
 		<Product>GGCalendar</Product>
 		<Authors>Giansalvo Gusinu</Authors>
 		<Company>Giansalvo Gusinu</Company>
 		<Copyright>© 2026 Giansalvo Gusinu</Copyright>
 		<Description>Calendario per Windows con sincronizzazione Google Calendar</Description>
+		<!-- The NAudio package depends on NAudio.WinForms, whose framework reference would add the whole WinForms runtime to the
+		     self-contained package. SoundService does not use WinForms, so framework references coming from packages are ignored. -->
+		<DisableTransitiveFrameworkReferences>true</DisableTransitiveFrameworkReferences>
 	</PropertyGroup>
 
 	<ItemGroup>

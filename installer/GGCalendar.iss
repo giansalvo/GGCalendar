@@ -1,7 +1,8 @@
 ; Inno Setup script for GGCalendar. Build with installer\build-installer.ps1, which publishes the app first.
 
+; AppVersion comes from <Version> in GGCalendar.App.csproj (passed by build-installer.ps1 with /DAppVersion=).
 #ifndef AppVersion
-  #define AppVersion "1.0.1"
+  #error AppVersion non definita: compila con installer\build-installer.ps1.
 #endif
 #define AppExe "GGCalendar.App.exe"
 

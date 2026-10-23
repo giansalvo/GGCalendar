@@ -488,3 +488,6 @@ website/downloads/*.exe
 
 # Google OAuth verification material (videos, screenshots): local only
 Google_verifica_app/
+
+# Store submission notes (texts for Partner Center): local only
+Microsoft_deploy/appunti.txt

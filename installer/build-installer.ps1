@@ -9,8 +9,8 @@ if (-not (Get-ChildItem (Join-Path $root 'OAuth') -Filter 'client_secret*.json' 
     throw 'Manca OAuth\client_secret*.json: senza, l''app installata non potrebbe collegarsi a Google.'
 }
 
-$version = ([xml](Get-Content $project)).Project.PropertyGroup.InformationalVersion | Where-Object { $_ } | Select-Object -First 1
-if (-not $version) { throw 'InformationalVersion non trovata nel csproj.' }
+$version = ([xml](Get-Content $project)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+if (-not $version) { throw 'Version non trovata nel csproj.' }
 
 $iscc = @(
     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
