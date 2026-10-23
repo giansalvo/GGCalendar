@@ -491,3 +491,6 @@ Google_verifica_app/
 
 # Store submission notes (texts for Partner Center): local only
 Microsoft_deploy/appunti.txt
+
+# Planning notes: kept in a local nested git repository (app_planning/.git), not on GitHub
+app_planning/
