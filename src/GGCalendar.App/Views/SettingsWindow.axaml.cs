@@ -11,7 +11,6 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        AboutText.Text = AppInfo.Summary;
     }
 
     private void OnSave(object? sender, RoutedEventArgs e)

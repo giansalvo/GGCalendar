@@ -29,6 +29,4 @@ public static class AppInfo
         "Puoi ridistribuirlo e modificarlo secondo i termini della licenza: https://www.gnu.org/licenses/gpl-3.0.html\n" +
         "Codice sorgente: " + SourceUrl + "\n" +
         "Il nome e il logo GGCalendar non sono concessi in licenza.";
-
-    public static string Summary => $"GGCalendar versione {Version}\nAutore: {Author}\nData di build: {BuildDate}\n\n{LegalNotice}";
 }

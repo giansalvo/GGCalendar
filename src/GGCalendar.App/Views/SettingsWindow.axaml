@@ -126,6 +126,7 @@
                     <Slider Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
                 </Grid>
 
+                <!-- Ollama (local model) section hidden: not used by any feature yet and not needed for the Microsoft Store version.
                 <TextBlock Classes="section" Text="Ollama (modello locale)" />
                 <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
                     <TextBlock Text="Indirizzo" VerticalAlignment="Center" />
@@ -137,9 +138,7 @@
                     <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaFallbackModel}" HorizontalAlignment="Stretch" />
                 </Grid>
                 <TextBlock Text="{Binding OllamaStatus}" Opacity="0.7" TextWrapping="Wrap" />
-
-                <TextBlock Classes="section" Text="Informazioni" />
-                <SelectableTextBlock Name="AboutText" Opacity="0.85" TextWrapping="Wrap" />
+                -->
             </StackPanel>
         </ScrollViewer>
     </DockPanel>
