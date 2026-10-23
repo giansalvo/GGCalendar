@@ -1,5 +1,7 @@
 <p align="center"><img src="img/GGCalendar_logo.jpg" alt="Logo di GGCalendar" width="128"></p>
 
+<p align="center"><a href="https://github.com/giansalvo/GGCalendar/actions/workflows/ci.yml"><img src="https://github.com/giansalvo/GGCalendar/actions/workflows/ci.yml/badge.svg" alt="Stato della CI"></a></p>
+
 <h1 align="center">GGCalendar</h1>
 
 <p align="center">Calendario per Windows 11 con sincronizzazione Google Calendar.</p>
