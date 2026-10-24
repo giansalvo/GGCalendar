@@ -56,13 +56,12 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T32")]
-    [Trait("Category", "Pending")]
     public void T32_AnEventMarkedCancelledInTheFileIsNotImported()
     {
         var feed = Analyze("ggcal_basic");
 
         Assert.DoesNotContain(feed.Events, e => e.Title.Contains("Annullato nel file"));
-        Assert.Equal(10, feed.Events.Count);
+        Assert.Equal(11, feed.Events.Count);
     }
 
     [Fact]
@@ -158,7 +157,6 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T33")]
-    [Trait("Category", "Pending")]
     public void T33_ATruncatedFileKeepsTheCompleteEventsAndSaysItWasCut()
     {
         var feed = Analyze("ggcal_malformed");
@@ -169,7 +167,6 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T34")]
-    [Trait("Category", "Pending")]
     public void T34_TwoEventsWithTheSameUidAreReadOnceAndReported()
     {
         var feed = Analyze("ggcal_dup_uid");

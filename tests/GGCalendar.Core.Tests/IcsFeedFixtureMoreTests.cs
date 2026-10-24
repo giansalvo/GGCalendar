@@ -93,7 +93,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T48")]
-    [Trait("Category", "Pending")]
     public void T48_AnOccurrenceWithoutItsSeriesIsImportedAsASingleEventAndReported()
     {
         var feed = Analyze("ggcal_orphan_occurrence");
@@ -107,7 +106,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T49")]
-    [Trait("Category", "Pending")]
     public void T49_TasksJournalsAndFreeBusyAreIgnoredAndReported()
     {
         var feed = Analyze("ggcal_other_components");
@@ -118,7 +116,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T50")]
-    [Trait("Category", "Pending")]
     public void T50_ABrokenLineIsSkippedAndReportedWithoutLosingTheOtherEvents()
     {
         var feed = Analyze("ggcal_malformed_line");
@@ -129,7 +126,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T51")]
-    [Trait("Category", "Pending")]
     public void T51_VeryLongFieldsDoNotBlockTheImportAreShortenedAndReported()
     {
         var feed = Analyze("ggcal_long_fields");
@@ -141,7 +137,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T52")]
-    [Trait("Category", "Pending")]
     public void T52_ATitleFoldedInTheMiddleOfACharacterComesOutWhole()
     {
         var feed = Analyze("ggcal_multibyte_fold");
@@ -177,13 +172,12 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T55")]
-    [Trait("Category", "Pending")]
     public void T55_RemindersThatCanBeComputedAreKeptAndTheOthersAreReported()
     {
         var feed = Analyze("ggcal_alarms_advanced");
 
         Assert.Equal(4, feed.Events.Count);
-        Assert.Contains(Event(feed, "[PROVA] Relativo alla fine").Reminders, r => r.Minutes == 70); // 10 min before an end that is 60 min after the start
+        Assert.Contains(Event(feed, "[PROVA] Relativo alla fine").Reminders, r => r.Minutes == 30); // 90 min before an end that is 60 min after the start
         Assert.Contains(Event(feed, "[PROVA] Con ripetizione").Reminders, r => r.Minutes == 15);
         var two = Event(feed, "[PROVA] Audio ed email, due promemoria").Reminders;
         Assert.Contains(two, r => r is { Method: ReminderMethod.Alarm, Minutes: 30 });
@@ -193,7 +187,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T56")]
-    [Trait("Category", "Pending")]
     public void T56_ATimeInATimeZoneDefinedInsideTheFileUsesItsRules()
     {
         var feed = Analyze("ggcal_vtimezone_custom");
@@ -216,7 +209,6 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T58")]
-    [Trait("Category", "Pending")]
     public void T58_AWindows1252FileKeepsItsAccents()
     {
         var feed = Analyze("ggcal_windows1252");

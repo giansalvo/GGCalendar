@@ -76,7 +76,6 @@ public class IcsEngineTests
 
     [Theory]
     [Trait("TestCase", "T63")]
-    [Trait("Category", "Pending")]
     [InlineData("ggcal_not_calendar_text")]
     [InlineData("ggcal_not_calendar_html")]
     [InlineData("ggcal_not_calendar_binary")]
@@ -91,7 +90,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T64")]
-    [Trait("Category", "Pending")]
     public void T64_AnInnerBlockThatIsNeverClosedIsReportedAndTheEventsAreKept()
     {
         var feed = Analyze("ggcal_unclosed_inner");
@@ -103,7 +101,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T65")]
-    [Trait("Category", "Pending")]
     public void T65_ALineOver64KbIsDroppedAndReportedAndTheOtherEventsAreKept()
     {
         var feed = Analyze("ggcal_limits_line");
@@ -114,7 +111,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T65")]
-    [Trait("Category", "Pending")]
     public void T65_BlocksNestedDeeperThanSixLevelsAreSkippedAndReported()
     {
         var feed = Analyze("ggcal_limits_deep");
@@ -125,7 +121,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T65")]
-    [Trait("Category", "Pending")]
     public void T65_MoreThanOneHundredThousandComponentsStopTheReadingWithAMessage()
     {
         var text = new StringBuilder("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n");
@@ -150,7 +145,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T67")]
-    [Trait("Category", "Pending")]
     public void T67_TheNameOfTheCalendarInTheFileIsAvailableToProposeItForTheNewCalendar()
     {
         var expected = Regex.Match(File.ReadAllText(PathOf("ggcal_basic")), @"^X-WR-CALNAME:(.+?)\r?$", RegexOptions.Multiline).Groups[1].Value;
@@ -160,7 +154,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T68")]
-    [Trait("Category", "Pending")]
     public void T68_AFileWithMethodCancelImportsNothingAndSaysSo()
     {
         var feed = Analyze("ggcal_method_cancel");
@@ -172,7 +165,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T68")]
-    [Trait("Category", "Pending")]
     public void T68_AFileWithMethodRequestImportsTheEventWithoutSendingInvitations()
     {
         var feed = Analyze("ggcal_method_request");
@@ -184,7 +176,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T69")]
-    [Trait("Category", "Pending")]
     public void T69_EventsWithoutStartOrWithAnImpossibleDateAreSkippedAndAnEndBeforeTheStartIsCorrected()
     {
         var feed = Analyze("ggcal_bad_dates");
@@ -199,7 +190,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T70")]
-    [Trait("Category", "Pending")]
     public void T70_EventsWithoutUidAreReportedAndNotDuplicatedWhenTheFileIsImportedAgain()
     {
         var vm = Open();
@@ -214,7 +204,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T71")]
-    [Trait("Category", "Pending")]
     public void T71_AUidOfSixHundredCharactersIsCutTo512AndReported()
     {
         var feed = Analyze("ggcal_long_uid");
@@ -225,7 +214,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T72")]
-    [Trait("Category", "Pending")]
     public void T72_ThisAndFollowingIsImportedAsAChangeOfOneOccurrenceAndReported()
     {
         var feed = Analyze("ggcal_thisandfuture");
@@ -238,7 +226,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T73")]
-    [Trait("Category", "Pending")]
     public void T73_RulesThatAreWrongOrNotSupportedAreReportedAndEachEventShowsOnce()
     {
         var feed = Analyze("ggcal_bad_rrule");
@@ -269,7 +256,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T75")]
-    [Trait("Category", "Pending")]
     public void T75_ExcludedDatesInAListInSeparateLinesAndAsDatesOnlyAreAllLeftOut()
     {
         var feed = Analyze("ggcal_exdates");
@@ -285,7 +271,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T76")]
-    [Trait("Category", "Pending")]
     public void T76_RemindersAfterTheStartOrTooEarlyAreDroppedAtMostFiveAreKeptAndEqualOnesAreMerged()
     {
         var feed = Analyze("ggcal_alarm_limits");
@@ -301,7 +286,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T76")]
-    [Trait("Category", "Pending")]
     public void T76_WithTheOptionOffNoReminderIsImported()
     {
         var feed = Analyze("ggcal_alarm_limits", new IcsImportOptions { ImportAlarms = false });
@@ -311,7 +295,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T77")]
-    [Trait("Category", "Pending")]
     public void T77_AttachmentsAndCategoriesAreIgnoredAndReported()
     {
         var feed = Analyze("ggcal_attach");
@@ -323,7 +306,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T78")]
-    [Trait("Category", "Pending")]
     public void T78_ControlCharactersAreDroppedAndAnEmojiOnTheLimitIsNotCutInHalf()
     {
         var feed = Analyze("ggcal_control_chars");
@@ -337,7 +319,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T79")]
-    [Trait("Category", "Pending")]
     public void T79_ATimeZoneDefinedInTheFileIsUsedWithItsStandardAndDaylightRules()
     {
         var feed = Analyze("ggcal_vtimezone_dst");
@@ -357,7 +338,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T81")]
-    [Trait("Category", "Pending")]
     public void T81_APrefixedZoneNameIsUnderstoodAndAnUnknownOneUsesThePcClockWithAWarning()
     {
         var feed = Analyze("ggcal_tzid_prefix");
@@ -369,7 +349,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T82")]
-    [Trait("Category", "Pending")]
     public void T82_ReimportingEventsWithTheSameUidFollowsTheAnswerAboutDuplicates()
     {
         var events = Analyze("ggcal_google_busy").Events;
@@ -393,7 +372,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T83")]
-    [Trait("Category", "Pending")]
     public void T83_ExportedTimesKeepTheirInstantWhateverTheTimeZoneOfThePcThatReadsThem()
     {
         var rome = TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome");
@@ -418,13 +396,13 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T84")]
-    [Trait("Category", "Pending")]
     public void T84_NoLineIsLongerThan75BytesNoCharacterIsCutAndSpecialCharactersSurviveTheRoundTrip()
     {
         var day = new DateTime(2026, 11, 3);
         var title = "[PROVA] " + string.Concat(Enumerable.Repeat("àèìòù€☕日本語😀", 8));
-        var location = "Sala A, piano 2; ala nord\nsecondo rigo";
-        var ev = new CalendarEvent("x", "dest", title, day.AddHours(10), day.AddHours(11), Location: location) { Reminders = [], IcsUid = "x@t" };
+        var location = "Sala A, piano 2; ala nord";
+        var description = "riga uno\nriga due, con virgola; e punto e virgola";
+        var ev = new CalendarEvent("x", "dest", title, day.AddHours(10), day.AddHours(11), Location: location, Description: description) { Reminders = [], IcsUid = "x@t" };
 
         var text = IcsWriter.Write([ev]);
 
@@ -432,12 +410,11 @@ public class IcsEngineTests
         Assert.True(text.Split("\r\n").All(l => Encoding.UTF8.GetByteCount(l) <= 75), "C'è una riga di più di 75 byte.");
         Assert.True(physical > 0);
         var read = Assert.Single(IcsParser.Analyze(text, "dest").Events);
-        Assert.Equal((title, location), (read.Title, read.Location));
+        Assert.Equal((title, location, description), (read.Title, read.Location, read.Description));
     }
 
     [Fact]
     [Trait("TestCase", "T85")]
-    [Trait("Category", "Pending")]
     public void T85_AttendeesRemindersAvailabilityVisibilityAndTheMeetLinkAreWritten()
     {
         var day = new DateTime(2026, 11, 3);
@@ -464,7 +441,6 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T86")]
-    [Trait("Category", "Pending")]
     public void T86_AFileOverTenMegabytesIsRefusedWhileItIsReadAndOneWithinTheLimitIsRead()
     {
         using var big = new MemoryStream(new byte[IcsSources.MaxBytes + 1]);

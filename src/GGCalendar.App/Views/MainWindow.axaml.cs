@@ -402,7 +402,8 @@ public partial class MainWindow : Window
             ? c
             : (sender as Avalonia.StyledElement)?.Parent is ContextMenu { PlacementTarget.DataContext: CalendarItemViewModel p } ? p : null;
 
-    private async Task<string?> PickIcsAsync()
+    /// <summary>The bytes of the file the user picks, or null when none is picked or the file is over the limit (the user is told).</summary>
+    private async Task<byte[]?> PickIcsAsync()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
@@ -412,18 +413,20 @@ public partial class MainWindow : Window
         });
         if (files.Count == 0) return null;
         await using var stream = await files[0].OpenReadAsync();
-        using var reader = new System.IO.StreamReader(stream, System.Text.Encoding.UTF8, true);
-        return await reader.ReadToEndAsync();
+        var bytes = IcsSources.ReadLimited(stream);
+        if (bytes is null)
+            await new WarningWindow("File troppo grande", $"Il file supera il limite di {IcsSources.MaxBytes / (1024 * 1024)} MB e non è stato importato.").ShowDialog(this);
+        return bytes;
     }
 
-    private async Task ImportIntoAsync(string calendarId, string calendarName, string text)
+    private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;
-        var parsed = IcsParser.Analyze(text, calendarId);
+        var parsed = IcsParser.AnalyzeFile(bytes, calendarId);
         var total = parsed.Events.Count(e => e.SeriesMasterId is null);
         if (total == 0)
         {
-            vm.SyncStatus = "Nessun evento trovato nel file .ics.";
+            vm.SyncStatus = parsed.Report.Fatal is not null && parsed.Warnings.Count > 0 ? parsed.Warnings[0] : "Nessun evento trovato nel file .ics.";
             return;
         }
 
@@ -446,7 +449,7 @@ public partial class MainWindow : Window
         if (CalendarOf(sender) is not { } cal) return;
         try
         {
-            if (await PickIcsAsync() is { } text) await ImportIntoAsync(cal.Id, cal.Name, text);
+            if (await PickIcsAsync() is { } bytes) await ImportIntoAsync(cal.Id, cal.Name, bytes);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
@@ -459,10 +462,18 @@ public partial class MainWindow : Window
         if (Vm is not { } vm) return;
         try
         {
-            if (await PickIcsAsync() is not { } text) return;
-            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", "Importato").ShowDialog<string?>(this);
+            if (await PickIcsAsync() is not { } bytes) return;
+            var preview = IcsParser.AnalyzeFile(bytes, "preview");
+            if (preview.Report.Fatal is not null)
+            {
+                await new WarningWindow("Importa .ics", preview.Warnings.FirstOrDefault() ?? "Il file non si può importare.").ShowDialog(this);
+                return;
+            }
+
+            var proposed = preview.Report.CalendarName ?? "Importato";
+            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", proposed).ShowDialog<string?>(this);
             if (name is null) return;
-            await ImportIntoAsync(vm.CreateLocalCalendar(name), name, text);
+            await ImportIntoAsync(vm.CreateLocalCalendar(name), name, bytes);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
