@@ -1,13 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Windows target: the sync and view-model tests use the app assembly and DPAPI (the Google account store). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -19,9 +21,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\GGCalendar.Core\GGCalendar.Core.csproj" />
     <ProjectReference Include="..\..\src\GGCalendar.Data\GGCalendar.Data.csproj" />
     <ProjectReference Include="..\..\src\GGCalendar.Providers.Google\GGCalendar.Providers.Google.csproj" />
+    <ProjectReference Include="..\..\src\GGCalendar.App\GGCalendar.App.csproj" />
   </ItemGroup>
 
 </Project>

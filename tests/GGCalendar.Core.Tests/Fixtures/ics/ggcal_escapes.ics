@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GGCalendar//Prove//IT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:GGCAL Prova escape
+X-WR-TIMEZONE:Europe/Rome
+BEGIN:VEVENT
+DTSTAMP:20260101T000000Z
+UID:esc@ggcalendar.test
+DTSTART;TZID=Europe/Rome:20261102T090000
+DTEND;TZID=Europe/Rome:20261102T100000
+SUMMARY:[PROVA] Virgola\, punto e virgola\; barra \\ fine
+LOCATION:Sala A\, piano 2\; ala nord
+DESCRIPTION:Riga uno\nRiga due\, con virgola\nOrario 10\:30 e barra \\ finale
+END:VEVENT
+END:VCALENDAR

@@ -27,6 +27,7 @@ public class AlarmPropertyTests
     }
 
     [Fact]
+    [Trait("TestCase", "T10")]
     public void FormatIsAscendingWithoutRepeatsAndEmptyWithoutAlarms()
     {
         Assert.Equal("10,30", EventReminder.FormatAlarmMinutes([new(ReminderMethod.Alarm, 30), new(ReminderMethod.Alarm, 10), new(ReminderMethod.Alarm, 10)]));
@@ -35,6 +36,7 @@ public class AlarmPropertyTests
     }
 
     [Fact]
+    [Trait("TestCase", "T10")]
     public void ParseToleratesSpacesAndIgnoresWhatIsNotANumber()
     {
         Assert.Equal(new HashSet<int> { 10, 30 }, EventReminder.ParseAlarmMinutes("10,30"));
@@ -59,6 +61,7 @@ public class AlarmPropertyTests
     }
 
     [Fact]
+    [Trait("TestCase", "T10")]
     public void ToGoogleAlwaysSendsThePropertyAsAStringNeverNull()
     {
         Assert.Equal("", AlarmValueOf(Event([new(ReminderMethod.Popup, 10)])));
@@ -91,6 +94,7 @@ public class AlarmPropertyTests
     }
 
     [Fact]
+    [Trait("TestCase", "T10")]
     public void FromGoogleReadsTheFormatWrittenByAndroid()
     {
         var ev = FromJson(Json("10,30"));

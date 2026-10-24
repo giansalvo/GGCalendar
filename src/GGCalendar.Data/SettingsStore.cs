@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GGCalendar.Core;
 using GGCalendar.Core.Models;
 
 namespace GGCalendar.Data;
@@ -12,8 +13,7 @@ public sealed class SettingsStore(string? path = null)
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public string FilePath { get; } = path ?? Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GGCalendar", "settings.json");
+    public string FilePath { get; } = path ?? AppPaths.FileInDataDirectory("settings.json");
 
     public AppSettings Load()
     {

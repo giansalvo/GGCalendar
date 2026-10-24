@@ -6,6 +6,7 @@ namespace GGCalendar.Core.Tests;
 public class IcsParserTests
 {
     [Fact]
+    [Trait("TestCase", "T21")]
     public void Roundtrips_timed_event()
     {
         var ev = new CalendarEvent("1", "c", "Riunione, test; ok", new(2026, 10, 8, 10, 30, 0), new(2026, 10, 8, 11, 30, 0), Location: "Sala A", Description: "riga1\nriga2")
@@ -30,6 +31,7 @@ public class IcsParserTests
     }
 
     [Fact]
+    [Trait("TestCase", "T21")]
     public void Roundtrips_series_with_exception_and_exdate()
     {
         var master = new CalendarEvent("m", "c", "Serie", new(2026, 10, 5, 9, 0, 0), new(2026, 10, 5, 10, 0, 0))

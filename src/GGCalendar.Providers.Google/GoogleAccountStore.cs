@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using GGCalendar.Core;
 
 namespace GGCalendar.Providers.Google;
 
@@ -18,7 +19,7 @@ public sealed class GoogleAccountStore
 
     public GoogleAccountStore(string? path = null)
     {
-        _path = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GGCalendar", "google-accounts.json");
+        _path = path ?? AppPaths.FileInDataDirectory("google-accounts.json");
     }
 
     public List<GoogleAccount> Load()

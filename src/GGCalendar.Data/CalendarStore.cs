@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GGCalendar.Core;
 using GGCalendar.Core.Models;
 using Microsoft.Data.Sqlite;
 
@@ -27,7 +28,7 @@ public sealed class CalendarStore
 
     public CalendarStore(string? path = null)
     {
-        path ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GGCalendar", "calendar.db");
+        path ??= AppPaths.FileInDataDirectory("calendar.db");
         if (path != ":memory:") Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false, ForeignKeys = true }.ToString();
         _keepAlive = path == ":memory:" ? Open() : null;

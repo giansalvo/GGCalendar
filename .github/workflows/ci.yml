@@ -19,5 +19,8 @@ jobs:
       - name: Build
         run: dotnet build GGCalendar.sln -c Release
 
+      # Category RealGoogle: tests that drive the app against a real Google account; they run only on the developer's PC.
+      # Category Pending: tests written ahead of the code they check (the .ics engine port); each one is taken out of the list
+      # when its code is done, so a red run always means a regression.
       - name: Test
-        run: dotnet test GGCalendar.sln -c Release --no-build
+        run: dotnet test GGCalendar.sln -c Release --no-build --filter "Category!=RealGoogle&Category!=Pending"
