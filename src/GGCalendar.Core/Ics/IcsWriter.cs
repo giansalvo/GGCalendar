@@ -6,7 +6,8 @@ namespace GGCalendar.Core.Ics;
 /// <summary>Minimal RFC 5545 writer used to export events as .ics files.</summary>
 public static class IcsWriter
 {
-    public static string Write(IEnumerable<CalendarEvent> events, string productId = "-//GGCalendar//IT")
+    /// <param name="localZone">The zone the local times of the events are in (null = this PC's). Skeleton: not used yet, times are written floating.</param>
+    public static string Write(IEnumerable<CalendarEvent> events, string productId = "-//GGCalendar//IT", TimeZoneInfo? localZone = null)
     {
         var sb = new StringBuilder();
         Line(sb, "BEGIN:VCALENDAR");

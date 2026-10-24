@@ -4,7 +4,11 @@ using GGCalendar.Core.Recurrence;
 
 namespace GGCalendar.Core.Ics;
 
-public sealed record IcsImport(IReadOnlyList<CalendarEvent> Events, IReadOnlyList<string> Warnings);
+public sealed record IcsImport(IReadOnlyList<CalendarEvent> Events, IReadOnlyList<string> Warnings)
+{
+    /// <summary>What was found besides the events (issues with codes and counts). Skeleton: empty until the engine is ported.</summary>
+    public IcsReport Report { get; init; } = IcsReport.Empty;
+}
 
 /// <summary>Reads VEVENTs from an RFC 5545 .ics text. Times are converted to the local time zone.</summary>
 public static class IcsParser
@@ -21,7 +25,7 @@ public static class IcsParser
     public static IReadOnlyList<CalendarEvent> Parse(string text, string calendarId) => Analyze(text, calendarId).Events;
 
     /// <summary>Parses the file and reports the parts of it this app cannot represent (so nothing is lost silently).</summary>
-    public static IcsImport Analyze(string text, string calendarId)
+    public static IcsImport Analyze(string text, string calendarId, IcsImportOptions? options = null)
     {
         var raws = ReadEvents(text);
         var warnings = new List<string>();
@@ -64,6 +68,10 @@ public static class IcsParser
 
         return new IcsImport(events, warnings);
     }
+
+    /// <summary>Reads a file from its bytes: size limit, encoding and unfolding of the lines are decided here. Skeleton: decodes as UTF-8 and reads the text.</summary>
+    public static IcsImport AnalyzeFile(byte[] bytes, string calendarId, IcsImportOptions? options = null) =>
+        Analyze(IcsSources.Decode(bytes), calendarId, options);
 
     private static CalendarEvent? Build(Raw raw, string calendarId, string? masterId, DateTime? originalStart)
     {
