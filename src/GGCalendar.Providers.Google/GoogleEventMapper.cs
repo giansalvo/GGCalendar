@@ -10,6 +10,18 @@ public static class GoogleEventMapper
 {
     private const string DateFormat = "yyyy-MM-dd";
 
+    /// <summary>Google's classic event palette: colorId 1-11, the same colors the event editor offers (and GGCalendar Mobile uses).</summary>
+    private static readonly (string Id, string Hex)[] EventColors =
+    [
+        ("1", "#7986CB"), ("2", "#33B679"), ("3", "#8E24AA"), ("4", "#E67C73"), ("5", "#F6BF26"), ("6", "#F4511E"),
+        ("7", "#039BE5"), ("8", "#616161"), ("9", "#3F51B5"), ("10", "#0B8043"), ("11", "#D50000"),
+    ];
+
+    private static string? HexOfColorId(string? colorId) => EventColors.FirstOrDefault(c => c.Id == colorId).Hex;
+
+    private static string? ColorIdOfHex(string? hex) =>
+        EventColors.FirstOrDefault(c => c.Hex.Equals(hex, StringComparison.OrdinalIgnoreCase)).Id;
+
     /// <summary>
     /// Returns null for cancelled events or events without usable dates. A cancelled occurrence of a series
     /// (<paramref name="seriesMasterLocalId"/> set) is returned as a tombstone with <see cref="CalendarEvent.IsCancelled"/>.
@@ -100,6 +112,7 @@ public static class GoogleEventMapper
         return new CalendarEvent(localId, calendarId, Str(e, "summary") ?? "", start, end, allDay, Str(e, "location") ?? "", Str(e, "description") ?? "")
         {
             Recurrence = rrule,
+            ColorHex = HexOfColorId(Str(e, "colorId")),
             SeriesMasterId = seriesMasterLocalId,
             OriginalStart = originalStart,
             ExcludedStarts = excluded,
@@ -220,6 +233,10 @@ public static class GoogleEventMapper
                     .ToArray()),
             },
         };
+
+        // null removes the color on Google in a PATCH; a color outside Google's palette is left as Google has it.
+        if (ev.ColorHex is null) body["colorId"] = null;
+        else if (ColorIdOfHex(ev.ColorHex) is { } colorId) body["colorId"] = colorId;
 
         if (!string.IsNullOrEmpty(ev.Recurrence))
         {
