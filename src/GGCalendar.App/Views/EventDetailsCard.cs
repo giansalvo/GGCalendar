@@ -31,7 +31,7 @@ public sealed class EventDetailsCard : Border
 
     /// <param name="ev">The clicked event (an occurrence for repeating events).</param>
     /// <param name="recurrence">RRULE of the series the event belongs to, if any.</param>
-    public EventDetailsCard(CalendarEvent ev, string? recurrence, string colorHex, string calendarName, string accountName, bool use24Hour, bool dark, string? secondZoneText = null)
+    public EventDetailsCard(CalendarEvent ev, string? recurrence, string colorHex, string calendarName, string accountName, bool use24Hour, bool dark, string? secondZoneText = null, bool readOnly = false)
     {
         IBrush fg = new SolidColorBrush(Color.Parse(dark ? "#E8EAED" : "#1F1F1F"));
         var muted = new SolidColorBrush(Color.Parse(dark ? "#BDC1C6" : "#5F6368"));
@@ -52,14 +52,17 @@ public sealed class EventDetailsCard : Border
 
         // Actions
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2 };
-        actions.Children.Add(IconButton("", L.T("details.edit"), fg, () => EditRequested?.Invoke()));
-        actions.Children.Add(IconButton("", L.T("edit.delete_event"), fg, () => DeleteRequested?.Invoke()));
+        if (!readOnly) actions.Children.Add(IconButton("", L.T("details.edit"), fg, () => EditRequested?.Invoke()));
+        if (!readOnly) actions.Children.Add(IconButton("", L.T("edit.delete_event"), fg, () => DeleteRequested?.Invoke()));
         if (ev.Attendees.Count > 0) actions.Children.Add(IconButton("", L.T("details.mail"), fg, () => MailRequested?.Invoke()));
-        var more = IconButton("", L.T("details.more"), fg, null);
-        var export = new MenuItem { Header = L.T("details.export") };
-        export.Click += (_, _) => ExportRequested?.Invoke();
-        more.Flyout = new MenuFlyout { Items = { export } };
-        actions.Children.Add(more);
+        if (!readOnly)
+        {
+            var more = IconButton("", L.T("details.more"), fg, null);
+            var export = new MenuItem { Header = L.T("details.export") };
+            export.Click += (_, _) => ExportRequested?.Invoke();
+            more.Flyout = new MenuFlyout { Items = { export } };
+            actions.Children.Add(more);
+        }
         actions.Children.Add(IconButton("", L.T("common.close"), fg, () => CloseRequested?.Invoke()));
 
         var body = new StackPanel { Spacing = 14, Margin = new Thickness(0, 6, 0, 0) };

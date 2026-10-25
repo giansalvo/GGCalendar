@@ -110,6 +110,11 @@ public sealed class WeekGrid : Control
     public double Gutter { get => GetValue(GutterProperty); set => SetValue(GutterProperty, value); }
     public SecondZone? SecondZone { get => GetValue(SecondZoneProperty); set => SetValue(SecondZoneProperty, value); }
 
+    /// <summary>Tells the events that cannot be changed (public calendars): they are only clicked.</summary>
+    public Func<CalendarEvent, bool>? IsReadOnly { get; set; }
+
+    private bool ReadOnly(CalendarEvent ev) => IsReadOnly?.Invoke(ev) == true;
+
     public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
     public event Action<DateTime, DateTime>? EventCreated;
     public event Action<CalendarEvent>? EventDeleted;
@@ -159,7 +164,7 @@ public sealed class WeekGrid : Control
             _activeRect = h.Rect;
             _selectedId = h.Event.Id;
             _selectedStart = h.Event.Start;
-            var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge;
+            var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge && !ReadOnly(h.Event);
             _grabOffset = PointToTime(p, snap: false) - h.Event.Start;
             _mode = nearBottom ? DragMode.Resize : DragMode.Pending;
         }
@@ -189,6 +194,7 @@ public sealed class WeekGrid : Control
         if (_mode == DragMode.Pending)
         {
             if (Math.Abs(p.Y - _pressPoint.Y) + Math.Abs(p.X - _pressPoint.X) < DragThreshold) return;
+            if (_active is not null && ReadOnly(_active)) return; // stays a click
             _mode = DragMode.Move;
         }
 
@@ -285,7 +291,7 @@ public sealed class WeekGrid : Control
         else if (e.Key == Key.Delete && _selectedId is not null)
         {
             var ev = Events?.FirstOrDefault(x => x.Id == _selectedId && x.Start == _selectedStart);
-            if (ev is not null)
+            if (ev is not null && !ReadOnly(ev))
             {
                 _selectedId = null;
                 EventDeleted?.Invoke(ev);

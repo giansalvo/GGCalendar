@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using GGCalendar.Core;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Subscriptions;
 using Microsoft.Data.Sqlite;
 
 namespace GGCalendar.Data;
@@ -20,7 +21,7 @@ public sealed record OutboxItem(long Seq, string EventId, string CalendarId, Out
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
 {
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
 
     private static readonly JsonSerializerOptions Json = new() { Converters = { new JsonStringEnumConverter() } };
 
@@ -105,6 +106,18 @@ public sealed class CalendarStore
                     calendar_id TEXT PRIMARY KEY,
                     sync_token TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    calendar_id TEXT PRIMARY KEY REFERENCES calendars(id) ON DELETE CASCADE,
+                    url TEXT NOT NULL,
+                    etag TEXT,
+                    last_modified TEXT,
+                    hash TEXT,
+                    last_fetched TEXT,
+                    last_synced TEXT,
+                    last_error TEXT,
+                    range_from TEXT,
+                    range_to TEXT
+                );
                 """);
 
             // v4: outbox.base (databases created before it have the table without the column).
@@ -159,8 +172,98 @@ public sealed class CalendarStore
         using var tx = c.BeginTransaction();
         Run(c, "DELETE FROM outbox WHERE calendar_id = $id", ("$id", calendarId));
         Run(c, "DELETE FROM sync_state WHERE calendar_id = $id", ("$id", calendarId));
+        Run(c, "DELETE FROM subscriptions WHERE calendar_id = $id", ("$id", calendarId));
         Run(c, "DELETE FROM calendars WHERE id = $id", ("$id", calendarId));
         tx.Commit();
+    });
+
+
+    // Subscriptions to public calendars (read-only; the address is stored encrypted by the caller)
+
+    private const string SubscriptionColumns = "calendar_id, url, etag, last_modified, hash, last_fetched, last_synced, last_error, range_from, range_to";
+
+    private static SubscriptionRecord ReadSubscription(SqliteDataReader r) => new(
+        r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4),
+        ReadDate(r, 5), ReadDate(r, 6), r.IsDBNull(7) ? null : r.GetString(7), ReadDate(r, 8), ReadDate(r, 9));
+
+    private static DateTime? ReadDate(SqliteDataReader r, int i) =>
+        r.IsDBNull(i) ? null : DateTime.Parse(r.GetString(i), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+
+    private static string? WriteDate(DateTime? d) => d?.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
+    public IReadOnlyList<SubscriptionRecord> GetSubscriptions() => WithConnection(c =>
+    {
+        using var cmd = Command(c, $"SELECT {SubscriptionColumns} FROM subscriptions ORDER BY calendar_id", []);
+        using var r = cmd.ExecuteReader();
+        var list = new List<SubscriptionRecord>();
+        while (r.Read()) list.Add(ReadSubscription(r));
+        return list;
+    });
+
+    public SubscriptionRecord? GetSubscription(string calendarId) => WithConnection(c =>
+    {
+        using var cmd = Command(c, $"SELECT {SubscriptionColumns} FROM subscriptions WHERE calendar_id = $id", [("$id", calendarId)]);
+        using var r = cmd.ExecuteReader();
+        return r.Read() ? ReadSubscription(r) : null;
+    });
+
+    /// <summary>Creates the calendar of a subscription with its record and its first events in one transaction.</summary>
+    public void AddSubscription(CalendarInfo calendar, SubscriptionRecord record, IReadOnlyList<CalendarEvent> events) => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        Run(c, "INSERT INTO calendars (id, account_name, name, color, is_visible) VALUES ($id, $account, $name, $color, $visible)",
+            ("$id", calendar.Id), ("$account", calendar.AccountName), ("$name", calendar.Name), ("$color", calendar.ColorHex), ("$visible", calendar.IsVisible ? 1 : 0));
+        WriteSubscription(c, record);
+        foreach (var ev in events) Upsert(c, ev, null, null);
+        tx.Commit();
+    });
+
+    /// <summary>Stores the bookkeeping of a subscription (validators, hash, times, last error, range); the events are not touched.</summary>
+    public void UpdateSubscription(SubscriptionRecord record) => WithConnection(c => WriteSubscription(c, record));
+
+    private void WriteSubscription(SqliteConnection c, SubscriptionRecord s) => Run(c, """
+        INSERT INTO subscriptions (calendar_id, url, etag, last_modified, hash, last_fetched, last_synced, last_error, range_from, range_to)
+        VALUES ($id, $url, $etag, $lm, $hash, $fetched, $synced, $error, $from, $to)
+        ON CONFLICT(calendar_id) DO UPDATE SET url = $url, etag = $etag, last_modified = $lm, hash = $hash, last_fetched = $fetched,
+            last_synced = $synced, last_error = $error, range_from = $from, range_to = $to
+        """,
+        ("$id", s.CalendarId), ("$url", s.EncryptedUrl), ("$etag", s.ETag), ("$lm", s.LastModified), ("$hash", s.Hash),
+        ("$fetched", WriteDate(s.LastFetchedUtc)), ("$synced", WriteDate(s.LastSyncedUtc)), ("$error", s.LastError),
+        ("$from", WriteDate(s.RangeFrom)), ("$to", WriteDate(s.RangeTo)));
+
+    /// <summary>
+    /// Replaces the events of a subscription with the new ones by difference, in one transaction together with its record:
+    /// only the events that are new, changed or gone are written.
+    /// </summary>
+    public SubscriptionChanges ReplaceSubscriptionEvents(string calendarId, IReadOnlyList<CalendarEvent> events, SubscriptionRecord record) => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        var existing = new Dictionary<string, string>();
+        using (var cmd = Command(c, "SELECT id, data FROM events WHERE calendar_id = $c", [("$c", calendarId)]))
+        using (var r = cmd.ExecuteReader())
+            while (r.Read()) existing[r.GetString(0)] = r.GetString(1);
+
+        int added = 0, changed = 0, removed = 0;
+        var keep = new HashSet<string>();
+        foreach (var ev in events)
+        {
+            keep.Add(ev.Id);
+            var json = JsonSerializer.Serialize(ev, Json);
+            if (!existing.TryGetValue(ev.Id, out var old)) added++;
+            else if (old != json) changed++;
+            else continue;
+            Upsert(c, ev, null, null);
+        }
+
+        foreach (var id in existing.Keys.Where(id => !keep.Contains(id)))
+        {
+            Run(c, "DELETE FROM events WHERE id = $id", ("$id", id));
+            removed++;
+        }
+
+        WriteSubscription(c, record);
+        tx.Commit();
+        return new SubscriptionChanges(added, changed, removed);
     });
 
     // Events

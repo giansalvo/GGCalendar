@@ -11,6 +11,7 @@ using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Subscriptions;
 using GGCalendar.Core.Reminders;
 using GGCalendar.Data;
 using GGCalendar.Core.Localization;
@@ -22,6 +23,9 @@ public partial class MainWindow : Window
     private readonly SettingsStore _store = new();
     private readonly SoundService _sound = new();
     private readonly GoogleSyncService _google;
+
+    /// <summary>The public calendars followed by address.</summary>
+    public SubscriptionService Subscriptions { get; }
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private DispatcherTimer? _syncTimer;
     private DispatcherTimer? _retryTimer;
@@ -33,8 +37,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
+        Subscriptions = new SubscriptionService(new CalendarStore());
+        Subscriptions.Changed += () => { if (Vm is { } vm) _ = vm.ReloadAsync(); };
+        Grid.IsReadOnly = MainViewModel.IsReadOnly;
         L.Changed += OnLanguageChanged;
-        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); };
+        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -78,9 +85,51 @@ public partial class MainWindow : Window
                 vm.EventsChanged += _scheduler.Invalidate;
                 _scheduler.Start();
                 StartSync();
+                StartSubscriptionRefresh();
             }
             Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToDayStart, Avalonia.Threading.DispatcherPriority.Loaded);
         };
+    }
+
+    // ---------- Refresh of the public calendars ----------
+
+    private DispatcherTimer? _subscriptionTimer;
+    private bool _refreshingSubscriptions;
+
+    /// <summary>How often the app looks whether a public calendar is due (the interval itself is in the settings).</summary>
+    public static TimeSpan SubscriptionPollPeriod { get; set; } = TimeSpan.FromMinutes(1);
+
+    private void StartSubscriptionRefresh()
+    {
+        _subscriptionTimer = new DispatcherTimer { Interval = SubscriptionPollPeriod };
+        _subscriptionTimer.Tick += async (_, _) => await RefreshDueSubscriptionsAsync();
+        _subscriptionTimer.Start();
+        _ = RefreshDueSubscriptionsAsync(); // at start: the ones whose last check is older than the interval
+    }
+
+    private async Task RefreshDueSubscriptionsAsync()
+    {
+        if (Vm is not { } vm || _refreshingSubscriptions || vm.Settings.SubscriptionIntervalMinutes <= 0) return;
+        _refreshingSubscriptions = true;
+        try
+        {
+            var results = await Subscriptions.RefreshDueAsync(TimeSpan.FromMinutes(vm.Settings.SubscriptionIntervalMinutes));
+            if (results.Count == 0) return;
+            await vm.ReloadAsync();
+            // Silent when nothing changed; a failure or a change is told in the status bar.
+            foreach (var r in results.Where(r => r.Outcome != RefreshOutcome.NotModified))
+            {
+                var name = vm.Calendars.FirstOrDefault(c => c.Id == r.CalendarId)?.Name ?? "";
+                if (r.Outcome == RefreshOutcome.Failed)
+                    vm.SetStatus(Msg.Of("error.sub_refresh", name, SubscriptionMessages.Error(r.Problem ?? SubscriptionProblem.Unreadable)));
+                else if (r.Changes is { } c)
+                    vm.SetStatus("status.sub_updated", name, c.Added, c.Changed, c.Removed);
+            }
+        }
+        finally
+        {
+            _refreshingSubscriptions = false;
+        }
     }
 
     private static readonly TimeSpan AlarmMaxDuration = TimeSpan.FromMinutes(2);
@@ -300,7 +349,7 @@ public partial class MainWindow : Window
         var card = new EventDetailsCard(ev, series?.Recurrence, ev.ColorHex ?? calendar?.ColorHex ?? "#1A73E8",
             calendar?.Name ?? "", calendar?.DisplayAccountName ?? "", vm.Settings.Use24HourClock,
             ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark,
-            vm.SecondZoneText(ev));
+            vm.SecondZoneText(ev), readOnly: MainViewModel.IsReadOnly(ev));
         card.EditRequested += async () => { CloseDetails(); await EditAsync(ev, isNew: false); };
         card.DeleteRequested += async () => { CloseDetails(); await DeleteAsync(ev); };
         card.MailRequested += async () => await MailGuestsAsync(ev);
@@ -396,7 +445,7 @@ public partial class MainWindow : Window
 
     private async Task MoveAsync(CalendarEvent ev, DateTime start, DateTime end)
     {
-        if (Vm is not { } vm) return;
+        if (Vm is not { } vm || MainViewModel.IsReadOnly(ev)) return;
         if (!vm.IsRecurring(ev)) { vm.MoveEvent(ev, start, end); return; }
         var scope = await new SeriesScopeWindow(L.T("scope.move_title")).ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.MoveOccurrence(ev, start, end, s);
@@ -418,7 +467,7 @@ public partial class MainWindow : Window
     {
         if (Vm is not { } vm) return;
         var target = CalendarAt(point);
-        if (target is null) return;
+        if (target is null || target.IsSubscription || MainViewModel.IsReadOnly(ev)) return;
 
         var master = vm.ResolveMaster(ev);
         if (master.CalendarId == target.Id) return;
@@ -438,6 +487,7 @@ public partial class MainWindow : Window
     {
         if (Vm is not { } vm) return;
         CloseDetails();
+        if (MainViewModel.IsReadOnly(ev)) return;
         if (!vm.IsRecurring(ev)) { vm.DeleteEvent(ev); return; }
         var scope = await new SeriesScopeWindow(L.T("scope.delete_title")).ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.DeleteOccurrence(ev, s);
@@ -450,7 +500,7 @@ public partial class MainWindow : Window
     {
         // A double click can arrive twice (e.g. the click that closes the details card is passed on to the calendar):
         // a second dialog would open under the first and, saved or cancelled later, undo the change made in the first.
-        if (Vm is null || _editing) return;
+        if (Vm is null || _editing || MainViewModel.IsReadOnly(ev)) return;
         _editing = true;
         try
         {
@@ -476,7 +526,7 @@ public partial class MainWindow : Window
 
         // Editing the whole series (or a plain event) works on the master; otherwise the dialog opens on the occurrence.
         if (!isNew && scope is null or SeriesScope.All) ev = vm.ResolveMaster(ev);
-        var dialog = new EventEditWindow { DataContext = new EventEditViewModel(ev, vm.Calendars, isNew, vm.Settings, _sound) };
+        var dialog = new EventEditWindow { DataContext = new EventEditViewModel(ev, vm.Calendars.Where(c => !c.IsSubscription).ToList(), isNew, vm.Settings, _sound) };
         var result = await dialog.ShowDialog<EventEditResult?>(this);
         if (result is null) return;
         if (result.Delete) await DeleteAsync(occurrence);
@@ -619,6 +669,70 @@ public partial class MainWindow : Window
         if (Vm is { } vm) vm.SetStatus("status.new_calendar_unavailable");
     }
 
+    // ---------- Public calendars (by address) ----------
+
+    private async void OnNewPublicCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm) return;
+        var color = MainViewModel.CalendarPalette[vm.Calendars.Count(c => c.IsSubscription) % MainViewModel.CalendarPalette.Length];
+        var added = await new SubscriptionWindow(Subscriptions, color).ShowDialog<SubscriptionEdit?>(this);
+        if (added?.Added is not { } calendar) return;
+        await vm.ReloadAsync();
+        var count = Subscriptions.EventCount(calendar.Id);
+        vm.SetStatus(Msg.Count("status.sub_added", count, calendar.Name));
+    }
+
+    private async void OnRefreshSubscription(object? sender, RoutedEventArgs e)
+    {
+        if (CalendarOf(sender) is not { IsSubscription: true } cal) return;
+        await RefreshSubscriptionsAsync([cal.Id], force: true);
+    }
+
+    /// <summary>Downloads the calendars again and says in the status bar how it went.</summary>
+    private async Task RefreshSubscriptionsAsync(string[] ids, bool force)
+    {
+        if (Vm is not { } vm) return;
+        vm.SetStatus("status.sub_refreshing");
+        foreach (var id in ids)
+        {
+            var name = vm.Calendars.FirstOrDefault(c => c.Id == id)?.Name ?? "";
+            var result = await Subscriptions.RefreshAsync(id, force);
+            await vm.ReloadAsync();
+            if (result.Outcome == RefreshOutcome.Failed)
+                vm.SetStatus(Msg.Of("error.sub_refresh", name, SubscriptionMessages.Error(result.Problem ?? SubscriptionProblem.Unreadable)));
+            else if (result.Changes is { Any: true } c)
+                vm.SetStatus("status.sub_updated", name, c.Added, c.Changed, c.Removed);
+            else
+                vm.SetStatus("status.sub_unchanged", name);
+        }
+    }
+
+    private async void OnEditSubscription(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { IsSubscription: true } cal) return;
+        var info = new CalendarInfo(cal.Id, cal.AccountName, cal.Name, cal.ColorHex, cal.IsVisible);
+        if (await new SubscriptionWindow(Subscriptions, cal.ColorHex, info, cal.Subscription).ShowDialog<SubscriptionEdit?>(this) is not { } edit) return;
+        var refreshed = await Subscriptions.UpdateAsync(cal.Id, edit.Name, edit.ColorHex, edit.Range);
+        await vm.ReloadAsync();
+        if (refreshed?.Outcome == RefreshOutcome.Failed)
+            vm.SetStatus(Msg.Of("error.sub_refresh", edit.Name, SubscriptionMessages.Error(refreshed.Problem ?? SubscriptionProblem.Unreadable)));
+    }
+
+    private async void OnShowSubscriptionUrl(object? sender, RoutedEventArgs e)
+    {
+        if (CalendarOf(sender) is not { IsSubscription: true } cal || Subscriptions.GetUrl(cal.Id) is not { Length: > 0 } url) return;
+        await new SubscriptionUrlWindow(url).ShowDialog(this);
+    }
+
+    private async void OnRemoveSubscription(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { IsSubscription: true } cal) return;
+        if (!await new ConfirmWindow(L.T("sub.remove_title"), L.T("sub.remove_text", cal.Name), L.T("common.remove")).ShowDialog<bool>(this)) return;
+        Subscriptions.Remove(cal.Id);
+        await vm.ReloadAsync();
+        vm.SetStatus("status.sub_removed", cal.Name);
+    }
+
     private async void OnNewLocalCalendar(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;
@@ -681,9 +795,10 @@ public partial class MainWindow : Window
     private async void OnOpenSettings(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;
-        var dialog = new SettingsWindow { DataContext = new SettingsViewModel(vm.Settings, _sound, _google) };
+        var dialog = new SettingsWindow { DataContext = new SettingsViewModel(vm.Settings, _sound, _google, Subscriptions) };
         var result = await dialog.ShowDialog<AppSettings?>(this);
         var accountsChanged = (dialog.DataContext as SettingsViewModel)?.AccountsChanged == true;
+        if ((dialog.DataContext as SettingsViewModel)?.SubscriptionsChanged == true) await vm.ReloadAsync();
         if (result is null)
         {
             if (accountsChanged) { await vm.ReloadAsync(); await SyncAsync(); }

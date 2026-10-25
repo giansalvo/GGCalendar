@@ -28,6 +28,9 @@ public sealed class AppSettings
     /// <summary>Intervallo di sincronizzazione automatica in minuti; 0 = mai.</summary>
     public int SyncIntervalMinutes { get; set; } = 5;
 
+    /// <summary>How often the public calendars (by address) are downloaded again, in minutes; 0 = only by hand.</summary>
+    public int SubscriptionIntervalMinutes { get; set; } = 30;
+
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;

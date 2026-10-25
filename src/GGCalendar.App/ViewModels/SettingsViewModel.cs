@@ -24,10 +24,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
 {
     private static System.Globalization.CultureInfo Culture => L.Culture;
 
-    public SettingsViewModel(AppSettings s, SoundService? sound = null, GoogleSyncService? google = null)
+    public SettingsViewModel(AppSettings s, SoundService? sound = null, GoogleSyncService? google = null, SubscriptionService? subscriptions = null)
     {
         _sound = sound;
         _google = google;
+        _subscriptions = subscriptions;
+        SubscriptionIntervalIndex = Math.Max(0, Array.IndexOf(SubscriptionIntervalOptions, s.SubscriptionIntervalMinutes));
         GoogleClientId = s.GoogleClientId ?? "";
         GoogleClientSecret = s.GoogleClientSecret ?? "";
         SyncIntervalIndex = Math.Max(0, Array.IndexOf(SyncIntervalOptions, s.SyncIntervalMinutes));
@@ -75,6 +77,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     private readonly SoundService? _sound;
     private readonly GoogleSyncService? _google;
+    private readonly SubscriptionService? _subscriptions;
     private CancellationTokenSource? _signIn;
 
     public ObservableCollection<string> GoogleAccounts { get; } = [];
@@ -85,6 +88,41 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public string[] SyncIntervalLabels { get; } =
         [L.T("settings.sync_never"), .. SyncIntervalOptions.Skip(1).Select(m => L.N("settings.sync_every", m))];
     [ObservableProperty] public partial int SyncIntervalIndex { get; set; }
+
+    /// <summary>How often the public calendars are downloaded again (minutes; 0 = only by hand).</summary>
+    public static readonly int[] SubscriptionIntervalOptions = [0, 15, 30, 60, 120, 360, 720, 1440];
+
+    public string[] SubscriptionIntervalLabels { get; } = SubscriptionIntervalOptions.Select(m => m switch
+    {
+        0 => L.T("settings.sub_never"),
+        < 60 => L.T("settings.sub_every_minutes", m),
+        _ => L.N("settings.sub_every_hour", m / 60),
+    }).ToArray();
+
+    [ObservableProperty] public partial int SubscriptionIntervalIndex { get; set; }
+    [ObservableProperty] public partial string SubscriptionStatus { get; set; } = "";
+    [ObservableProperty] public partial bool IsRefreshingSubscriptions { get; set; }
+
+    /// <summary>True when "Refresh now" changed something: the main window reads the calendars again when the dialog closes.</summary>
+    public bool SubscriptionsChanged { get; private set; }
+
+    [RelayCommand]
+    private async Task RefreshSubscriptions()
+    {
+        if (_subscriptions is null || IsRefreshingSubscriptions) return;
+        IsRefreshingSubscriptions = true;
+        SubscriptionStatus = L.T("status.sub_refreshing");
+        try
+        {
+            var results = await _subscriptions.RefreshAllAsync();
+            SubscriptionsChanged = true;
+            SubscriptionStatus = L.T("settings.sub_done", results.Count(r => r.Outcome != RefreshOutcome.Failed), results.Count(r => r.Outcome == RefreshOutcome.Failed));
+        }
+        finally
+        {
+            IsRefreshingSubscriptions = false;
+        }
+    }
     [ObservableProperty] public partial string GoogleStatus { get; set; } = "";
     [ObservableProperty] public partial bool IsSigningIn { get; set; }
 
@@ -265,6 +303,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultGuestsCanInvite = DefaultGuestsCanInvite,
             DefaultGuestsCanSeeList = DefaultGuestsCanSeeList,
             SyncIntervalMinutes = SyncIntervalOptions[Math.Clamp(SyncIntervalIndex, 0, SyncIntervalOptions.Length - 1)],
+            SubscriptionIntervalMinutes = SubscriptionIntervalOptions[Math.Clamp(SubscriptionIntervalIndex, 0, SubscriptionIntervalOptions.Length - 1)],
             GoogleClientId = string.IsNullOrWhiteSpace(GoogleClientId) ? null : GoogleClientId.Trim(),
             GoogleClientSecret = string.IsNullOrWhiteSpace(GoogleClientSecret) ? null : GoogleClientSecret.Trim(),
             DefaultEventMinutes = DefaultEventMinutes,
