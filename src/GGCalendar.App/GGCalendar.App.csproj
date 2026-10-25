@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<!-- Single source of the version: AssemblyVersion/FileVersion derive from it, build-installer.ps1 (Setup.exe) and build_msix.ps1 (MSIX) read it. -->
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<InformationalVersion>$(Version)</InformationalVersion>
 		<ApplicationIcon>Assets\GGCalendar.ico</ApplicationIcon>
 		<Product>GGCalendar</Product>

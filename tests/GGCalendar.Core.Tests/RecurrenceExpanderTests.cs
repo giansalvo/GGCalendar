@@ -101,6 +101,7 @@ public class RecurrenceExpanderTests
     }
 
     [Fact]
+    [Trait("TestCase", "T04")]
     public void ExcludedStartsAreSkippedButStillCount()
     {
         var e = Make("FREQ=DAILY;COUNT=3", new DateTime(2026, 10, 5, 9, 0, 0)) with
@@ -109,6 +110,31 @@ public class RecurrenceExpanderTests
         };
         Assert.Equal([new DateTime(2026, 10, 5, 9, 0, 0), new DateTime(2026, 10, 7, 9, 0, 0)],
             Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 11, 1)));
+    }
+
+    [Fact]
+    [Trait("TestCase", "T04")]
+    public void T04_WeeklyOnSeveralDaysStopsAfterCount()
+    {
+        // Monday 5 Oct 2026, Mon and Wed, five occurrences
+        var e = Make("FREQ=WEEKLY;BYDAY=MO,WE;COUNT=5", new DateTime(2026, 10, 5, 9, 0, 0));
+        Assert.Equal(
+        [
+            new DateTime(2026, 10, 5, 9, 0, 0), new DateTime(2026, 10, 7, 9, 0, 0), new DateTime(2026, 10, 12, 9, 0, 0),
+            new DateTime(2026, 10, 14, 9, 0, 0), new DateTime(2026, 10, 19, 9, 0, 0),
+        ], Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)));
+    }
+
+    [Fact]
+    [Trait("TestCase", "T04")]
+    public void T04_WeeklyOnSeveralDaysEndsOnTheUntilDayInclusive()
+    {
+        var e = Make("FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261014", new DateTime(2026, 10, 5, 9, 0, 0));
+        Assert.Equal(
+        [
+            new DateTime(2026, 10, 5, 9, 0, 0), new DateTime(2026, 10, 7, 9, 0, 0),
+            new DateTime(2026, 10, 12, 9, 0, 0), new DateTime(2026, 10, 14, 9, 0, 0),
+        ], Starts(e, new DateTime(2026, 10, 1), new DateTime(2026, 12, 1)));
     }
 
     [Fact]

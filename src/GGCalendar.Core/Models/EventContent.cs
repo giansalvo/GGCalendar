@@ -19,6 +19,7 @@ public static class EventContent
         && Guests(a, ignoreGuest).SetEquals(Guests(b, ignoreGuest))
         && a.Availability == b.Availability
         && a.Visibility == b.Visibility
+        && string.Equals(a.ColorHex, b.ColorHex, StringComparison.OrdinalIgnoreCase)
         && a.IsCancelled == b.IsCancelled;
 
     private static HashSet<string> Guests(CalendarEvent e, string? ignore) =>

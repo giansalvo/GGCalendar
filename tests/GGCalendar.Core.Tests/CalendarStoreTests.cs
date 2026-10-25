@@ -59,6 +59,7 @@ public class CalendarStoreTests
     }
 
     [Fact]
+    [Trait("TestCase", "T08")]
     public void CalendarVisibilityPersistsAndDeleteCascades()
     {
         var store = Create();
@@ -113,6 +114,7 @@ public class CalendarStoreTests
     }
 
     [Fact]
+    [Trait("TestCase", "T15")]
     public void Version3DatabaseGetsTheBaseColumn()
     {
         var path = Path.Combine(Path.GetTempPath(), $"ggcal-v3-{Guid.NewGuid():N}.db");
@@ -208,5 +210,68 @@ public class CalendarStoreTests
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             foreach (var f in Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(path) + "*")) File.Delete(f);
         }
+    }
+
+    [Fact]
+    [Trait("TestCase", "T15")]
+    public void T15_AnOlderDatabaseKeepsItsCalendarsEventsAndQueueAfterTheMigration()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"ggcal-old-{Guid.NewGuid():N}.db");
+        try
+        {
+            var first = new CalendarStore(path);
+            first.UpsertCalendar(new CalendarInfo("c1", "Locale", "Personale", "#1A73E8", IsVisible: false));
+            first.UpsertEvent(Ev("e1", new DateTime(2026, 10, 14, 9, 0, 0)));
+            first.Enqueue("e1", "c1", OutboxOperation.Update, Ev("e1", new DateTime(2026, 10, 14, 9, 0, 0)));
+            first.SetSyncToken("c1", "tok");
+
+            // Take the database back to the layout of version 3 (no "base" column in the outbox).
+            using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                c.Open();
+                using var cmd = c.CreateCommand();
+                cmd.CommandText = "ALTER TABLE outbox DROP COLUMN base; PRAGMA user_version = 3;";
+                cmd.ExecuteNonQuery();
+            }
+
+            var store = new CalendarStore(path);
+
+            var calendar = Assert.Single(store.GetCalendars());
+            Assert.Equal("Personale", calendar.Name);
+            Assert.False(calendar.IsVisible);
+            Assert.Equal("Titolo e1", Assert.Single(store.GetAllEvents()).Title);
+            Assert.Equal("e1", Assert.Single(store.GetPending()).EventId);
+            Assert.Equal("tok", store.GetSyncToken("c1"));
+            store.Enqueue("e1", "c1", OutboxOperation.Update, Ev("e1", DateTime.Today), Ev("e1", DateTime.Today));
+            Assert.NotNull(store.GetPending()[1].Base);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            foreach (var f in Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(path) + "*")) File.Delete(f);
+        }
+    }
+
+    [Fact]
+    [Trait("TestCase", "T08")]
+    public void T08_DeletingACalendarLeavesTheOtherCalendarsUntouched()
+    {
+        var store = Create();
+        store.UpsertCalendar(new CalendarInfo("c2", "Locale", "Lavoro", "#33B679"));
+        var other = Ev("e2", DateTime.Today) with { CalendarId = "c2" };
+        store.UpsertEvent(Ev("e1", DateTime.Today));
+        store.UpsertEvent(other);
+        store.Enqueue("e1", "c1", OutboxOperation.Update, Ev("e1", DateTime.Today));
+        store.Enqueue("e2", "c2", OutboxOperation.Update, other);
+        store.SetSyncToken("c1", "tok1");
+        store.SetSyncToken("c2", "tok2");
+
+        store.DeleteCalendar("c1");
+
+        Assert.Equal("c2", Assert.Single(store.GetCalendars()).Id);
+        Assert.Equal("e2", Assert.Single(store.GetAllEvents()).Id);
+        Assert.Equal("e2", Assert.Single(store.GetPending()).EventId);
+        Assert.Null(store.GetSyncToken("c1"));
+        Assert.Equal("tok2", store.GetSyncToken("c2"));
     }
 }

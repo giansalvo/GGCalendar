@@ -1,0 +1,107 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using GGCalendar.Data;
+using GGCalendar.Providers.Google;
+
+namespace GGCalendar.Core.Tests.Support;
+
+/// <summary>
+/// Google Calendar asked directly (plain REST calls) with the test account that the app has connected: an answer that does
+/// not depend on the app's own code. It only ever touches events whose title starts with the test prefix.
+/// </summary>
+public sealed class TestGoogle : IDisposable
+{
+    private readonly HttpClient _http = new();
+    private readonly string _events = "https://www.googleapis.com/calendar/v3/calendars/" + Uri.EscapeDataString(AppDriver.TestAccount) + "/events";
+
+    private TestGoogle() { }
+
+    public static async Task<TestGoogle> ConnectAsync()
+    {
+        var settings = new SettingsStore().Load();
+        var config = GoogleClientConfig.Resolve(settings.GoogleClientId, settings.GoogleClientSecret);
+        var account = new GoogleAccountStore().Load().FirstOrDefault(a => a.Email.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"L'account di prova {AppDriver.TestAccount} non è collegato all'app.");
+        var tokens = await GoogleAuth.RefreshAsync(new HttpClient(), config.ClientId, config.ClientSecret,
+            GoogleAccountStore.Unprotect(account.ProtectedRefreshToken), CancellationToken.None);
+        var google = new TestGoogle();
+        google._http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        return google;
+    }
+
+    private async Task<JsonElement> SendAsync(HttpMethod method, string url, JsonNode? body = null)
+    {
+        using var request = new HttpRequestMessage(method, url);
+        if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
+        using var response = await _http.SendAsync(request);
+        var text = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Google {(int)response.StatusCode}: {text}");
+        return string.IsNullOrWhiteSpace(text) ? default : JsonDocument.Parse(text).RootElement.Clone();
+    }
+
+    public static string? RemoteIdOf(string localEventId) => new CalendarStore().GetRemoteInfo(localEventId)?.RemoteId;
+
+    public Task<JsonElement> GetAsync(string remoteId) => SendAsync(HttpMethod.Get, $"{_events}/{Uri.EscapeDataString(remoteId)}");
+
+    /// <summary>Events (series masters and modified occurrences, not expanded) whose text matches <paramref name="text"/>.</summary>
+    public async Task<List<JsonElement>> FindAsync(string text)
+    {
+        var result = await SendAsync(HttpMethod.Get, $"{_events}?singleEvents=false&showDeleted=false&maxResults=250&q={Uri.EscapeDataString(text)}");
+        return result.GetProperty("items").EnumerateArray().ToList();
+    }
+
+    /// <summary>The occurrences of a series in [from, to) as Google expands them (cancelled ones are left out).</summary>
+    public async Task<List<JsonElement>> InstancesAsync(string seriesRemoteId, DateTime from, DateTime to)
+    {
+        static string Utc(DateTime d) => Uri.EscapeDataString(DateTime.SpecifyKind(d, DateTimeKind.Local).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        var result = await SendAsync(HttpMethod.Get,
+            $"{_events}/{Uri.EscapeDataString(seriesRemoteId)}/instances?timeMin={Utc(from)}&timeMax={Utc(to)}&maxResults=250&showDeleted=false");
+        return result.GetProperty("items").EnumerateArray().ToList();
+    }
+
+    /// <summary>True when the event no longer exists on Google (deleted: Google may still answer with status "cancelled").</summary>
+    public async Task<bool> IsGoneAsync(string remoteId)
+    {
+        try
+        {
+            var e = await GetAsync(remoteId);
+            return e.TryGetProperty("status", out var s) && s.GetString() == "cancelled";
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("410"))
+        {
+            return true;
+        }
+    }
+
+    /// <summary>Changes fields of an event with a PATCH (JSON merge: a null removes the field).</summary>
+    public Task<JsonElement> PatchAsync(string remoteId, JsonObject fields) =>
+        SendAsync(HttpMethod.Patch, $"{_events}/{Uri.EscapeDataString(remoteId)}", fields);
+
+    public Task DeleteAsync(string remoteId) => SendAsync(HttpMethod.Delete, $"{_events}/{Uri.EscapeDataString(remoteId)}");
+
+    /// <summary>Deletes every event of the test calendar whose title starts with the test prefix (left by an interrupted run). Returns how many.</summary>
+    public async Task<int> DeleteLeftoversAsync()
+    {
+        var count = 0;
+        foreach (var item in await FindAsync(AppDriver.TestPrefix))
+        {
+            if (!item.TryGetProperty("summary", out var title) || title.GetString()?.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) != true) continue;
+            if (item.TryGetProperty("recurringEventId", out _)) continue; // an occurrence goes away with its series
+            try
+            {
+                await DeleteAsync(item.GetProperty("id").GetString()!);
+                count++;
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("410") || ex.Message.Contains("404"))
+            {
+                // already gone
+            }
+        }
+
+        return count;
+    }
+
+    public void Dispose() => _http.Dispose();
+}

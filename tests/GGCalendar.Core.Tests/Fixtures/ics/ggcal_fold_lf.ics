@@ -1,0 +1,20 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GGCalendar//Prove//IT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:GGCAL Prova righe piegate LF
+X-WR-TIMEZONE:Europe/Rome
+BEGIN:VEVENT
+DTSTAMP:20260101T000000Z
+UID:fold@ggcalendar.test
+DTSTART;TZID=Europe/Rome:20261102T090000
+DTEND;TZID=Europe/Rome:20261102T100000
+SUMMARY:[PROVA] Titolo piegato con spazio Titolo piegato con spazio Titolo 
+ piegato con spazio Titolo piegato con spazio Titolo piegato con spazio Tit
+ olo piegato con spazio 
+LOCATION:Luogo piegato con tabulazione Luogo piegato con tabulazione Luogo 
+	piegato con tabulazione Luogo piegato con tabulazione Luogo piegato con ta
+	bulazione Luogo piegato con tabulazione 
+END:VEVENT
+END:VCALENDAR

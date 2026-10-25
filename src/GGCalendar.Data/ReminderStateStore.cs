@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GGCalendar.Core;
 using GGCalendar.Core.Reminders;
 
 namespace GGCalendar.Data;
@@ -22,8 +23,7 @@ public sealed class ReminderStateStore(string? path = null)
 {
     private static readonly JsonSerializerOptions Options = new() { Converters = { new JsonStringEnumConverter() } };
 
-    public string FilePath { get; } = path ?? Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GGCalendar", "reminders.json");
+    public string FilePath { get; } = path ?? AppPaths.FileInDataDirectory("reminders.json");
 
     public ReminderState Load()
     {

@@ -1,0 +1,19 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GGCalendar//Prove//IT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:GGCAL Prova multibyte
+X-WR-TIMEZONE:Europe/Rome
+BEGIN:VEVENT
+DTSTAMP:20260101T000000Z
+UID:mb@ggcalendar.test
+DTSTART;TZID=Europe/Rome:20261102T090000
+DTEND;TZID=Europe/Rome:20261102T100000
+SUMMARY:[PROVA] àèìòù€☕日本語😀àèìòù€☕日本語😀�
+ �èìòù€☕日本語😀àèìòù€☕日本語😀àèìòù€☕�
+ ��本語😀àèìòù€☕日本語😀àèìòù€☕日本語😀àè
+ ìòù€☕日本語😀àèìòù€☕日本語😀àèìòù€☕日�
+ ��語😀àèìòù€☕日本語😀àèìòù€☕日本語😀
+END:VEVENT
+END:VCALENDAR

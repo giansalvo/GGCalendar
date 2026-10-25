@@ -1,0 +1,2 @@
+# The .ics test files are data: line endings and bytes must stay exactly as they are (some are LF-only, binary or not UTF-8).
+tests/GGCalendar.Core.Tests/Fixtures/** -text
