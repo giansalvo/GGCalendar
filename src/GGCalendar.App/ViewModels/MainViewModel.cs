@@ -97,10 +97,6 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
-    // The thread of the interface this view model was made on (null off the interface): the language can change from any thread.
-    // The dispatcher itself is not touched here: reaching for it from a plain thread would make that thread the one of the interface.
-    private readonly SynchronizationContext? _context = SynchronizationContext.Current;
-
     private readonly CalendarStore _store;
 
     public MainViewModel(CalendarStore store)
@@ -124,12 +120,6 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
     private void OnLanguageChanged()
     {
-        if (_context is not null && SynchronizationContext.Current != _context)
-        {
-            _context.Post(_ => OnLanguageChanged(), null);
-            return;
-        }
-
         foreach (var calendar in _calendars) calendar.LanguageChanged();
         foreach (var account in Accounts) account.LanguageChanged();
         OnPropertyChanged(nameof(ViewModeName));
