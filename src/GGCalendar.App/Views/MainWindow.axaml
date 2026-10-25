@@ -24,6 +24,19 @@
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
+        <Style Selector="Button.calitem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.calitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#14888888" />
+        </Style>
+        <Style Selector="Button.calitem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#22888888" />
+        </Style>
         <Style Selector="TextBlock.muted">
             <Setter Property="Opacity" Value="0.65" />
         </Style>
@@ -146,14 +159,17 @@
                                                         </ContextMenu>
                                                     </Border.ContextMenu>
                                                     <!-- Round avatar for the account, rounded squares for the calendars: filled with the calendar colour and a tick when shown, an outline when hidden. -->
-                                                    <Grid ColumnDefinitions="Auto,*" Background="Transparent" Cursor="Hand" Margin="4,3" Tapped="OnCalendarToggled">
+                                                    <!-- A button (not a plain panel) so that the keyboard and the tests can use it too. -->
+                                                    <Button Classes="calitem" AutomationProperties.AutomationId="Calendar.Toggle" Margin="4,1" Click="OnCalendarToggled">
+                                                      <Grid ColumnDefinitions="Auto,*" Margin="0,2">
                                                         <Border Width="20" Height="20" CornerRadius="4" BorderThickness="2" BorderBrush="{Binding ColorHex}" VerticalAlignment="Center">
                                                             <Border Background="{Binding ColorHex}" CornerRadius="1" Margin="-2" IsVisible="{Binding IsVisible}">
                                                                 <TextBlock Text="&#x2713;" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                             </Border>
                                                         </Border>
                                                         <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                    </Grid>
+                                                      </Grid>
+                                                    </Button>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

@@ -46,12 +46,11 @@ public class LocalUiTests
         AssertShown(window, 1);
 
         // Hiding the calendar hides its events; showing it brings them back.
-        var visibility = window.GetVisualDescendants().OfType<CheckBox>().First(c => c.DataContext is CalendarItemViewModel { } item && item.Id == calendar);
-        visibility.IsChecked = false;
-        Dispatcher.UIThread.RunJobs();
+        var toggle = window.GetVisualDescendants().OfType<Button>().First(b =>
+            Avalonia.Automation.AutomationProperties.GetAutomationId(b) == "Calendar.Toggle" && b.DataContext is CalendarItemViewModel { } item && item.Id == calendar);
+        Click(toggle);
         AssertShown(window, 0);
-        visibility.IsChecked = true;
-        Dispatcher.UIThread.RunJobs();
+        Click(toggle);
         AssertShown(window, 1);
     });
 

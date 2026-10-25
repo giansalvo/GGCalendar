@@ -536,7 +536,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnCalendarToggled(object? sender, Avalonia.Input.TappedEventArgs e)
+    private void OnCalendarToggled(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is CalendarItemViewModel item) item.IsVisible = !item.IsVisible;
     }
