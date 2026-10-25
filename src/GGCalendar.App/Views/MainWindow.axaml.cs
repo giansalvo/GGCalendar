@@ -532,7 +532,7 @@ public partial class MainWindow : Window
 
         var existing = vm.FindExisting(calendarId, parsed.Events).Count;
         var notice = GoogleSyncService.IsGoogleCalendar(calendarId) && total > ManyEventsForGoogle
-            ? $"Il calendario è su Google: i {total} eventi saranno inviati uno alla volta nelle prossime sincronizzazioni e potrebbe volerci del tempo."
+            ? $"Il calendario è su Google: i {total} eventi verranno inviati subito, a gruppi, e servirà {SyncProgressWindow.FormatRemaining(SyncProgressWindow.EstimateRemaining(0, total, TimeSpan.Zero))} (potrai interromperli)."
             : null;
         var mode = ImportDuplicates.Skip;
         if (existing > 0 || parsed.Warnings.Count > 0 || notice is not null)
