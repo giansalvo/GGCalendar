@@ -218,16 +218,19 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T59")]
-    public void T59_TwentyThousandEventsImportInAcceptableTime()
+    public void T59_AFileWithFiveThousandEventsImportedAgainAsReplaceOrCopyKeepsTheRightNumberInAcceptableTime()
     {
-        var feed = Analyze("ggcal_20000");
+        var feed = Analyze("ggcal_5000");
         var vm = Open();
-
         var clock = Stopwatch.StartNew();
-        var (imported, skipped) = vm.ImportEvents("dest", feed.Events, ImportDuplicates.Skip);
-        output.WriteLine($"Importazione di {imported} eventi: {clock.Elapsed.TotalSeconds:F1} s");
 
-        Assert.Equal((20_000, 0), (imported, skipped));
+        Assert.Equal((5000, 0), vm.ImportEvents("dest", feed.Events, ImportDuplicates.Skip));
+        Assert.Equal((5000, 0), vm.ImportEvents("dest", Analyze("ggcal_5000").Events, ImportDuplicates.Replace));
+        Assert.Equal(5000, vm.EventsOf("dest").Count(e => e.SeriesMasterId is null));
+        Assert.Equal((5000, 0), vm.ImportEvents("dest", Analyze("ggcal_5000").Events, ImportDuplicates.Copy));
+        Assert.Equal(10_000, vm.EventsOf("dest").Count(e => e.SeriesMasterId is null));
+
+        output.WriteLine($"Tre importazioni di 5000 eventi: {clock.Elapsed.TotalSeconds:F1} s");
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), $"Importazione troppo lenta: {clock.Elapsed.TotalSeconds:F1} s.");
     }
 }

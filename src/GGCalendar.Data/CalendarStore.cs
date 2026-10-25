@@ -284,6 +284,37 @@ public sealed class CalendarStore
             return Convert.ToInt64(cmd.ExecuteScalar());
         });
 
+    /// <summary>The events with a creation in the queue that are not on Google (remote_id is empty), for Google calendars (their id has a "|").</summary>
+    private const string UnsentCreations = """
+        SELECT DISTINCT o.event_id AS id FROM outbox o JOIN events e ON e.id = o.event_id
+        WHERE o.operation = 'Create' AND e.remote_id IS NULL AND o.calendar_id LIKE '%|%'
+        """;
+
+    /// <summary>How many events are waiting to be created on Google (in the queue, and not on Google yet).</summary>
+    public int CountUnsentCreations() => WithConnection(c =>
+    {
+        using var cmd = Command(c, $"SELECT COUNT(*) FROM ({UnsentCreations})", []);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    });
+
+    /// <summary>
+    /// Throws away the events that were created on this PC for a Google calendar and have not been sent yet: they are removed from the
+    /// queue and from the PC (with the modified occurrences of a series among them), so that this PC and Google agree. What is already on
+    /// Google, and the edits and deletions waiting for it, stay. Returns how many events were thrown away.
+    /// </summary>
+    public int DiscardUnsentCreations() => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        Run(c, $"CREATE TEMP TABLE unsent_ids AS {UnsentCreations}");
+        int count;
+        using (var cmd = Command(c, "SELECT COUNT(*) FROM unsent_ids", [])) count = Convert.ToInt32(cmd.ExecuteScalar());
+        Run(c, "DELETE FROM events WHERE id IN (SELECT id FROM unsent_ids) OR json_extract(data, '$.SeriesMasterId') IN (SELECT id FROM unsent_ids)");
+        Run(c, "DELETE FROM outbox WHERE event_id IN (SELECT id FROM unsent_ids)");
+        Run(c, "DROP TABLE unsent_ids");
+        tx.Commit();
+        return count;
+    });
+
     public IReadOnlyList<OutboxItem> GetPending() => WithConnection(c =>
     {
         using var cmd = Command(c, "SELECT seq, event_id, calendar_id, operation, payload, base FROM outbox ORDER BY seq", []);

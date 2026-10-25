@@ -329,6 +329,18 @@ public sealed partial class MainViewModel : ViewModelBase
         Refresh();
     }
 
+    /// <summary>How many events are waiting in the queue to be created on Google.</summary>
+    public int CountUnsentCreations() => _store.CountUnsentCreations();
+
+    /// <summary>Throws away the events not sent to Google yet, from the queue and from this PC; returns how many.</summary>
+    public async Task<int> DiscardUnsentCreationsAsync()
+    {
+        _changeCount++;
+        var count = await Task.Run(_store.DiscardUnsentCreations);
+        await ReloadAsync();
+        return count;
+    }
+
     public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();
 
     private static readonly string[] CalendarPalette = ["#1A73E8", "#0B8043", "#E67C73", "#8E24AA", "#F6BF26", "#039BE5", "#D50000", "#616161"];

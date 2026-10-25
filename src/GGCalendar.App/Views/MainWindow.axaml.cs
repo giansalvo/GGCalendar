@@ -180,6 +180,7 @@ public partial class MainWindow : Window
             _syncCts = cts;
             SyncProgressWindow? progress = null;
             var finished = false;
+            var discard = false;
             var result = await Task.Run(() => _google.SyncAllAsync(cts.Token, (done, total) =>
             {
                 if (total > 30)
@@ -189,7 +190,17 @@ public partial class MainWindow : Window
                         if (!vm.SyncStatus.StartsWith("Interruzione", StringComparison.Ordinal)) vm.SyncStatus = $"Invio a Google: {done} di {total} eventi...";
                         if (progress is null)
                         {
-                            progress = new SyncProgressWindow(() => cts.Cancel());
+                            progress = new SyncProgressWindow(() => cts.Cancel(), async () =>
+                            {
+                                var waiting = await Task.Run(vm.CountUnsentCreations);
+                                var sure = await new ConfirmWindow("Scartare gli eventi non inviati?",
+                                    $"{waiting} eventi non ancora inviati a Google saranno eliminati anche da questo PC. Quelli già inviati restano su Google.", "Scarta")
+                                    .ShowDialog<bool>(progress!);
+                                if (!sure) return false;
+                                discard = true;
+                                cts.Cancel();
+                                return true;
+                            });
                             progress.Show(this);
                         }
 
@@ -206,7 +217,16 @@ public partial class MainWindow : Window
                 : "";
             if (result.Cancelled)
             {
-                vm.SyncStatus = $"Invio a Google interrotto: {result.Pending} modifiche restano in coda e saranno inviate alla prossima sincronizzazione.";
+                if (discard)
+                {
+                    var thrownAway = await vm.DiscardUnsentCreationsAsync();
+                    vm.SyncStatus = $"Invio a Google interrotto: {thrownAway} eventi non ancora inviati sono stati scartati ed eliminati da questo PC.";
+                }
+                else
+                {
+                    vm.SyncStatus = $"Invio a Google interrotto: {result.Pending} modifiche restano in coda e saranno inviate alla prossima sincronizzazione.";
+                }
+
                 return;
             }
 

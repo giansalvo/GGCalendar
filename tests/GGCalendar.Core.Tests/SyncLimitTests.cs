@@ -204,32 +204,142 @@ public class SyncLimitTests
         Assert.Equal(40, rig.Google.Ids.Count);
         Assert.Equal(40, rig.Store.GetAllEvents().Count);
     }
+
+    [Fact]
+    [Trait("TestCase", "T125")]
+    public async Task T125_DiscardingTheQueueRemovesTheEventsNotSentYetAndKeepsTheRest()
+    {
+        using var rig = new SyncRig();
+        var sent = rig.AddLocal(NewEvent("Già inviato"));
+        await rig.SyncOkAsync();
+        var edited = rig.Edit(sent, sent with { Title = "Già inviato, modificato" }); // an edit waiting for Google
+        rig.Store.EnqueueDelete(Guid.NewGuid().ToString("N"), FakeGoogle.LocalCalendarId, "remote-x"); // a deletion waiting for Google
+        for (var i = 0; i < 3; i++) rig.AddLocal(NewEvent("Da inviare " + i));
+        var series = rig.AddLocal(NewEvent("Serie da inviare") with { Recurrence = "FREQ=DAILY;COUNT=3" });
+        rig.AddLocal(NewEvent("Occorrenza della serie") with { SeriesMasterId = series.Id, OriginalStart = series.Start });
+        Assert.Equal(5, rig.Store.CountUnsentCreations());
+
+        var thrownAway = rig.Store.DiscardUnsentCreations();
+
+        Assert.Equal(5, thrownAway);
+        Assert.Equal([edited.Title], rig.Store.GetAllEvents().Select(e => e.Title)); // this PC and Google agree again
+        Assert.Equal([OutboxOperation.Update, OutboxOperation.Delete], rig.Store.GetPending().Select(p => p.Operation).Order());
+        Assert.Equal(0, rig.Store.CountUnsentCreations());
+    }
+
+    [Fact]
+    [Trait("TestCase", "T126")]
+    public async Task T126_StoppingAndDiscardingLeavesGoogleAndThisPcWithTheSameEvents()
+    {
+        using var rig = new SyncRig();
+        rig.Service.PushPace = TimeSpan.Zero;
+        rig.Service.BatchSize = 1;
+        for (var i = 0; i < 40; i++) rig.AddLocal(NewEvent("Evento " + i));
+        using var stop = new CancellationTokenSource();
+        var first = await rig.Service.SyncAllAsync(stop.Token, (done, _) =>
+        {
+            if (done == 10) stop.Cancel();
+        });
+        Assert.True(first.Cancelled);
+
+        var thrownAway = rig.Store.DiscardUnsentCreations();
+
+        Assert.Equal(40 - rig.Google.Ids.Count, thrownAway);
+        Assert.Equal(rig.Google.Ids.Count, rig.Store.GetAllEvents().Count);
+        Assert.Empty(rig.Store.GetPending());
+        var writes = rig.Google.Writes;
+        await rig.SyncOkAsync();
+        Assert.Equal(writes, rig.Google.Writes); // nothing more is sent
+        Assert.Equal(rig.Google.Ids.Count, rig.Store.GetAllEvents().Count);
+    }
 }
 
-/// <summary>T121: the window shown while many changes are sent has a button to stop.</summary>
+
+/// <summary>T121, T127-T128: the window shown while many changes are sent: progress, estimate and the two buttons to stop.</summary>
 [Collection(AppDriver.CollectionName)]
 public class SyncProgressWindowTests
 {
+    private static List<string?> Texts(Avalonia.Controls.Window window) =>
+        window.GetVisualDescendants().OfType<Avalonia.Controls.TextBlock>().Select(t => t.Text).ToList();
+
+    private static Avalonia.Controls.Button ButtonOf(Avalonia.Controls.Window window, string text) =>
+        window.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Single(b => b.Content as string == text);
+
+    private static void Click(Avalonia.Controls.Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+
     [Fact]
     [Trait("TestCase", "T121")]
     public Task T121_TheProgressWindowShowsHowFarItIsAndHasAButtonToStop() => HeadlessApp.RunAsync(async () =>
     {
         var stopped = 0;
-        var window = new GGCalendar.App.Views.SyncProgressWindow(() => stopped++);
+        var window = new GGCalendar.App.Views.SyncProgressWindow(() => stopped++, () => Task.FromResult(false));
         window.Show();
         await Task.Yield();
         window.Update(1250, 20000);
 
-        var texts = window.GetVisualDescendants().OfType<Avalonia.Controls.TextBlock>().Select(t => t.Text).ToList();
-        Assert.Contains(texts, t => t == "Invio a Google: 1250 di 20000 eventi.");
-        var button = window.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Single(b => (b.Content as string) == "Interrompi");
+        Assert.Contains(Texts(window), t => t == "Invio a Google: 1250 di 20000 eventi.");
         Assert.Equal(6.25, window.GetVisualDescendants().OfType<Avalonia.Controls.ProgressBar>().Single().Value * 100);
+        var button = ButtonOf(window, "Interrompi");
 
-        button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+        Click(button);
 
         Assert.Equal(1, stopped);
         Assert.False(button.IsEnabled);
         Assert.True(window.StopRequested);
         window.Close();
+    });
+
+    [Fact]
+    [Trait("TestCase", "T127")]
+    public Task T127_StopAndDiscardAsksFirstAndOnlyThenStops() => HeadlessApp.RunAsync(async () =>
+    {
+        var stopped = 0;
+        var asked = 0;
+        var answer = false;
+        var window = new GGCalendar.App.Views.SyncProgressWindow(() => stopped++, () =>
+        {
+            asked++;
+            return Task.FromResult(answer);
+        });
+        window.Show();
+        await Task.Yield();
+        var discard = ButtonOf(window, "Interrompi e scarta la coda");
+
+        Click(discard); // the user says no in the confirmation
+        Assert.Equal((1, false), (asked, window.StopRequested));
+        Assert.True(discard.IsEnabled);
+
+        answer = true;
+        Click(discard); // and now yes
+        Assert.Equal(2, asked);
+        Assert.True(window.StopRequested);
+        Assert.False(discard.IsEnabled);
+        Assert.False(ButtonOf(window, "Interruzione...").IsEnabled);
+        Assert.Equal(0, stopped); // the stop itself is done by whoever confirmed (the caller cancels the sending)
+        window.Close();
+    });
+
+    [Fact]
+    [Trait("TestCase", "T128")]
+    public Task T128_TheWindowEstimatesTheTimeNeededToSendEverything() => HeadlessApp.RunAsync(async () =>
+    {
+        var window = new GGCalendar.App.Views.SyncProgressWindow(() => { }, () => Task.FromResult(false));
+        window.Show();
+        await Task.Yield();
+
+        window.Update(0, 20000); // before any measure: the usual speed (10 events a second)
+
+        Assert.Contains(Texts(window), t => t == "Tempo stimato per inviare tutti gli eventi: circa 33 minuti");
+        window.Close();
+
+        var view = GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(1000, 19000, TimeSpan.FromSeconds(100)); // 10 a second measured
+        Assert.Equal(TimeSpan.FromSeconds(1900), view);
+        Assert.Equal(TimeSpan.FromSeconds(19000 / 10.0), GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(5, 19000, TimeSpan.FromSeconds(2))); // too little to measure
+        Assert.Equal(TimeSpan.FromSeconds(19000 / 100.0), GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(10000, 19000, TimeSpan.FromSeconds(100))); // faster than the default
+
+        Assert.Equal("meno di un minuto", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromSeconds(30)));
+        Assert.Equal("circa 5 minuti", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(5)));
+        Assert.Equal("circa 1 h 30 min", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(90)));
+        Assert.Equal("circa 2 h", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(120)));
     });
 }
