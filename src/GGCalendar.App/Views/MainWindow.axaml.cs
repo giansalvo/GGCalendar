@@ -519,6 +519,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnCalendarToggled(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is CalendarItemViewModel item) item.IsVisible = !item.IsVisible;
+    }
+
     private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;
@@ -582,6 +587,17 @@ public partial class MainWindow : Window
         {
             vm.SyncStatus = "Errore di importazione: " + ex.Message;
         }
+    }
+
+    private void OnToggleAccount(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is AccountGroup group) group.IsExpanded = !group.IsExpanded;
+    }
+
+    // TODO: create a new calendar in this account (on Google: issue #16).
+    private void OnNewCalendarInAccount(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm) vm.SyncStatus = "Nuovo calendario in un account: funzione non ancora disponibile.";
     }
 
     private async void OnNewLocalCalendar(object? sender, RoutedEventArgs e)

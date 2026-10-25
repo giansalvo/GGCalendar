@@ -184,7 +184,7 @@ public static class AppDriver
     /// <summary>The "Crea" button, the editor filled in as <paramref name="spec"/> says, and "Salva". Returns the new event.</summary>
     public static async Task<CalendarEvent> CreateEventAsync(MainWindow window, EventSpec spec)
     {
-        Click(FindButton(window, "＋  Crea"));
+        ChooseCreateMenuItem(window, "Evento");
         var dialog = await WaitForAsync(() => window.OwnedWindows.OfType<EventEditWindow>().FirstOrDefault(), "la finestra dell'evento");
         var editor = (EventEditViewModel)dialog.DataContext!;
         dialog.FindControl<TextBox>("TitleBox")!.Text = spec.Title;
@@ -297,10 +297,19 @@ public static class AppDriver
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
     }
 
-    /// <summary>"Nuovo calendario locale" and the name typed in the question. Returns the id of the new calendar.</summary>
+    /// <summary>An entry of the menu that the "Crea" button opens ("Evento", "Calendario Locale").</summary>
+    public static void ChooseCreateMenuItem(MainWindow window, string header)
+    {
+        var button = FindButton(window, b => b.Content is string text && text.StartsWith("＋  Crea", StringComparison.Ordinal));
+        var item = ((MenuFlyout)button.Flyout!).Items.OfType<MenuItem>().First(i => i.Header as string == header);
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>"Crea" > "Calendario Locale" and the name typed in the question. Returns the id of the new calendar.</summary>
     public static async Task<string> CreateLocalCalendarAsync(MainWindow window, string name)
     {
-        Click(FindButton(window, "＋  Nuovo calendario locale"));
+        ChooseCreateMenuItem(window, "Calendario Locale");
         var prompt = await WaitForAsync(() => window.OwnedWindows.OfType<PromptWindow>().FirstOrDefault(), "la richiesta del nome del calendario");
         prompt.GetVisualDescendants().OfType<TextBox>().First().Text = name;
         Click(FindButton(prompt, "OK"));
