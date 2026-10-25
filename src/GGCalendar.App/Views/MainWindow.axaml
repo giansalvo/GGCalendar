@@ -92,7 +92,7 @@
         <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
             <DockPanel>
                 <!-- A single button: it opens the menu where the thing to create is chosen. -->
-                <Button Name="CreateButton" DockPanel.Dock="Top" Content="＋  Crea  ▾" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold">
+                <Button Name="CreateButton" DockPanel.Dock="Top" Content="＋  Crea  ▾" Padding="16,6" CornerRadius="18" Margin="0,4,0,16">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem Name="CreateEventItem" Header="Evento" Click="OnNewEvent" />
@@ -104,7 +104,7 @@
                     <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
-                    <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta (ed elimina, se locale)" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta, elimina" TextWrapping="Wrap" />
                 </StackPanel>
                 <ScrollViewer Margin="0,16,0,0">
                     <ItemsControl ItemsSource="{Binding Accounts}">
