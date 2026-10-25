@@ -33,12 +33,22 @@ public sealed class TestGoogle : IDisposable
 
     private async Task<JsonElement> SendAsync(HttpMethod method, string url, JsonNode? body = null)
     {
-        using var request = new HttpRequestMessage(method, url);
-        if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
-        using var response = await _http.SendAsync(request);
-        var text = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Google {(int)response.StatusCode}: {text}");
-        return string.IsNullOrWhiteSpace(text) ? default : JsonDocument.Parse(text).RootElement.Clone();
+        for (var attempt = 0; ; attempt++)
+        {
+            using var request = new HttpRequestMessage(method, url);
+            if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
+            using var response = await _http.SendAsync(request);
+            var text = await response.Content.ReadAsStringAsync();
+            // Google refuses a burst of writes for a while (403 rateLimitExceeded): wait and try again.
+            if ((int)response.StatusCode == 403 && text.Contains("rateLimitExceeded") && attempt < 8)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(20));
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Google {(int)response.StatusCode}: {text}");
+            return string.IsNullOrWhiteSpace(text) ? default : JsonDocument.Parse(text).RootElement.Clone();
+        }
     }
 
     public static string? RemoteIdOf(string localEventId) => new CalendarStore().GetRemoteInfo(localEventId)?.RemoteId;
@@ -48,8 +58,18 @@ public sealed class TestGoogle : IDisposable
     /// <summary>Events (series masters and modified occurrences, not expanded) whose text matches <paramref name="text"/>.</summary>
     public async Task<List<JsonElement>> FindAsync(string text)
     {
-        var result = await SendAsync(HttpMethod.Get, $"{_events}?singleEvents=false&showDeleted=false&maxResults=250&q={Uri.EscapeDataString(text)}");
-        return result.GetProperty("items").EnumerateArray().ToList();
+        var items = new List<JsonElement>();
+        string? page = null;
+        do
+        {
+            var result = await SendAsync(HttpMethod.Get,
+                $"{_events}?singleEvents=false&showDeleted=false&maxResults=250&q={Uri.EscapeDataString(text)}" + (page is null ? "" : "&pageToken=" + Uri.EscapeDataString(page)));
+            items.AddRange(result.GetProperty("items").EnumerateArray());
+            page = result.TryGetProperty("nextPageToken", out var next) ? next.GetString() : null;
+        }
+        while (page is not null);
+
+        return items;
     }
 
     /// <summary>The occurrences of a series in [from, to) as Google expands them (cancelled ones are left out).</summary>

@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private readonly GoogleSyncService _google;
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private DispatcherTimer? _syncTimer;
+    private DispatcherTimer? _retryTimer;
+    private CancellationTokenSource? _syncCts;
     private DispatcherTimer? _debounce;
     private ReminderScheduler? _scheduler;
 
@@ -30,7 +32,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
-        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
+        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -173,12 +175,45 @@ public partial class MainWindow : Window
         vm.SyncStatus = "Sincronizzazione...";
         try
         {
-            var result = await Task.Run(() => _google.SyncAllAsync(CancellationToken.None));
+            // With many changes waiting (an import into a Google calendar) the sending lasts long: say how far it is, and let the user stop it.
+            using var cts = new CancellationTokenSource();
+            _syncCts = cts;
+            SyncProgressWindow? progress = null;
+            var finished = false;
+            var result = await Task.Run(() => _google.SyncAllAsync(cts.Token, (done, total) =>
+            {
+                if (total > 30)
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (finished) return;
+                        if (!vm.SyncStatus.StartsWith("Interruzione", StringComparison.Ordinal)) vm.SyncStatus = $"Invio a Google: {done} di {total} eventi...";
+                        if (progress is null)
+                        {
+                            progress = new SyncProgressWindow(() => cts.Cancel());
+                            progress.Show(this);
+                        }
+
+                        progress.Update(done, total);
+                    });
+            }));
+            finished = true;
+            progress?.Close();
+            _syncCts = null;
             if (result.Changed) await vm.ReloadAsync();
             var conflicts = result.Conflicts.Count > 0 ? " Conflitti: " + string.Join(" | ", result.Conflicts) : "";
+            var waiting = result.Pending > 0
+                ? $" {result.Pending} modifiche sono ancora da inviare a Google" + (result.RetryAt is { } at ? $": Google ha rallentato l'invio, riprovo alle {at.ToLocalTime():HH:mm}." : ".")
+                : "";
+            if (result.Cancelled)
+            {
+                vm.SyncStatus = $"Invio a Google interrotto: {result.Pending} modifiche restano in coda e saranno inviate alla prossima sincronizzazione.";
+                return;
+            }
+
             vm.SyncStatus = result.Errors.Count > 0
-                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts
-                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts;
+                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts + waiting
+                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts + waiting;
+            if (result.RetryAt is { } retryAt) ScheduleRetry(retryAt);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
         {
@@ -189,6 +224,21 @@ public partial class MainWindow : Window
             vm.IsSyncing = false;
             _syncLock.Release();
         }
+    }
+
+    /// <summary>Google asked to slow down: try again when it said, whatever the sync interval is.</summary>
+    private void ScheduleRetry(DateTimeOffset at)
+    {
+        _retryTimer?.Stop();
+        var wait = at - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(2);
+        if (wait < TimeSpan.FromSeconds(5)) wait = TimeSpan.FromSeconds(5);
+        _retryTimer = new DispatcherTimer { Interval = wait };
+        _retryTimer.Tick += async (_, _) =>
+        {
+            _retryTimer?.Stop();
+            await SyncAsync();
+        };
+        _retryTimer.Start();
     }
 
     private static void ApplyTheme(AppSettings s)
