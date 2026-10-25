@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -96,8 +97,9 @@ public sealed partial class MainViewModel : ViewModelBase
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
-    // The thread of the interface this view model was made on: the language can change from any thread.
-    private readonly Avalonia.Threading.Dispatcher _dispatcher = Avalonia.Threading.Dispatcher.UIThread;
+    // The thread of the interface this view model was made on (null off the interface): the language can change from any thread.
+    // The dispatcher itself is not touched here: reaching for it from a plain thread would make that thread the one of the interface.
+    private readonly SynchronizationContext? _context = SynchronizationContext.Current;
 
     private readonly CalendarStore _store;
 
@@ -122,9 +124,9 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
     private void OnLanguageChanged()
     {
-        if (!_dispatcher.CheckAccess())
+        if (_context is not null && SynchronizationContext.Current != _context)
         {
-            _dispatcher.Post(OnLanguageChanged);
+            _context.Post(_ => OnLanguageChanged(), null);
             return;
         }
 
