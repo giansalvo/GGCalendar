@@ -33,6 +33,18 @@ public sealed class FakeGoogle : HttpMessageHandler
     /// <summary>When true, any list request with a sync token is answered 410 Gone (the token expired).</summary>
     public bool ExpireSyncTokens { get; set; }
 
+    /// <summary>After this many writes (insert, patch, delete) Google answers 403 rateLimitExceeded, as it does for a burst of requests. Null = no limit.</summary>
+    public int? LimitAfterWrites { get; set; }
+
+    /// <summary>The next write is answered with this status and reason (once), without being applied.</summary>
+    public (HttpStatusCode Status, string Reason)? NextWriteFails { get; set; }
+
+    /// <summary>The next insert is stored but its answer is lost (a network error reaches the app), as when the connection drops after Google created the event.</summary>
+    public bool LoseNextInsertAnswer { get; set; }
+
+    /// <summary>Writes (insert, patch, delete) received so far, including the refused ones.</summary>
+    public int Writes { get; private set; }
+
     /// <summary>Called with the remote id of an event just before a PATCH is applied (e.g. to simulate a local edit during a sync).</summary>
     public Action<string>? OnPatch { get; set; }
 
@@ -97,6 +109,7 @@ public sealed class FakeGoogle : HttpMessageHandler
         Requests.Add($"{request.Method} {url.AbsolutePath}{url.Query}");
 
         if (url.Host == "oauth2.googleapis.com") return Reply(HttpStatusCode.OK, """{"access_token":"at","expires_in":3600}""");
+        if (url.AbsolutePath == "/batch/calendar/v3") return await BatchAsync(request, body!, cancellationToken);
 
         var path = url.AbsolutePath.Replace("/calendar/v3/", "");
         if (path == "users/me/calendarList")
@@ -109,15 +122,35 @@ public sealed class FakeGoogle : HttpMessageHandler
         var parts = path.Split('/');
         if (parts is not ["calendars", _, "events", ..]) return Reply(HttpStatusCode.NotFound, "{}");
         var id = parts.Length > 3 ? Uri.UnescapeDataString(parts[3]) : null;
+        if (request.Method != HttpMethod.Get)
+        {
+            Writes++;
+            if (NextWriteFails is { } failure)
+            {
+                NextWriteFails = null;
+                return Reply(failure.Status, ErrorBody(failure.Status, failure.Reason));
+            }
+
+            if (LimitAfterWrites is { } limit && Writes > limit) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "rateLimitExceeded"));
+        }
+
         var query = System.Web.HttpUtility.ParseQueryString(url.Query);
 
         if (id is null && request.Method == HttpMethod.Get) return List(query["syncToken"]);
         if (id is null && request.Method == HttpMethod.Post)
         {
-            var created = "g" + _nextId++;
+            var sent = JsonNode.Parse(body!)!.AsObject();
+            var created = sent["id"]?.GetValue<string>() ?? "g" + _nextId++;
+            if (_events.ContainsKey(created)) return Reply(HttpStatusCode.Conflict, ErrorBody(HttpStatusCode.Conflict, "duplicate")); // an id is never reused, not even after a deletion
             var stored = new JsonObject { ["id"] = created };
-            Merge(stored, JsonNode.Parse(body!)!.AsObject());
+            Merge(stored, sent);
             Store(created, stored);
+            if (LoseNextInsertAnswer)
+            {
+                LoseNextInsertAnswer = false;
+                throw new HttpRequestException("La connessione è stata interrotta.");
+            }
+
             return Reply(HttpStatusCode.OK, stored.ToJsonString());
         }
 
@@ -142,6 +175,36 @@ public sealed class FakeGoogle : HttpMessageHandler
         }
 
         return Reply(HttpStatusCode.MethodNotAllowed, "{}");
+    }
+
+    /// <summary>Batches received: each is one request that carries several calls.</summary>
+    public int Batches { get; private set; }
+
+    /// <summary>Runs each call of a multipart batch request as if it had arrived alone, and answers with a multipart body like Google's.</summary>
+    private async Task<HttpResponseMessage> BatchAsync(HttpRequestMessage request, string body, CancellationToken cancellationToken)
+    {
+        Batches++;
+        var boundary = request.Content!.Headers.ContentType!.Parameters.First(p => p.Name == "boundary").Value!.Trim('"');
+        var reply = new StringBuilder();
+        foreach (var part in body.Split("--" + boundary).Skip(1))
+        {
+            var id = System.Text.RegularExpressions.Regex.Match(part, @"Content-ID:\s*<item(\d+)>");
+            var line = System.Text.RegularExpressions.Regex.Match(part, @"(GET|POST|PATCH|DELETE) (\S+)");
+            if (!id.Success || !line.Success) continue;
+            var blank = part.IndexOf("\r\n\r\n", part.IndexOf(line.Value, StringComparison.Ordinal), StringComparison.Ordinal);
+            var json = blank < 0 ? "" : part[(blank + 4)..].Trim();
+            using var sub = new HttpRequestMessage(new HttpMethod(line.Groups[1].Value), "https://www.googleapis.com" + line.Groups[2].Value);
+            if (json.Length > 0) sub.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var answer = await SendAsync(sub, cancellationToken);
+            var text = await answer.Content.ReadAsStringAsync(cancellationToken);
+            reply.Append($"--response\r\nContent-Type: application/http\r\nContent-ID: <response-item{id.Groups[1].Value}>\r\n\r\n");
+            reply.Append($"HTTP/1.1 {(int)answer.StatusCode} {answer.ReasonPhrase}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{text}\r\n");
+        }
+
+        reply.Append("--response--\r\n");
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(reply.ToString(), Encoding.UTF8) };
+        response.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("multipart/mixed; boundary=response");
+        return response;
     }
 
     private HttpResponseMessage List(string? syncToken)
@@ -175,6 +238,17 @@ public sealed class FakeGoogle : HttpMessageHandler
             else target[key] = value.DeepClone();
         }
     }
+
+    private static string ErrorBody(HttpStatusCode status, string reason) =>
+        new JsonObject
+        {
+            ["error"] = new JsonObject
+            {
+                ["errors"] = new JsonArray(new JsonObject { ["domain"] = "usageLimits", ["reason"] = reason, ["message"] = reason }),
+                ["code"] = (int)status,
+                ["message"] = reason,
+            },
+        }.ToJsonString();
 
     private static HttpResponseMessage Reply(HttpStatusCode status, string json) =>
         new(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };

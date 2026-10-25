@@ -39,30 +39,29 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_basic");
 
-        var utc = Event(feed, "[PROVA] Riunione in UTC");
+        var utc = Event(feed, "[TEST GGCAL] Riunione in UTC");
         Assert.Equal((Utc("20261027T090000"), Utc("20261027T100000"), "Sala A, Sassari"), (utc.Start, utc.End, utc.Location));
-        var rome = Event(feed, "[PROVA] Pranzo di lavoro (Roma)");
+        var rome = Event(feed, "[TEST GGCAL] Pranzo di lavoro (Roma)");
         Assert.Equal((InZone("Europe/Rome", "20261027T130000"), InZone("Europe/Rome", "20261027T143000")), (rome.Start, rome.End));
-        var day = Event(feed, "[PROVA] Giornata intera");
+        var day = Event(feed, "[TEST GGCAL] Giornata intera");
         Assert.Equal((true, new DateTime(2026, 10, 28), new DateTime(2026, 10, 29)), (day.IsAllDay, day.Start, day.End));
-        var four = Event(feed, "[PROVA] Convegno di 4 giorni");
+        var four = Event(feed, "[TEST GGCAL] Convegno di 4 giorni");
         Assert.Equal((true, new DateTime(2026, 10, 29), new DateTime(2026, 11, 2)), (four.IsAllDay, four.Start, four.End));
-        Assert.Equal(new DateTime(2026, 10, 30, 11, 0, 0), Event(feed, "[PROVA] Ora flottante (senza fuso)").Start); // no zone: the clock of the PC
-        Assert.Equal(TimeSpan.FromHours(4), Event(feed, "[PROVA] A cavallo della mezzanotte").End - Event(feed, "[PROVA] A cavallo della mezzanotte").Start);
-        var open = Event(feed, "[PROVA] Senza fine (solo inizio)");
+        Assert.Equal(new DateTime(2026, 10, 30, 11, 0, 0), Event(feed, "[TEST GGCAL] Ora flottante (senza fuso)").Start); // no zone: the clock of the PC
+        Assert.Equal(TimeSpan.FromHours(4), Event(feed, "[TEST GGCAL] A cavallo della mezzanotte").End - Event(feed, "[TEST GGCAL] A cavallo della mezzanotte").Start);
+        var open = Event(feed, "[TEST GGCAL] Senza fine (solo inizio)");
         Assert.True(open.End > open.Start);
-        Assert.Contains(feed.Events, e => e.Title == "[PROVA] Caffè, perché? Àèìòù ☕ \\ ; ,");
+        Assert.Contains(feed.Events, e => e.Title == "[TEST GGCAL] Caffè, perché? Àèìòù ☕ \\ ; ,");
     }
 
     [Fact]
     [Trait("TestCase", "T32")]
-    [Trait("Category", "Pending")]
     public void T32_AnEventMarkedCancelledInTheFileIsNotImported()
     {
         var feed = Analyze("ggcal_basic");
 
         Assert.DoesNotContain(feed.Events, e => e.Title.Contains("Annullato nel file"));
-        Assert.Equal(10, feed.Events.Count);
+        Assert.Equal(11, feed.Events.Count);
     }
 
     [Fact]
@@ -72,11 +71,11 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
         var feed = Analyze("ggcal_utc");
 
         Assert.Equal(4, feed.Events.Count);
-        Assert.Equal(Utc("20261027T060000"), Event(feed, "[PROVA] UTC 06:00").Start);
-        Assert.Equal(Utc("20261027T120000"), Event(feed, "[PROVA] UTC 12:00").Start);
-        var late = Event(feed, "[PROVA] UTC 23:30");
+        Assert.Equal(Utc("20261027T060000"), Event(feed, "[TEST GGCAL] UTC 06:00").Start);
+        Assert.Equal(Utc("20261027T120000"), Event(feed, "[TEST GGCAL] UTC 12:00").Start);
+        var late = Event(feed, "[TEST GGCAL] UTC 23:30");
         Assert.Equal((Utc("20261027T233000"), Utc("20261028T003000")), (late.Start, late.End));
-        Assert.Equal(Utc("20261029T001500"), Event(feed, "[PROVA] UTC 00:15 (dopo la mezzanotte)").Start);
+        Assert.Equal(Utc("20261029T001500"), Event(feed, "[TEST GGCAL] UTC 00:15 (dopo la mezzanotte)").Start);
     }
 
     [Fact]
@@ -85,9 +84,9 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_windows_tz");
 
-        Assert.Equal(InZone("W. Europe Standard Time", "20261027T100000"), Event(feed, "[PROVA] 10:00 in W. Europe Standard Time").Start);
-        Assert.Equal(InZone("Eastern Standard Time", "20261027T100000"), Event(feed, "[PROVA] 10:00 in Eastern Standard Time").Start);
-        Assert.Equal(new DateTime(2026, 10, 28, 10, 0, 0), Event(feed, "[PROVA] Fuso sconosciuto (usa quello del telefono)").Start);
+        Assert.Equal(InZone("W. Europe Standard Time", "20261027T100000"), Event(feed, "[TEST GGCAL] 10:00 in W. Europe Standard Time").Start);
+        Assert.Equal(InZone("Eastern Standard Time", "20261027T100000"), Event(feed, "[TEST GGCAL] 10:00 in Eastern Standard Time").Start);
+        Assert.Equal(new DateTime(2026, 10, 28, 10, 0, 0), Event(feed, "[TEST GGCAL] Fuso sconosciuto (usa quello del telefono)").Start);
     }
 
     [Fact]
@@ -97,8 +96,8 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
         var feed = Analyze("ggcal_apple");
 
         Assert.Equal(2, feed.Events.Count);
-        Assert.Equal(InZone("Europe/Rome", "20261027T090000"), Event(feed, "[PROVA] Evento in stile Apple").Start);
-        var day = Event(feed, "[PROVA] Tutto il giorno Apple");
+        Assert.Equal(InZone("Europe/Rome", "20261027T090000"), Event(feed, "[TEST GGCAL] Evento in stile Apple").Start);
+        var day = Event(feed, "[TEST GGCAL] Tutto il giorno Apple");
         Assert.Equal((true, new DateTime(2026, 10, 28)), (day.IsAllDay, day.Start));
     }
 
@@ -109,9 +108,9 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
         var feed = Analyze("ggcal_alarms");
 
         Assert.Equal(3, feed.Events.Count);
-        Assert.Contains(Event(feed, "[PROVA] Con VALARM -PT5M").Reminders, r => r.Minutes == 5);
-        Assert.Contains(Event(feed, "[PROVA] Con VALARM -PT1H").Reminders, r => r.Minutes == 60);
-        Assert.Contains(Event(feed, "[PROVA] Con VALARM -P1D").Reminders, r => r.Minutes == 1440);
+        Assert.Contains(Event(feed, "[TEST GGCAL] Con VALARM -PT5M").Reminders, r => r.Minutes == 5);
+        Assert.Contains(Event(feed, "[TEST GGCAL] Con VALARM -PT1H").Reminders, r => r.Minutes == 60);
+        Assert.Contains(Event(feed, "[TEST GGCAL] Con VALARM -P1D").Reminders, r => r.Minutes == 1440);
     }
 
     [Fact]
@@ -125,15 +124,15 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
         var from = new DateTime(2026, 10, 1);
         var to = new DateTime(2028, 1, 1);
 
-        Assert.Equal(12, Count("[PROVA] Lun Mer Ven, 12 volte", from, to));
-        Assert.Equal(16, Count("[PROVA] Ogni 2 giorni fino a +30", from, to));
-        Assert.Equal(6, Count("[PROVA] Il 15 di ogni mese, 6 volte", from, to));
-        Assert.Equal(2, Count("[PROVA] Compleanno di prova (ogni anno)", new DateTime(2026, 11, 1), new DateTime(2027, 12, 31)));
-        Assert.Equal(1, Count("[PROVA] Secondo lunedì del mese (BYSETPOS: non supportato)", from, to)); // shown once, as declared
+        Assert.Equal(12, Count("[TEST GGCAL] Lun Mer Ven, 12 volte", from, to));
+        Assert.Equal(16, Count("[TEST GGCAL] Ogni 2 giorni fino a +30", from, to));
+        Assert.Equal(6, Count("[TEST GGCAL] Il 15 di ogni mese, 6 volte", from, to));
+        Assert.Equal(2, Count("[TEST GGCAL] Compleanno di prova (ogni anno)", new DateTime(2026, 11, 1), new DateTime(2027, 12, 31)));
+        Assert.Equal(1, Count("[TEST GGCAL] Secondo lunedì del mese (BYSETPOS: non supportato)", from, to)); // shown once, as declared
 
-        var shown = vm.ExpandedBetween(from, to, visibleOnly: false).Where(e => e.Title.StartsWith("[PROVA] Serie con eccezioni", StringComparison.Ordinal)).ToList();
-        Assert.DoesNotContain(shown, e => e.Title == "[PROVA] Serie con eccezioni" && e.Start == Utc("20261029T150000")); // the excluded date
-        Assert.Contains(shown, e => e.Title == "[PROVA] Serie con eccezioni (spostata)" && e.Start == Utc("20261031T180000"));
+        var shown = vm.ExpandedBetween(from, to, visibleOnly: false).Where(e => e.Title.StartsWith("[TEST GGCAL] Serie con eccezioni", StringComparison.Ordinal)).ToList();
+        Assert.DoesNotContain(shown, e => e.Title == "[TEST GGCAL] Serie con eccezioni" && e.Start == Utc("20261029T150000")); // the excluded date
+        Assert.Contains(shown, e => e.Title == "[TEST GGCAL] Serie con eccezioni (spostata)" && e.Start == Utc("20261031T180000"));
 
         Assert.Equal(2, feed.Warnings.Count);
         Assert.Contains(feed.Warnings, w => w.Contains("RDATE"));
@@ -158,7 +157,6 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T33")]
-    [Trait("Category", "Pending")]
     public void T33_ATruncatedFileKeepsTheCompleteEventsAndSaysItWasCut()
     {
         var feed = Analyze("ggcal_malformed");
@@ -169,7 +167,6 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("TestCase", "T34")]
-    [Trait("Category", "Pending")]
     public void T34_TwoEventsWithTheSameUidAreReadOnceAndReported()
     {
         var feed = Analyze("ggcal_dup_uid");

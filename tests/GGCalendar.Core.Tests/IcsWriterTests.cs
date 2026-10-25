@@ -15,7 +15,8 @@ public class IcsWriterTests
 
         var ics = IcsWriter.Write([ev]);
 
-        Assert.Contains("DTSTART:20261008T103000", ics);
+        var utc = ev.Start - TimeZoneInfo.Local.GetUtcOffset(ev.Start);
+        Assert.Contains("DTSTART:" + utc.ToString("yyyyMMdd'T'HHmmss'Z'"), ics); // a single timed event is written in UTC
         Assert.Contains("SUMMARY:Riunione\\, test", ics);
         Assert.Contains("ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:a@b.it", ics);
         Assert.Contains("TRIGGER:-PT30M", ics);

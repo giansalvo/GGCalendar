@@ -27,7 +27,7 @@ UID:basic-01@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART:20261027T090000Z
 DTEND:20261027T100000Z
-SUMMARY:[PROVA] Riunione in UTC
+SUMMARY:[TEST GGCAL] Riunione in UTC
 LOCATION:Sala A\, Sassari
 DESCRIPTION:Prima riga\nSeconda riga\, con virgola\; e punto e virgola
 END:VEVENT
@@ -36,7 +36,7 @@ UID:basic-02@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;TZID=Europe/Rome:20261027T130000
 DTEND;TZID=Europe/Rome:20261027T143000
-SUMMARY:[PROVA] Pranzo di lavoro (Roma)
+SUMMARY:[TEST GGCAL] Pranzo di lavoro (Roma)
 LOCATION:Ristorante
 END:VEVENT
 BEGIN:VEVENT
@@ -44,31 +44,31 @@ UID:basic-03@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;VALUE=DATE:20261028
 DTEND;VALUE=DATE:20261029
-SUMMARY:[PROVA] Giornata intera
+SUMMARY:[TEST GGCAL] Giornata intera
 END:VEVENT
 BEGIN:VEVENT
 UID:basic-04@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;VALUE=DATE:20261029
 DTEND;VALUE=DATE:20261102
-SUMMARY:[PROVA] Convegno di 4 giorni
+SUMMARY:[TEST GGCAL] Convegno di 4 giorni
 END:VEVENT
 BEGIN:VEVENT
 UID:basic-05@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART:20261030T110000
 DTEND:20261030T120000
-SUMMARY:[PROVA] Ora flottante (senza fuso)
+SUMMARY:[TEST GGCAL] Ora flottante (senza fuso)
 END:VEVENT
 BEGIN:VEVENT
 UID:basic-06@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART:20261030T150000Z
 DTEND:20261030T160000Z
-SUMMARY:[PROVA] Caffè\, perché? Àèìòù ☕ \\ \; \,
+SUMMARY:[TEST GGCAL] Caffè\, perché? Àèìòù ☕ \\ \; \,
 DESCRIPTION:Caratteri speciali: accenti àèéìòù\, euro €\, emoji ☕
  \, barra \\ e virgolette "così".
 END:VEVENT
 BEGIN:VEVENT
 UID:basic-07@ggcalendar.test
-SUMMARY:[PROVA] Interrotto
+SUMMARY:[TEST GGCAL] Interrotto

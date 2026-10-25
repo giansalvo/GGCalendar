@@ -200,6 +200,42 @@ public sealed class CalendarStore
         ("$rec", string.IsNullOrEmpty(ev.Recurrence) ? 0 : 1), ("$remote", remoteId), ("$etag", etag),
         ("$data", JsonSerializer.Serialize(ev, Json)));
 
+    /// <summary>
+    /// Applies an import in one transaction (one write to the disk instead of one per event): the events that the import replaces are
+    /// removed with their modified occurrences, the new ones are stored, and for a calendar that lives on Google the matching deletions
+    /// and creations are queued.
+    /// </summary>
+    public void ApplyImport(IReadOnlyList<CalendarEvent> removed, IReadOnlyList<CalendarEvent> added, bool remoteDestination) =>
+        WithConnection(c =>
+        {
+            using var tx = c.BeginTransaction();
+            var now = DateTime.UtcNow.ToString("O");
+            foreach (var old in removed)
+            {
+                string? remoteId = null;
+                if (remoteDestination)
+                {
+                    using var cmd = Command(c, "SELECT remote_id FROM events WHERE id = $id", [("$id", old.Id)]);
+                    remoteId = cmd.ExecuteScalar() as string;
+                }
+
+                RemoveSeries(c, old.Id);
+                if (remoteDestination && remoteId is not null)
+                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, 'Delete', $p, $t)",
+                        ("$e", old.Id), ("$c", old.CalendarId), ("$p", remoteId), ("$t", now));
+            }
+
+            foreach (var ev in added)
+            {
+                Upsert(c, ev, null, null);
+                if (remoteDestination)
+                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, $op, $p, $t)",
+                        ("$e", ev.Id), ("$c", ev.CalendarId), ("$op", OutboxOperation.Create.ToString()), ("$p", JsonSerializer.Serialize(ev, Json)), ("$t", now));
+            }
+
+            tx.Commit();
+        });
+
     public void DeleteEvent(string eventId) => WithConnection(c => Run(c, "DELETE FROM events WHERE id = $id", ("$id", eventId)));
 
     /// <summary>Deletes an event together with the modified or cancelled occurrences that belong to it.</summary>
@@ -247,6 +283,37 @@ public sealed class CalendarStore
                  ("$b", baseVersion is null ? null : JsonSerializer.Serialize(baseVersion, Json))]);
             return Convert.ToInt64(cmd.ExecuteScalar());
         });
+
+    /// <summary>The events with a creation in the queue that are not on Google (remote_id is empty), for Google calendars (their id has a "|").</summary>
+    private const string UnsentCreations = """
+        SELECT DISTINCT o.event_id AS id FROM outbox o JOIN events e ON e.id = o.event_id
+        WHERE o.operation = 'Create' AND e.remote_id IS NULL AND o.calendar_id LIKE '%|%'
+        """;
+
+    /// <summary>How many events are waiting to be created on Google (in the queue, and not on Google yet).</summary>
+    public int CountUnsentCreations() => WithConnection(c =>
+    {
+        using var cmd = Command(c, $"SELECT COUNT(*) FROM ({UnsentCreations})", []);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    });
+
+    /// <summary>
+    /// Throws away the events that were created on this PC for a Google calendar and have not been sent yet: they are removed from the
+    /// queue and from the PC (with the modified occurrences of a series among them), so that this PC and Google agree. What is already on
+    /// Google, and the edits and deletions waiting for it, stay. Returns how many events were thrown away.
+    /// </summary>
+    public int DiscardUnsentCreations() => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        Run(c, $"CREATE TEMP TABLE unsent_ids AS {UnsentCreations}");
+        int count;
+        using (var cmd = Command(c, "SELECT COUNT(*) FROM unsent_ids", [])) count = Convert.ToInt32(cmd.ExecuteScalar());
+        Run(c, "DELETE FROM events WHERE id IN (SELECT id FROM unsent_ids) OR json_extract(data, '$.SeriesMasterId') IN (SELECT id FROM unsent_ids)");
+        Run(c, "DELETE FROM outbox WHERE event_id IN (SELECT id FROM unsent_ids)");
+        Run(c, "DROP TABLE unsent_ids");
+        tx.Commit();
+        return count;
+    });
 
     public IReadOnlyList<OutboxItem> GetPending() => WithConnection(c =>
     {

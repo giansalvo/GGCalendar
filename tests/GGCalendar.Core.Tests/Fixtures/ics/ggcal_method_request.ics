@@ -10,7 +10,7 @@ DTSTAMP:20260101T000000Z
 UID:r1@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261102T090000
 DTEND;TZID=Europe/Rome:20261102T100000
-SUMMARY:[PROVA] Invito a una riunione
+SUMMARY:[TEST GGCAL] Invito a una riunione
 ORGANIZER;CN=Giulia Rossi:mailto:giulia@example.com
 ATTENDEE;CN=Marco;RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:marco@example.com
 SEQUENCE:0

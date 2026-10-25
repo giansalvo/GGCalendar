@@ -10,7 +10,7 @@ DTSTAMP:20260101T000000Z
 UID:att@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261102T090000
 DTEND;TZID=Europe/Rome:20261102T100000
-SUMMARY:[PROVA] Riunione con partecipanti
+SUMMARY:[TEST GGCAL] Riunione con partecipanti
 ORGANIZER;CN=Giulia Rossi:mailto:giulia@example.com
 ATTENDEE;CN=Marco Bianchi;PARTSTAT=ACCEPTED;ROLE=REQ-PARTICIPANT:mailto:marco@example.com
 ATTENDEE;CN="Verdi, Anna";PARTSTAT=DECLINED;RSVP=TRUE:mailto:anna@example.com

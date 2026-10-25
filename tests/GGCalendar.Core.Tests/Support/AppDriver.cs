@@ -45,6 +45,9 @@ public static class AppDriver
     // One id per test session, so the events of a session can be told from those of an interrupted one.
     private static readonly string SessionId = Guid.NewGuid().ToString("N")[..6];
 
+    /// <summary>A title for the n-th event of a test that needs many: the prefix, the session and a number.</summary>
+    public static string NewTitle(int number) => $"{TestPrefix} {SessionId} {number:D3}";
+
     public static string NewTitle() =>
         $"{TestPrefix} {SessionId} {new string(Enumerable.Range(0, 6).Select(_ => (char)('a' + Random.Shared.Next(26))).ToArray())}";
 

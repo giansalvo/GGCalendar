@@ -262,8 +262,32 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     public (int Imported, int Skipped) ImportEvents(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
     {
+        var plan = PlanImport(calendarId, events, onExisting);
+        _store.ApplyImport(plan.Removed, plan.Added, IsRemote(calendarId));
+        FinishImport(calendarId, plan);
+        return (plan.Imported, plan.Skipped);
+    }
+
+    /// <summary>Like <see cref="ImportEvents"/>, but the events are written to the store off the UI thread (one transaction), so the window keeps answering.</summary>
+    public async Task<(int Imported, int Skipped)> ImportEventsAsync(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
+    {
+        var plan = PlanImport(calendarId, events, onExisting);
+        var remote = IsRemote(calendarId);
+        _changeCount++; // a background reload that started before the import must not put the old list back
+        await Task.Run(() => _store.ApplyImport(plan.Removed, plan.Added, remote));
+        FinishImport(calendarId, plan);
+        return (plan.Imported, plan.Skipped);
+    }
+
+    private sealed record ImportPlan(List<CalendarEvent> Removed, List<CalendarEvent> Added, int Imported, int Skipped);
+
+    /// <summary>Decides what the import adds and what it replaces, without touching anything.</summary>
+    private ImportPlan PlanImport(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
+    {
         var existing = FindExisting(calendarId, events).ToDictionary(p => p.Incoming.Id, p => p.Existing);
         var skippedMasters = new HashSet<string>();
+        var removed = new List<CalendarEvent>();
+        var added = new List<CalendarEvent>();
         var imported = 0;
         var skipped = 0;
         foreach (var ev in events)
@@ -281,14 +305,40 @@ public sealed partial class MainViewModel : ViewModelBase
                     continue;
                 }
 
-                DeleteEvent(old);
+                if (!removed.Any(r => r.Id == old.Id)) removed.Add(old);
             }
 
-            AddEvent(ev);
+            added.Add(ev);
             if (ev.SeriesMasterId is null) imported++;
         }
 
-        return (imported, skipped);
+        return new ImportPlan(removed, added, imported, skipped);
+    }
+
+    /// <summary>Brings the list in memory in line with what the store now holds, and refreshes the view once.</summary>
+    private void FinishImport(string calendarId, ImportPlan plan)
+    {
+        var gone = plan.Removed.Select(r => r.Id).ToHashSet();
+        var children = _allEvents.Where(e => e.SeriesMasterId is { } m && gone.Contains(m)).Select(e => e.Id);
+        gone.UnionWith(children);
+        gone.UnionWith(plan.Added.Select(a => a.Id)); // an import that finished while a reload ran must not leave a second copy
+        _allEvents.RemoveAll(e => gone.Contains(e.Id));
+        _allEvents.AddRange(plan.Added);
+        Changed();
+        if (IsRemote(calendarId) && (plan.Added.Count > 0 || plan.Removed.Count > 0)) ChangeQueued?.Invoke();
+        Refresh();
+    }
+
+    /// <summary>How many events are waiting in the queue to be created on Google.</summary>
+    public int CountUnsentCreations() => _store.CountUnsentCreations();
+
+    /// <summary>Throws away the events not sent to Google yet, from the queue and from this PC; returns how many.</summary>
+    public async Task<int> DiscardUnsentCreationsAsync()
+    {
+        _changeCount++;
+        var count = await Task.Run(_store.DiscardUnsentCreations);
+        await ReloadAsync();
+        return count;
     }
 
     public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();

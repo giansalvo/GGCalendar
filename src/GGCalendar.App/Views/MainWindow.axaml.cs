@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private readonly GoogleSyncService _google;
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private DispatcherTimer? _syncTimer;
+    private DispatcherTimer? _retryTimer;
+    private CancellationTokenSource? _syncCts;
     private DispatcherTimer? _debounce;
     private ReminderScheduler? _scheduler;
 
@@ -30,7 +32,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
-        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); };
+        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -173,12 +175,65 @@ public partial class MainWindow : Window
         vm.SyncStatus = "Sincronizzazione...";
         try
         {
-            var result = await Task.Run(() => _google.SyncAllAsync(CancellationToken.None));
+            // With many changes waiting (an import into a Google calendar) the sending lasts long: say how far it is, and let the user stop it.
+            using var cts = new CancellationTokenSource();
+            _syncCts = cts;
+            SyncProgressWindow? progress = null;
+            var finished = false;
+            var discard = false;
+            var result = await Task.Run(() => _google.SyncAllAsync(cts.Token, (done, total) =>
+            {
+                if (total > 30)
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (finished) return;
+                        if (!vm.SyncStatus.StartsWith("Interruzione", StringComparison.Ordinal)) vm.SyncStatus = $"Invio a Google: {done} di {total} eventi...";
+                        if (progress is null)
+                        {
+                            progress = new SyncProgressWindow(() => cts.Cancel(), async () =>
+                            {
+                                var waiting = await Task.Run(vm.CountUnsentCreations);
+                                var sure = await new ConfirmWindow("Scartare gli eventi non inviati?",
+                                    $"{waiting} eventi non ancora inviati a Google saranno eliminati anche da questo PC. Quelli già inviati restano su Google.", "Scarta")
+                                    .ShowDialog<bool>(progress!);
+                                if (!sure) return false;
+                                discard = true;
+                                cts.Cancel();
+                                return true;
+                            });
+                            progress.Show(this);
+                        }
+
+                        progress.Update(done, total);
+                    });
+            }));
+            finished = true;
+            progress?.Close();
+            _syncCts = null;
             if (result.Changed) await vm.ReloadAsync();
             var conflicts = result.Conflicts.Count > 0 ? " Conflitti: " + string.Join(" | ", result.Conflicts) : "";
+            var waiting = result.Pending > 0
+                ? $" {result.Pending} modifiche sono ancora da inviare a Google" + (result.RetryAt is { } at ? $": Google ha rallentato l'invio, riprovo alle {at.ToLocalTime():HH:mm}." : ".")
+                : "";
+            if (result.Cancelled)
+            {
+                if (discard)
+                {
+                    var thrownAway = await vm.DiscardUnsentCreationsAsync();
+                    vm.SyncStatus = $"Invio a Google interrotto: {thrownAway} eventi non ancora inviati sono stati scartati ed eliminati da questo PC.";
+                }
+                else
+                {
+                    vm.SyncStatus = $"Invio a Google interrotto: {result.Pending} modifiche restano in coda e saranno inviate alla prossima sincronizzazione.";
+                }
+
+                return;
+            }
+
             vm.SyncStatus = result.Errors.Count > 0
-                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts
-                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts;
+                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts + waiting
+                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts + waiting;
+            if (result.RetryAt is { } retryAt) ScheduleRetry(retryAt);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
         {
@@ -189,6 +244,21 @@ public partial class MainWindow : Window
             vm.IsSyncing = false;
             _syncLock.Release();
         }
+    }
+
+    /// <summary>Google asked to slow down: try again when it said, whatever the sync interval is.</summary>
+    private void ScheduleRetry(DateTimeOffset at)
+    {
+        _retryTimer?.Stop();
+        var wait = at - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(2);
+        if (wait < TimeSpan.FromSeconds(5)) wait = TimeSpan.FromSeconds(5);
+        _retryTimer = new DispatcherTimer { Interval = wait };
+        _retryTimer.Tick += async (_, _) =>
+        {
+            _retryTimer?.Stop();
+            await SyncAsync();
+        };
+        _retryTimer.Start();
     }
 
     private static void ApplyTheme(AppSettings s)
@@ -402,7 +472,8 @@ public partial class MainWindow : Window
             ? c
             : (sender as Avalonia.StyledElement)?.Parent is ContextMenu { PlacementTarget.DataContext: CalendarItemViewModel p } ? p : null;
 
-    private async Task<string?> PickIcsAsync()
+    /// <summary>The bytes of the file the user picks, or null when none is picked or the file is over the limit (the user is told).</summary>
+    private async Task<byte[]?> PickIcsAsync()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
@@ -412,30 +483,65 @@ public partial class MainWindow : Window
         });
         if (files.Count == 0) return null;
         await using var stream = await files[0].OpenReadAsync();
-        using var reader = new System.IO.StreamReader(stream, System.Text.Encoding.UTF8, true);
-        return await reader.ReadToEndAsync();
+        var bytes = IcsSources.ReadLimited(stream);
+        if (bytes is null)
+            await new WarningWindow("File troppo grande", $"Il file supera il limite di {IcsSources.MaxBytes / (1024 * 1024)} MB e non è stato importato.").ShowDialog(this);
+        return bytes;
     }
 
-    private async Task ImportIntoAsync(string calendarId, string calendarName, string text)
+    /// <summary>Above this many events, an import into a Google calendar warns that sending them will take a while.</summary>
+    private const int ManyEventsForGoogle = 200;
+
+    /// <summary>
+    /// Runs slow work with the window disabled. A small progress window appears only if the work lasts more than a moment, so short
+    /// operations show nothing.
+    /// </summary>
+    private async Task<T> RunBusyAsync<T>(string message, Func<Task<T>> work)
+    {
+        if (Vm is { } vm) vm.SyncStatus = message;
+        IsEnabled = false;
+        BusyWindow? busy = null;
+        try
+        {
+            var task = work();
+            if (await Task.WhenAny(task, Task.Delay(300)) != task)
+            {
+                busy = new BusyWindow(message);
+                busy.Show(this);
+            }
+
+            return await task;
+        }
+        finally
+        {
+            busy?.Close();
+            IsEnabled = true;
+        }
+    }
+
+    private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;
-        var parsed = IcsParser.Analyze(text, calendarId);
+        var parsed = await RunBusyAsync("Lettura del file .ics…", () => Task.Run(() => IcsParser.AnalyzeFile(bytes, calendarId)));
         var total = parsed.Events.Count(e => e.SeriesMasterId is null);
         if (total == 0)
         {
-            vm.SyncStatus = "Nessun evento trovato nel file .ics.";
+            vm.SyncStatus = parsed.Report.Fatal is not null && parsed.Warnings.Count > 0 ? parsed.Warnings[0] : "Nessun evento trovato nel file .ics.";
             return;
         }
 
         var existing = vm.FindExisting(calendarId, parsed.Events).Count;
+        var notice = GoogleSyncService.IsGoogleCalendar(calendarId) && total > ManyEventsForGoogle
+            ? $"Il calendario è su Google: i {total} eventi verranno inviati subito, a gruppi, e servirà {SyncProgressWindow.FormatRemaining(SyncProgressWindow.EstimateRemaining(0, total, TimeSpan.Zero))} (potrai interromperli)."
+            : null;
         var mode = ImportDuplicates.Skip;
-        if (existing > 0 || parsed.Warnings.Count > 0)
+        if (existing > 0 || parsed.Warnings.Count > 0 || notice is not null)
         {
-            if (await new ImportSummaryWindow(calendarName, total, existing, parsed.Warnings).ShowDialog<ImportDuplicates?>(this) is not { } chosen) return;
+            if (await new ImportSummaryWindow(calendarName, total, existing, parsed.Warnings, notice).ShowDialog<ImportDuplicates?>(this) is not { } chosen) return;
             mode = chosen;
         }
 
-        var (imported, skipped) = vm.ImportEvents(calendarId, parsed.Events, mode);
+        var (imported, skipped) = await RunBusyAsync($"Importazione di {total} eventi in corso…", () => vm.ImportEventsAsync(calendarId, parsed.Events, mode));
         vm.SyncStatus = $"Importati {imported} eventi nel calendario \"{calendarName}\"" +
             (skipped > 0 ? $", {skipped} già presenti saltati" : "") +
             (parsed.Warnings.Count > 0 ? ". Avvisi: " + string.Join(" ", parsed.Warnings) : ".");
@@ -446,7 +552,7 @@ public partial class MainWindow : Window
         if (CalendarOf(sender) is not { } cal) return;
         try
         {
-            if (await PickIcsAsync() is { } text) await ImportIntoAsync(cal.Id, cal.Name, text);
+            if (await PickIcsAsync() is { } bytes) await ImportIntoAsync(cal.Id, cal.Name, bytes);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
@@ -459,10 +565,18 @@ public partial class MainWindow : Window
         if (Vm is not { } vm) return;
         try
         {
-            if (await PickIcsAsync() is not { } text) return;
-            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", "Importato").ShowDialog<string?>(this);
+            if (await PickIcsAsync() is not { } bytes) return;
+            var preview = IcsParser.AnalyzeFile(bytes, "preview");
+            if (preview.Report.Fatal is not null)
+            {
+                await new WarningWindow("Importa .ics", preview.Warnings.FirstOrDefault() ?? "Il file non si può importare.").ShowDialog(this);
+                return;
+            }
+
+            var proposed = preview.Report.CalendarName ?? "Importato";
+            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", proposed).ShowDialog<string?>(this);
             if (name is null) return;
-            await ImportIntoAsync(vm.CreateLocalCalendar(name), name, text);
+            await ImportIntoAsync(vm.CreateLocalCalendar(name), name, bytes);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
