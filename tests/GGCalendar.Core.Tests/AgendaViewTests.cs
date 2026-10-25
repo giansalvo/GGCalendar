@@ -15,12 +15,17 @@ public class AgendaViewTests
     public Task T153_TheNoEventsMessageOfTheScheduleIsShownOnlyWhenThereAreNoEvents() => HeadlessApp.RunAsync(async () =>
     {
         var window = OpenApp();
+        Dictionary<string, bool>? states = null;
         try
         {
             await Task.Yield();
             var vm = Vm(window);
             var message = window.FindControl<TextBlock>("AgendaEmpty")!;
-            var calendar = vm.Calendars.First(c => c.IsLocal).Id;
+
+            // Only a calendar made for the test is shown, so that what other tests left in the data (a series with no end) is not listed.
+            states = vm.Calendars.ToDictionary(c => c.Id, c => c.IsVisible);
+            var calendar = vm.CreateLocalCalendar(NewTitle());
+            foreach (var c in vm.Calendars) c.IsVisible = c.Id == calendar;
 
             vm.ViewModeIndex = 4;
             vm.SelectedDate = new DateTime(2041, 3, 4); // far away: nothing in the next 30 days
@@ -45,6 +50,9 @@ public class AgendaViewTests
         }
         finally
         {
+            var vm = Vm(window);
+            foreach (var c in vm.Calendars.Where(c => c.IsLocal && c.Name.StartsWith(TestPrefix, StringComparison.Ordinal)).ToList()) vm.DeleteLocalCalendar(c.Id);
+            foreach (var c in vm.Calendars.Where(c => states?.ContainsKey(c.Id) == true).ToList()) c.IsVisible = states![c.Id]; // as the other tests expect them
             window.Close();
         }
     });
