@@ -24,6 +24,8 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     /// <summary>Calendars that live only on this PC; Google calendars are removed by disconnecting their account.</summary>
     public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id);
 
+    public bool IsGoogle => !IsLocal;
+
     [ObservableProperty]
     public partial bool IsVisible { get; set; } = info.IsVisible;
 

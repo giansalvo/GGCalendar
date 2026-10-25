@@ -21,7 +21,7 @@ public class ReminderUiTests
     public Task T02_AnEventKeepsTheStandardReminderAfterSyncingAndReopening() => InAppAsync(async window =>
     {
         // The editor of a new event proposes the standard reminder: a notification 30 minutes before.
-        Click(FindButton(window, "＋  Crea"));
+        ChooseCreateMenuItem(window, "Evento");
         var empty = await WaitForAsync(() => window.OwnedWindows.OfType<EventEditWindow>().FirstOrDefault(), "l'editor");
         var proposed = Assert.Single(((EventEditViewModel)empty.DataContext!).Reminders);
         Assert.Equal(("Notifica", 30m, "minuti"), (proposed.Method.Label, proposed.Value, proposed.Unit.Label));
