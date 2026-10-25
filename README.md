@@ -14,6 +14,8 @@
   <a href="LICENSE">Licenza GPL v3 o successive</a>
 </p>
 
+<p align="center">🌐 Italiano · <a href="README.en.md">English</a> · <a href="README.de.md">Deutsch</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a></p>
+
 ---
 
 ## Funzionalità
@@ -27,10 +29,11 @@
 - Invitati, link Google Meet, promemoria via email (inviati da Google)
 - Calendari locali, importazione ed esportazione di file `.ics`
 - Tema chiaro e scuro
+- Interfaccia in italiano, inglese, tedesco, spagnolo e francese: la lingua si sceglie in *Impostazioni* (di default quella di Windows) e cambia subito
 
 ## Installazione
 
-Scarica `GGCalendar-v<versione>-Setup.exe` dalla pagina [Releases](https://github.com/giansalvo/GGCalendar/releases/latest) ed eseguilo.
+Scarica `GGCalendar-v<versione>-Setup.exe` dalla pagina [Releases](https://github.com/giansalvo/GGCalendar/releases/latest) ed eseguilo. L'installer parla la lingua di Windows se è una delle cinque sopra (altrimenti l'inglese).
 
 - Requisiti: Windows 11 a 64 bit. Il runtime .NET è incluso, non servono altri componenti.
 - Di default installa solo per l'utente corrente, senza permessi di amministratore.
@@ -74,13 +77,13 @@ Lo script pubblica l'app self-contained per `win-x64` e crea `website/downloads/
 
 | Cartella | Contenuto |
 |---|---|
-| `src/GGCalendar.Core` | Modelli, ricorrenze (RRULE), parser e writer ICS, calcolo dei promemoria, layout degli eventi sovrapposti |
+| `src/GGCalendar.Core` | Modelli, ricorrenze (RRULE), parser e writer ICS, calcolo dei promemoria, layout degli eventi sovrapposti, testi nelle cinque lingue (`Localization`) |
 | `src/GGCalendar.Data` | Archivio SQLite di calendari ed eventi, coda delle modifiche da inviare, impostazioni, stato dei promemoria |
 | `src/GGCalendar.Providers.Google` | Accesso OAuth (PKCE, redirect su loopback) e client delle Google Calendar API |
 | `src/GGCalendar.App` | Interfaccia [Avalonia](https://avaloniaui.net/) (MVVM), sincronizzazione, notifiche e suoni |
 | `tests/GGCalendar.Core.Tests` | Test xUnit |
 | `installer` | Script Inno Setup e script di build dell'installer |
-| `website` | Sito di presentazione, informativa privacy e termini |
+| `website` | Sito di presentazione, informativa privacy e termini, in cinque lingue (i testi italiani sono quelli di riferimento) |
 
 ## Privacy
 

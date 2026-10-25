@@ -87,11 +87,18 @@ footer.site a:hover{color:var(--text)}
 .legal .updated{color:var(--muted);font-size:.9rem;margin-bottom:28px}
 .back{display:inline-block;margin-bottom:20px;font-size:.92rem}
 
+/* Language links in the header */
+.langs{display:flex;gap:10px;align-items:center;font-size:.85rem}
+.langs a{color:var(--muted)}
+.langs a:hover{color:var(--text);text-decoration:none}
+.langs a.on{color:var(--text);font-weight:600}
+
 @media(max-width:860px){
   .hero{padding:44px 0 32px}
   .hero .wrap{grid-template-columns:1fr;gap:32px}
   .grid,.info{grid-template-columns:1fr 1fr}
   nav.main a.hide-sm{display:none}
+  .langs{gap:6px;font-size:.78rem}
 }
 @media(max-width:560px){
   .grid,.info{grid-template-columns:1fr}

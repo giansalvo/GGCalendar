@@ -29,8 +29,7 @@ OutputDir=..\website\downloads
 OutputBaseFilename=GGCalendar-v{#AppVersion}-Setup
 ; GPL v3 shown for information: the license does not require accepting it to install or run the program.
 InfoBeforeFile=..\LICENSE
-; What is new in this version, shown at the end of the setup and kept in the program folder.
-InfoAfterFile=Novita.txt
+; What is new in this version is shown at the end of the setup: the file is chosen per language, in [Languages].
 SetupIconFile=..\src\GGCalendar.App\Assets\GGCalendar.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName=GGCalendar
@@ -39,19 +38,29 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 
+; The setup speaks the language of Windows when it is one of these (else English); the user can choose another one.
+; Each language has its own what-is-new text, shown at the end of the setup and kept in the program folder.
 [Languages]
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"; InfoAfterFile: "Novita.en.txt"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"; InfoAfterFile: "Novita.it.txt"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"; InfoAfterFile: "Novita.de.txt"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoAfterFile: "Novita.es.txt"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"; InfoAfterFile: "Novita.fr.txt"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "Novita.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Novita.*.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\GGCalendar"; Filename: "{app}\{#AppExe}"
-Name: "{autoprograms}\GGCalendar - Novita"; Filename: "{app}\Novita.txt"
+Name: "{autoprograms}\GGCalendar - What's new"; Filename: "{app}\Novita.en.txt"; Languages: english
+Name: "{autoprograms}\GGCalendar - Novità"; Filename: "{app}\Novita.it.txt"; Languages: italian
+Name: "{autoprograms}\GGCalendar - Neuigkeiten"; Filename: "{app}\Novita.de.txt"; Languages: german
+Name: "{autoprograms}\GGCalendar - Novedades"; Filename: "{app}\Novita.es.txt"; Languages: spanish
+Name: "{autoprograms}\GGCalendar - Nouveautés"; Filename: "{app}\Novita.fr.txt"; Languages: french
 Name: "{autodesktop}\GGCalendar"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]

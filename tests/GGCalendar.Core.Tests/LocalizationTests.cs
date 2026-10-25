@@ -76,6 +76,9 @@ public class LocalizationTests
     [Theory]
     [Trait("TestCase", "T131")]
     [InlineData("en")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("fr")]
     public void T131_EveryLanguageHasAllTheTextsOfItalianWithTheSamePlaceholders(string language)
     {
         var italian = L.Texts("it");
@@ -97,6 +100,23 @@ public class LocalizationTests
             Assert.False(keys.Where(k => k.EndsWith(".one", StringComparison.Ordinal)).Any(k => !keys.Contains(k[..^4] + ".other")));
             Assert.False(keys.Where(k => k.EndsWith(".other", StringComparison.Ordinal)).Any(k => !keys.Contains(k[..^6] + ".one")));
         }
+    }
+
+    [Theory]
+    [Trait("TestCase", "T136")]
+    [InlineData("en")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("fr")]
+    public void T136_NoTextOfAnotherLanguageIsLeftInItalian(string language)
+    {
+        var italian = L.Texts("it");
+        var english = L.Texts("en");
+        var texts = L.Texts(language);
+
+        // A text equal to the Italian one is only right when it is the same in English too (a name such as "Google", "OK").
+        var copied = texts.Where(t => italian[t.Key] == t.Value && english[t.Key] != t.Value).Select(t => t.Key).OrderBy(k => k).ToList();
+        Assert.Empty(copied);
     }
 
     /// <summary>The folder of the solution, found from the folder of this file (the tests may run from another folder).</summary>

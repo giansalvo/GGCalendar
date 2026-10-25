@@ -347,7 +347,6 @@
   "sync.help": "\"Stop\" leaves the changes not yet sent in the queue: they will go at the next sync. \"Stop and discard the queue\" also deletes the events not yet sent from this PC.",
   "sync.progress": "Sending to Google: {0} of {1} events.",
   "sync.rejected": "{0}: change not accepted by Google ({1}): {2}",
-  "sync.rejected_title": "{0}: change not accepted by Google ({1}): {2}",
   "sync.stop_button": "Stop",
   "sync.stopping": "Stopping the sending...",
   "sync.stopping_button": "Stopping...",

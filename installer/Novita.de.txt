@@ -1,0 +1,36 @@
+﻿GGCalendar 1.0.1 - Neuigkeiten
+==============================
+
+Wecker werden mit Google und mit GGCalendar Mobile (Android) synchronisiert
+---------------------------------------------------------------------------
+Bis Version 1.0 gab es den Wecker (die Erinnerung, die klingelt, bis man sie ausschaltet)
+nur auf diesem Computer: Nach einer Synchronisierung war er wieder eine einfache
+Benachrichtigung, und ein auf dem Telefon eingestellter Wecker kam hier als
+Benachrichtigung an.
+
+Ab dieser Version reisen die Wecker mit dem Termin über Google Kalender, wie in
+GGCalendar Mobile für Android:
+
+  - ein hier eingestellter Wecker klingelt auch auf dem Telefon;
+  - ein auf dem Telefon eingestellter Wecker klingelt auch hier;
+  - wenn Sie einen Wecker auf einer Seite entfernen, verschwindet er auch auf der anderen.
+
+Was Sie erwartet
+----------------
+  - Beim ersten Start nach der Aktualisierung lädt GGCalendar einmalig alle Termine erneut
+    von Google herunter: Das dauert etwas länger. Noch nicht gesendete Änderungen gehen
+    nicht verloren.
+  - Auf dem Computer kann ein Termin nicht eine Benachrichtigung und einen Wecker mit
+    derselben Vorlaufzeit haben: In diesem Fall bleibt der Wecker.
+  - Eigene Töne für Erinnerungen bleiben auf diesem Computer und laufen nicht über Google.
+  - Der Wecker ist eine private Eigenschaft Ihrer Kopie des Termins: Gäste erhalten ihn nicht.
+
+Weitere Änderungen
+------------------
+  - Der Hilfetext im Editor für Erinnerungen weist darauf hin, dass Wecker synchronisiert werden.
+  - README aktualisiert.
+
+Aktualisierung
+--------------
+Das Installationsprogramm aktualisiert die vorhandene Version, ohne Ihre Daten zu löschen
+(%AppData%\GGCalendar): Kalender, Einstellungen und Google-Konten bleiben erhalten.

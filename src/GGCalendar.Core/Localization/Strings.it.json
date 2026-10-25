@@ -347,7 +347,6 @@
   "sync.help": "\"Interrompi\" lascia in coda le modifiche non ancora inviate: partiranno alla prossima sincronizzazione. \"Interrompi e scarta la coda\" elimina gli eventi non ancora inviati anche da questo PC.",
   "sync.progress": "Invio a Google: {0} di {1} eventi.",
   "sync.rejected": "{0}: modifica non accettata da Google ({1}): {2}",
-  "sync.rejected_title": "{0}: modifica non accettata da Google ({1}): {2}",
   "sync.stop_button": "Interrompi",
   "sync.stopping": "Interruzione dell'invio...",
   "sync.stopping_button": "Interruzione...",
