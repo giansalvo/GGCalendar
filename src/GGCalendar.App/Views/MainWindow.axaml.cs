@@ -589,6 +589,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnToggleAccount(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is AccountGroup group) group.IsExpanded = !group.IsExpanded;
+    }
+
+    // TODO: create a new calendar in this account (on Google: issue #16).
+    private void OnNewCalendarInAccount(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm) vm.SyncStatus = "Nuovo calendario in un account: funzione non ancora disponibile.";
+    }
+
     private async void OnNewLocalCalendar(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;

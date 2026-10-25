@@ -91,12 +91,23 @@
 
         <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
             <DockPanel>
-                <Button DockPanel.Dock="Top" Content="＋  Crea" Padding="22,12" CornerRadius="16" Margin="0,4,0,16" FontWeight="SemiBold" Click="OnNewEvent" />
+                <!-- One pill made of two buttons: "Crea" makes an event, the arrow opens the other things that can be created. -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,4,0,16" Spacing="1">
+                    <Button Content="＋  Crea" Padding="22,12,16,12" CornerRadius="16,0,0,16" FontWeight="SemiBold" Click="OnNewEvent" />
+                    <Button Name="CreateMore" Padding="10,12" CornerRadius="0,16,16,0" ToolTip.Tip="Crea altro">
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Name="CreateEventItem" Header="Evento" Click="OnNewEvent" />
+                                <MenuItem Name="CreateLocalCalendarItem" Header="Calendario Locale" Click="OnNewLocalCalendar" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
                 <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
                     <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
-                    <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="＋  Nuovo calendario locale" Click="OnNewLocalCalendar" />
                     <Button Classes="nav" Width="NaN" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,0" Content="⭳  Importa file .ics…" Click="OnImportAsNewCalendar" />
                     <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta (ed elimina, se locale)" TextWrapping="Wrap" />
                 </StackPanel>
@@ -105,7 +116,12 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:AccountGroup">
                                 <StackPanel Margin="0,0,0,12">
-                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,6">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,6" Background="Transparent">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Nuovo calendario TODO" Click="OnNewCalendarInAccount" />
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
                                         <Border Width="32" Height="32" CornerRadius="16" Background="#A8C7FA" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Initial}" Foreground="#0B2A52" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
@@ -113,8 +129,12 @@
                                             <TextBlock Text="{Binding AccountName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11" />
                                         </StackPanel>
+                                        <Button Grid.Column="2" Classes="nav" Width="28" Height="28" Padding="0" VerticalAlignment="Center" Click="OnToggleAccount"
+                                                ToolTip.Tip="Mostra o nascondi i calendari dell'account">
+                                            <TextBlock Text="{Binding Chevron}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Button>
                                     </Grid>
-                                    <ItemsControl ItemsSource="{Binding Calendars}">
+                                    <ItemsControl ItemsSource="{Binding Calendars}" IsVisible="{Binding IsExpanded}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:CalendarItemViewModel">
                                                 <Border Classes.drop="{Binding IsDropTarget}" CornerRadius="6" Padding="0,2">

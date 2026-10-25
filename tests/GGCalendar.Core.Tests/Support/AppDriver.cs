@@ -297,10 +297,19 @@ public static class AppDriver
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
     }
 
-    /// <summary>"Nuovo calendario locale" and the name typed in the question. Returns the id of the new calendar.</summary>
+    /// <summary>An entry of the menu opened by the arrow beside "Crea" ("Evento", "Calendario Locale").</summary>
+    public static void ChooseCreateMenuItem(MainWindow window, string header)
+    {
+        var arrow = FindButton(window, b => ToolTip.GetTip(b) as string == "Crea altro");
+        var item = ((MenuFlyout)arrow.Flyout!).Items.OfType<MenuItem>().First(i => i.Header as string == header);
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>"Crea" > "Calendario Locale" and the name typed in the question. Returns the id of the new calendar.</summary>
     public static async Task<string> CreateLocalCalendarAsync(MainWindow window, string name)
     {
-        Click(FindButton(window, "＋  Nuovo calendario locale"));
+        ChooseCreateMenuItem(window, "Calendario Locale");
         var prompt = await WaitForAsync(() => window.OwnedWindows.OfType<PromptWindow>().FirstOrDefault(), "la richiesta del nome del calendario");
         prompt.GetVisualDescendants().OfType<TextBox>().First().Text = name;
         Click(FindButton(prompt, "OK"));

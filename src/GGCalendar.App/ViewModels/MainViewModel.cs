@@ -33,12 +33,23 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public partial bool IsDropTarget { get; set; }
 }
 
-public sealed record AccountGroup(string AccountName, IReadOnlyList<CalendarItemViewModel> Calendars)
+public sealed partial class AccountGroup(string accountName, IReadOnlyList<CalendarItemViewModel> calendars) : ObservableObject
 {
+    public string AccountName { get; } = accountName;
+    public IReadOnlyList<CalendarItemViewModel> Calendars { get; } = calendars;
+
     /// <summary>First letter of the account, drawn in the round avatar.</summary>
     public string Initial => AccountName.Length > 0 ? char.ToUpperInvariant(AccountName[0]).ToString() : "?";
 
     public string Kind => Calendars.Any(c => !c.IsLocal) ? "Google" : "Su questo PC";
+
+    /// <summary>False when the user folded the calendars of this account away (the arrow beside its name).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Chevron))]
+    public partial bool IsExpanded { get; set; } = true;
+
+    /// <summary>Segoe Fluent Icons: chevron up when open, down when folded.</summary>
+    public string Chevron => IsExpanded ? "" : "";
 }
 
 public sealed record AgendaItem(CalendarEvent Event, string Time, string Title, string ColorHex);
