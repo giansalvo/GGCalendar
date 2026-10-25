@@ -11,15 +11,17 @@ using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Ollama;
 using GGCalendar.Providers.Google;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.ViewModels;
 
 public sealed record WeekdayOption(DayOfWeek Day, string Name);
 public sealed record TimeZoneOption(string Id, string Name);
+public sealed record LanguageOption(string Code, string Name);
 
 public sealed partial class SettingsViewModel : ViewModelBase
 {
-    private static readonly System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.GetCultureInfo("it-IT");
+    private static System.Globalization.CultureInfo Culture => L.Culture;
 
     public SettingsViewModel(AppSettings s, SoundService? sound = null, GoogleSyncService? google = null)
     {
@@ -34,7 +36,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         if (Directory.Exists(SoundService.MediaFolder))
         {
             foreach (var f in Directory.EnumerateFiles(SoundService.MediaFolder, "*.wav").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-                Sounds.Add(new SoundOption("Windows: " + Path.GetFileNameWithoutExtension(f), f));
+                Sounds.Add(new SoundOption(L.T("sound.windows", Path.GetFileNameWithoutExtension(f)), f));
         }
 
         DefaultSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultReminderSound) ?? AddCustomSound(s.DefaultReminderSound);
@@ -43,6 +45,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         HideOutsideHours = s.HideOutsideHours;
         ShowWeekNumbers = s.ShowWeekNumbers;
         Use24HourClock = s.Use24HourClock;
+        LanguageOptions = [new("system", L.T("settings.language_system")), .. L.Languages.Select(l => new LanguageOption(l.Code, l.NativeName))];
+        SelectedLanguage = LanguageOptions.FirstOrDefault(o => o.Code == s.Language) ?? LanguageOptions[0];
         DefaultEventMinutes = s.DefaultEventMinutes;
         SnapMinutes = s.SnapMinutes;
         OllamaUrl = s.OllamaUrl;
@@ -78,7 +82,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     public static readonly int[] SyncIntervalOptions = [0, 1, 2, 5, 10, 15, 30, 60];
     public string[] SyncIntervalLabels { get; } =
-        ["Mai (solo manuale)", "Ogni minuto", "Ogni 2 minuti", "Ogni 5 minuti", "Ogni 10 minuti", "Ogni 15 minuti", "Ogni 30 minuti", "Ogni 60 minuti"];
+        [L.T("settings.sync_never"), .. SyncIntervalOptions.Skip(1).Select(m => L.N("settings.sync_every", m))];
     [ObservableProperty] public partial int SyncIntervalIndex { get; set; }
     [ObservableProperty] public partial string GoogleStatus { get; set; } = "";
     [ObservableProperty] public partial bool IsSigningIn { get; set; }
@@ -92,23 +96,23 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _google.Configure(GoogleClientConfig.Resolve(GoogleClientId, GoogleClientSecret));
         if (!_google.IsConfigured)
         {
-            GoogleStatus = "Credenziali Google non ancora configurate: inseriscile in \"Avanzate\".";
+            GoogleStatus = L.T("settings.credentials_missing");
             return;
         }
 
         IsSigningIn = true;
-        GoogleStatus = "Completa l'accesso nel browser...";
+        GoogleStatus = L.T("settings.complete_sign_in");
         _signIn = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         try
         {
             var email = await _google.AddAccountAsync(_signIn.Token);
             if (!GoogleAccounts.Contains(email)) GoogleAccounts.Add(email);
             AccountsChanged = true;
-            GoogleStatus = $"Account {email} collegato.";
+            GoogleStatus = L.T("settings.account_connected", email);
         }
         catch (Exception ex) when (ex is GoogleAuthException or System.Net.Http.HttpRequestException or OperationCanceledException)
         {
-            GoogleStatus = ex is OperationCanceledException ? "Accesso annullato o scaduto." : ex.Message;
+            GoogleStatus = ex is OperationCanceledException ? L.T("settings.sign_in_cancelled") : ex.Message;
         }
         finally
         {
@@ -124,7 +128,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         if (_google is null) return;
         _google.ResetSync();
         AccountsChanged = true;
-        GoogleStatus = "Risincronizzazione completa programmata: partirà alla chiusura delle impostazioni.";
+        GoogleStatus = L.T("settings.resync_scheduled");
     }
 
     [RelayCommand]
@@ -134,13 +138,13 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private async Task RemoveGoogleAccount(string? email)
     {
         if (_google is null || email is null) return;
-        GoogleStatus = $"Scollegamento di {email}...";
+        GoogleStatus = L.T("settings.disconnecting", email);
         var revoked = await _google.RemoveAccountAsync(email, CancellationToken.None);
         GoogleAccounts.Remove(email);
         AccountsChanged = true;
         GoogleStatus = revoked
-            ? $"Account {email} scollegato e accesso di GGCalendar revocato su Google."
-            : $"Account {email} scollegato da questo PC, ma non è stato possibile revocare l'accesso su Google (connessione assente?). Puoi revocarlo da myaccount.google.com/permissions.";
+            ? L.T("settings.disconnected_revoked", email)
+            : L.T("settings.disconnected_not_revoked", email);
     }
 
     public ObservableCollection<SoundOption> Sounds { get; } = [];
@@ -153,7 +157,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     {
         var existing = Sounds.FirstOrDefault(o => o.Path == path);
         if (existing is not null) return existing;
-        var option = new SoundOption("File: " + Path.GetFileName(path), path);
+        var option = new SoundOption(L.T("sound.file", Path.GetFileName(path)), path);
         Sounds.Add(option);
         return option;
     }
@@ -163,8 +167,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     public void StopSound() => _sound?.Stop();
 
-    public const string NoFallback = "(nessuno)";
-    public static TimeZoneOption NoSecondaryZone { get; } = new("", "(nessun fuso secondario)");
+    public static string NoFallback => L.T("settings.none");
+    public static TimeZoneOption NoSecondaryZone { get; } = new("", L.T("settings.no_secondary_zone"));
+
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; }
+    [ObservableProperty] public partial LanguageOption SelectedLanguage { get; set; }
 
     public IReadOnlyList<WeekdayOption> Weekdays { get; }
     public IReadOnlyList<TimeZoneOption> TimeZones { get; }
@@ -199,7 +206,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshModelsAsync()
     {
-        OllamaStatus = "Connessione in corso...";
+        OllamaStatus = L.T("settings.ollama_connecting");
         try
         {
             var found = await new OllamaClient(OllamaUrl).ListModelsAsync();
@@ -210,19 +217,19 @@ public sealed partial class SettingsViewModel : ViewModelBase
             Models.Add(NoFallback);
             OllamaModel = model is not null && Models.Contains(model) ? model : found.FirstOrDefault();
             OllamaFallbackModel = Models.Contains(fallback) ? fallback : NoFallback;
-            OllamaStatus = $"Connesso: {found.Count} modelli disponibili.";
+            OllamaStatus = L.N("settings.ollama_connected", found.Count);
         }
         catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or TaskCanceledException or UriFormatException or System.Text.Json.JsonException)
         {
-            OllamaStatus = "Ollama non raggiungibile: " + ex.Message;
+            OllamaStatus = L.T("settings.ollama_unreachable", ex.Message);
         }
     }
 
     public AppSettings? TryBuild()
     {
         Error = "";
-        if (DayEndHour <= DayStartHour) { Error = "La fine della giornata deve essere dopo l'inizio."; return null; }
-        if (PrimaryTimeZone is null) { Error = "Seleziona il fuso orario principale."; return null; }
+        if (DayEndHour <= DayStartHour) { Error = L.T("settings.error_day_end"); return null; }
+        if (PrimaryTimeZone is null) { Error = L.T("settings.error_primary_zone"); return null; }
         // Ollama is optional: without a model (not installed, or no models) the other settings must still save.
 
         return new AppSettings
@@ -233,6 +240,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             FirstDayOfWeek = FirstDayOfWeek.Day,
             ShowWeekNumbers = ShowWeekNumbers,
             Use24HourClock = Use24HourClock,
+            Language = SelectedLanguage.Code,
             Theme = ThemeIndex,
             DimPastEvents = DimPastEvents,
             DefaultGuestsCanModify = DefaultGuestsCanModify,

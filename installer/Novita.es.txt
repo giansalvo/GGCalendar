@@ -1,0 +1,36 @@
+﻿GGCalendar 1.0.1 - Novedades
+============================
+
+Las alarmas se sincronizan con Google y con GGCalendar Mobile (Android)
+-----------------------------------------------------------------------
+Hasta la versión 1.0 la alarma (el recordatorio que suena hasta que lo apagas) existía
+solo en este ordenador: tras una sincronización volvía a ser una simple notificación,
+y una alarma configurada en el teléfono llegaba aquí como notificación.
+
+Desde esta versión las alarmas viajan con el evento en Google Calendar, como en
+GGCalendar Mobile para Android:
+
+  - una alarma configurada aquí también suena en el teléfono;
+  - una alarma configurada en el teléfono también suena aquí;
+  - si quitas una alarma de un lado, desaparece también del otro.
+
+Qué esperar
+-----------
+  - En el primer inicio tras la actualización GGCalendar vuelve a descargar todos los
+    eventos de Google, una sola vez: tardará un poco más. Los cambios aún no enviados
+    no se pierden.
+  - En el ordenador, un evento no puede tener una notificación y una alarma con los
+    mismos minutos de antelación: en ese caso se mantiene la alarma.
+  - Los sonidos personalizados de los recordatorios se quedan en este ordenador y no
+    pasan por Google.
+  - La alarma es una propiedad privada de tu copia del evento: los invitados no la reciben.
+
+Otros cambios
+-------------
+  - El texto de ayuda del editor de recordatorios recuerda que las alarmas se sincronizan.
+  - README actualizado.
+
+Actualización
+-------------
+El instalador actualiza la versión ya presente, sin borrar tus datos
+(%AppData%\GGCalendar): calendarios, ajustes y cuentas de Google se quedan donde están.

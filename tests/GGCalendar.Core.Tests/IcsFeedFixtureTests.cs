@@ -135,8 +135,8 @@ public class IcsFeedFixtureTests(ITestOutputHelper output)
         Assert.Contains(shown, e => e.Title == "[TEST GGCAL] Serie con eccezioni (spostata)" && e.Start == Utc("20261031T180000"));
 
         Assert.Equal(2, feed.Warnings.Count);
-        Assert.Contains(feed.Warnings, w => w.Contains("RDATE"));
-        Assert.Contains(feed.Warnings, w => w.Contains("non supportata"));
+        Assert.True(feed.Report.Has(IcsIssueCode.RdateIgnored));
+        Assert.True(feed.Report.Has(IcsIssueCode.InvalidRule));
     }
 
     [Fact]

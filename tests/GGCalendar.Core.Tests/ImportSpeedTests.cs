@@ -108,13 +108,15 @@ public class ImportSpeedTests(ITestOutputHelper output)
     [Trait("TestCase", "T112")]
     public Task T112_TheSummaryWarnsThatManyEventsForGoogleWillTakeTimeToSend() => HeadlessApp.RunAsync(async () =>
     {
-        var window = new ImportSummaryWindow("Calendario", 5000, 0, [], "Il calendario è su Google: i 5000 eventi verranno inviati subito, a gruppi, e servirà circa 8 minuti (potrai interromperli).");
+        var notice = GGCalendar.Core.Localization.L.T("import.google_notice", 5000, GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromSeconds(500)));
+        var window = new ImportSummaryWindow("Calendario", 5000, 0, [], notice);
         window.Show();
         await Task.Yield();
 
         var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         window.Close();
 
-        Assert.Contains(texts, t => t is not null && t.StartsWith("Il calendario è su Google", StringComparison.Ordinal) && t.Contains("5000"));
+        Assert.Contains(notice, texts);
+        Assert.Contains("5000", notice);
     });
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.Core.Recurrence;
 
@@ -11,7 +12,6 @@ public enum RecurrenceFrequency { Daily, Weekly, Monthly, Yearly }
 public sealed record RecurrenceRule
 {
     private static readonly string[] DayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
-    private static readonly string[] DayNames = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
     public RecurrenceFrequency Frequency { get; init; } = RecurrenceFrequency.Weekly;
     public int Interval { get; init; } = 1;
@@ -145,21 +145,24 @@ public sealed record RecurrenceRule
 
     private IEnumerable<DayOfWeek> OrderedDays() => Days.Distinct().OrderBy(d => ((int)d + 6) % 7);
 
-    /// <summary>Italian description, e.g. "Ogni 2 settimane il lunedì, giovedì, fino al 7 gen 2027".</summary>
+    /// <summary>Description in the language of the app, e.g. "Every 2 weeks on Monday, Thursday, until 7 Jan 2027".</summary>
     public string Describe()
     {
-        var unit = Frequency switch
+        var text = (Frequency, Interval) switch
         {
-            RecurrenceFrequency.Daily => Interval == 1 ? "giorno" : "giorni",
-            RecurrenceFrequency.Weekly => Interval == 1 ? "settimana" : "settimane",
-            RecurrenceFrequency.Monthly => Interval == 1 ? "mese" : "mesi",
-            _ => Interval == 1 ? "anno" : "anni",
+            (RecurrenceFrequency.Daily, 1) => L.T("recurrence.every_day"),
+            (RecurrenceFrequency.Weekly, 1) => L.T("recurrence.every_week"),
+            (RecurrenceFrequency.Monthly, 1) => L.T("recurrence.every_month"),
+            (RecurrenceFrequency.Yearly, 1) => L.T("recurrence.every_year"),
+            (RecurrenceFrequency.Daily, _) => L.T("recurrence.every_n_days", Interval),
+            (RecurrenceFrequency.Weekly, _) => L.T("recurrence.every_n_weeks", Interval),
+            (RecurrenceFrequency.Monthly, _) => L.T("recurrence.every_n_months", Interval),
+            _ => L.T("recurrence.every_n_years", Interval),
         };
-        var text = Interval == 1 ? $"Ogni {unit}" : $"Ogni {Interval} {unit}";
         if (Frequency == RecurrenceFrequency.Weekly && Days.Count > 0)
-            text += " il " + string.Join(", ", OrderedDays().Select(d => DayNames[(int)d]));
-        if (Count is { } c) text += c == 1 ? ", 1 volta" : $", {c} volte";
-        else if (Until is { } u) text += ", fino al " + u.ToString("d MMM yyyy", CultureInfo.GetCultureInfo("it-IT"));
+            text += L.T("recurrence.on_days", string.Join(", ", OrderedDays().Select(d => L.Culture.DateTimeFormat.GetDayName(d))));
+        if (Count is { } c) text += L.N("recurrence.times", c);
+        else if (Until is { } u) text += L.T("recurrence.until", u.ToString("d MMM yyyy", L.Culture));
         return text;
     }
 }

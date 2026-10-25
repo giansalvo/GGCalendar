@@ -47,14 +47,14 @@ public class SyncUiTests
         await RetitleAsync(window, dialog, localTitle);
         await SyncAsync(window);
 
-        // Google's version wins, and the user's version stays as a separate "(conflitto)" event.
+        // Google's version wins, and the user's version stays as a separate "(conflict)" event.
         var titles = TestTitles(window);
         Assert.Contains(googleTitle, titles);
-        Assert.Contains(localTitle + " (conflitto)", titles);
+        Assert.Contains(localTitle + GGCalendar.Core.Localization.L.T("sync.conflict_suffix"), titles);
         Assert.DoesNotContain(localTitle, titles);
         var onGoogle = (await google.FindAsync(TestPrefix)).Select(TitleOf).ToList();
         Assert.Contains(googleTitle, onGoogle);
-        Assert.Contains(localTitle + " (conflitto)", onGoogle);
+        Assert.Contains(localTitle + GGCalendar.Core.Localization.L.T("sync.conflict_suffix"), onGoogle);
         Assert.DoesNotContain(localTitle, onGoogle);
     });
 

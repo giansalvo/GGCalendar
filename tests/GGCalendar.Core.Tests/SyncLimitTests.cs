@@ -262,8 +262,8 @@ public class SyncProgressWindowTests
     private static List<string?> Texts(Avalonia.Controls.Window window) =>
         window.GetVisualDescendants().OfType<Avalonia.Controls.TextBlock>().Select(t => t.Text).ToList();
 
-    private static Avalonia.Controls.Button ButtonOf(Avalonia.Controls.Window window, string text) =>
-        window.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Single(b => b.Content as string == text);
+    private static Avalonia.Controls.Button ButtonOf(Avalonia.Controls.Window window, string automationId) =>
+        window.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Single(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) == automationId);
 
     private static void Click(Avalonia.Controls.Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
 
@@ -277,9 +277,9 @@ public class SyncProgressWindowTests
         await Task.Yield();
         window.Update(1250, 20000);
 
-        Assert.Contains(Texts(window), t => t == "Invio a Google: 1250 di 20000 eventi.");
+        Assert.Contains(Texts(window), t => t == GGCalendar.Core.Localization.L.T("sync.progress", 1250, 20000));
         Assert.Equal(6.25, window.GetVisualDescendants().OfType<Avalonia.Controls.ProgressBar>().Single().Value * 100);
-        var button = ButtonOf(window, "Interrompi");
+        var button = ButtonOf(window, "Sync.Stop");
 
         Click(button);
 
@@ -303,7 +303,7 @@ public class SyncProgressWindowTests
         });
         window.Show();
         await Task.Yield();
-        var discard = ButtonOf(window, "Interrompi e scarta la coda");
+        var discard = ButtonOf(window, "Sync.Discard");
 
         Click(discard); // the user says no in the confirmation
         Assert.Equal((1, false), (asked, window.StopRequested));
@@ -314,7 +314,7 @@ public class SyncProgressWindowTests
         Assert.Equal(2, asked);
         Assert.True(window.StopRequested);
         Assert.False(discard.IsEnabled);
-        Assert.False(ButtonOf(window, "Interruzione...").IsEnabled);
+        Assert.False(ButtonOf(window, "Sync.Stop").IsEnabled);
         Assert.Equal(0, stopped); // the stop itself is done by whoever confirmed (the caller cancels the sending)
         window.Close();
     });
@@ -329,7 +329,7 @@ public class SyncProgressWindowTests
 
         window.Update(0, 20000); // before any measure: the usual speed (10 events a second)
 
-        Assert.Contains(Texts(window), t => t == "Tempo stimato per inviare tutti gli eventi: circa 33 minuti");
+        Assert.Contains(Texts(window), t => t == GGCalendar.Core.Localization.L.T("sync.estimate", GGCalendar.Core.Localization.L.T("time.about_minutes", 33)));
         window.Close();
 
         var view = GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(1000, 19000, TimeSpan.FromSeconds(100)); // 10 a second measured
@@ -337,9 +337,9 @@ public class SyncProgressWindowTests
         Assert.Equal(TimeSpan.FromSeconds(19000 / 10.0), GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(5, 19000, TimeSpan.FromSeconds(2))); // too little to measure
         Assert.Equal(TimeSpan.FromSeconds(19000 / 100.0), GGCalendar.App.Views.SyncProgressWindow.EstimateRemaining(10000, 19000, TimeSpan.FromSeconds(100))); // faster than the default
 
-        Assert.Equal("meno di un minuto", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromSeconds(30)));
-        Assert.Equal("circa 5 minuti", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(5)));
-        Assert.Equal("circa 1 h 30 min", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(90)));
-        Assert.Equal("circa 2 h", GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(120)));
+        Assert.Equal(GGCalendar.Core.Localization.L.T("time.less_than_a_minute"), GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromSeconds(30)));
+        Assert.Equal(GGCalendar.Core.Localization.L.T("time.about_minutes", 5), GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(5)));
+        Assert.Equal(GGCalendar.Core.Localization.L.T("time.about_hours_minutes", 1, 30), GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(90)));
+        Assert.Equal(GGCalendar.Core.Localization.L.T("time.about_hours", 2), GGCalendar.App.Views.SyncProgressWindow.FormatRemaining(TimeSpan.FromMinutes(120)));
     });
 }

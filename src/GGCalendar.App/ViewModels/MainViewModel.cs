@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Data;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -17,9 +18,15 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string Id { get; } = info.Id;
     /// <summary>The account's own calendar (on Google its id is the account email): shown first, as "Il mio calendario" like the Android app.</summary>
     public bool IsPrimary { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase);
-    public string Name { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase) ? "Il mio calendario" : info.Name;
+    public string Name => IsPrimary ? L.T("main.my_calendar") : info.Name;
+
+    /// <summary>The language changed: the name of the account's own calendar is shown again.</summary>
+    public void LanguageChanged() => OnPropertyChanged(nameof(Name));
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
+
+    /// <summary>The account as shown to the user: "Local" (in the language shown) for the calendars of this PC.</summary>
+    public string DisplayAccountName => IsLocal ? L.T("main.local_account") : info.AccountName;
 
     /// <summary>Calendars that live only on this PC; Google calendars are removed by disconnecting their account.</summary>
     public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id);
@@ -40,10 +47,21 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     public string AccountName { get; } = accountName;
     public IReadOnlyList<CalendarItemViewModel> Calendars { get; } = calendars;
 
-    /// <summary>First letter of the account, drawn in the round avatar.</summary>
-    public string Initial => AccountName.Length > 0 ? char.ToUpperInvariant(AccountName[0]).ToString() : "?";
+    /// <summary>What is shown as the name of the account: its address, or "Local" for the calendars of this PC.</summary>
+    public string DisplayName => Calendars.All(c => c.IsLocal) ? L.T("main.local_account") : AccountName;
 
-    public string Kind => Calendars.Any(c => !c.IsLocal) ? "Google" : "Su questo PC";
+    /// <summary>First letter of the account, drawn in the round avatar.</summary>
+    public string Initial => DisplayName.Length > 0 ? char.ToUpperInvariant(DisplayName[0]).ToString() : "?";
+
+    public string Kind => Calendars.Any(c => !c.IsLocal) ? L.T("main.kind_google") : L.T("main.kind_local");
+
+    /// <summary>The language changed: the kind of account is shown again.</summary>
+    public void LanguageChanged()
+    {
+        OnPropertyChanged(nameof(Kind));
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(Initial));
+    }
 
     /// <summary>False when the user folded the calendars of this account away (the arrow beside its name).</summary>
     [ObservableProperty]
@@ -66,7 +84,10 @@ public enum ImportDuplicates { Skip, Replace, Copy }
 
 public sealed partial class MainViewModel : ViewModelBase
 {
-    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("it-IT");
+    private static CultureInfo Culture => L.Culture;
+
+    /// <summary>The name the local calendars have as account in the database: it is a key, not a text to show (see <see cref="AccountGroup.DisplayName"/>).</summary>
+    public const string LocalAccountName = "Locale";
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
@@ -79,6 +100,32 @@ public sealed partial class MainViewModel : ViewModelBase
         Settings = new AppSettings();
         Reload();
         SelectedDate = DateTime.Today;
+        // Weak: the language is a global, and a view model that nobody uses any more must not stay alive (nor be refreshed) because of it.
+        var weak = new WeakReference<MainViewModel>(this);
+        Action? handler = null;
+        handler = () =>
+        {
+            if (weak.TryGetTarget(out var viewModel)) viewModel.OnLanguageChanged();
+            else L.Changed -= handler;
+        };
+        L.Changed += handler;
+    }
+
+    /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
+    private void OnLanguageChanged()
+    {
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(OnLanguageChanged);
+            return;
+        }
+
+        foreach (var calendar in _calendars) calendar.LanguageChanged();
+        foreach (var account in Accounts) account.LanguageChanged();
+        OnPropertyChanged(nameof(ViewModeName));
+        OnPropertyChanged(nameof(WeekLabel));
+        OnPropertyChanged(nameof(SyncStatus));
+        Refresh();
     }
 
     // Bumped by every local change, so a background reload can tell that what it read is already stale.
@@ -115,7 +162,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (infos.Count == 0)
         {
             // First run: a local calendar so the app is usable before any account is connected.
-            var local = new CalendarInfo("local-personale", "Locale", "Personale", "#1A73E8");
+            var local = new CalendarInfo("local-personale", LocalAccountName, L.T("main.default_calendar"), "#1A73E8");
             _store.UpsertCalendar(local);
             infos = [local];
         }
@@ -165,9 +212,9 @@ public sealed partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName))]
     public partial int ViewModeIndex { get; set; } = 1;
 
-    public static IReadOnlyList<string> ViewModeNames { get; } = ["Giorno", "Settimana", "Mese", "Anno", "Programma", "6 giorni"];
+    private static readonly string[] ViewModeKeys = ["main.view_day", "main.view_week", "main.view_month", "main.view_year", "main.view_agenda", "main.view_6days"];
 
-    public string ViewModeName => ViewModeNames[ViewModeIndex];
+    public string ViewModeName => L.T(ViewModeKeys[ViewModeIndex]);
     public bool IsTimeGrid => ViewModeIndex is 0 or 1 or 5;
     public bool IsMonth => ViewModeIndex == 2;
     public bool IsYear => ViewModeIndex == 3;
@@ -219,7 +266,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public partial string Title { get; set; } = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WeekLabel))]
     public partial int WeekNumber { get; set; }
+
+    /// <summary>"Week 43", in the language shown now.</summary>
+    public string WeekLabel => L.T("main.week_number", WeekNumber);
 
     [ObservableProperty]
     public partial IReadOnlyList<DayHeader> Days { get; set; } = [];
@@ -250,13 +301,24 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Raised after a local change was queued for Google, so the host can sync soon.</summary>
     public event Action? ChangeQueued;
 
-    [ObservableProperty]
-    public partial string SyncStatus { get; set; } = "";
+    /// <summary>The message in the status bar, kept as key and arguments so that it can be shown again in another language (and checked by tests).</summary>
+    public Msg? Status { get; private set; }
 
-    [ObservableProperty]
-    public partial bool SyncIsError { get; set; }
+    /// <summary>The status message as text in the language shown now.</summary>
+    public string SyncStatus => Status?.Text ?? "";
 
-    partial void OnSyncStatusChanged(string value) => SyncIsError = value.StartsWith("Errore", StringComparison.Ordinal);
+    /// <summary>An error message: its key starts with "error.".</summary>
+    public bool SyncIsError => Status is { } m && m.Key.StartsWith("error.", StringComparison.Ordinal);
+
+    public void SetStatus(Msg? message)
+    {
+        Status = message;
+        OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(SyncStatus));
+        OnPropertyChanged(nameof(SyncIsError));
+    }
+
+    public void SetStatus(string key, params object?[] args) => SetStatus(Msg.Of(key, args));
 
     [ObservableProperty]
     public partial bool IsSyncing { get; set; }
@@ -373,7 +435,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var id = "local-" + Guid.NewGuid().ToString("N")[..8];
         var color = CalendarPalette[_calendars.Count % CalendarPalette.Length];
-        _store.UpsertCalendar(new CalendarInfo(id, "Locale", name, color));
+        _store.UpsertCalendar(new CalendarInfo(id, LocalAccountName, name, color));
         Reload();
         return id;
     }
@@ -720,8 +782,8 @@ public sealed partial class MainViewModel : ViewModelBase
             var items = VisibleEvents.Where(e => e.Start < d.AddDays(1) && e.End > d)
                 .OrderBy(e => !e.IsAllDay).ThenBy(e => e.Start)
                 .Select(e => new AgendaItem(e,
-                    e.IsAllDay ? "Tutto il giorno" : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
-                    string.IsNullOrWhiteSpace(e.Title) ? "(Senza titolo)" : e.Title,
+                    e.IsAllDay ? L.T("common.all_day") : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
+                    string.IsNullOrWhiteSpace(e.Title) ? L.T("common.untitled") : e.Title,
                     e.ColorHex ?? (CalendarColors.TryGetValue(e.CalendarId, out var c) ? c : "#1A73E8")))
                 .ToList();
             if (items.Count > 0)

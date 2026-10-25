@@ -3,6 +3,8 @@ using Xunit;
 
 namespace GGCalendar.Core.Tests;
 
+// In the serial collection: the test below changes the language, which is global.
+[Collection(GGCalendar.Core.Tests.Support.AppDriver.CollectionName)]
 public class RecurrenceRuleTests
 {
     [Fact]
@@ -12,7 +14,20 @@ public class RecurrenceRuleTests
         Assert.Equal(2, rule.Interval);
         Assert.Equal(13, rule.Count);
         Assert.Equal("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;COUNT=13", rule.ToRrule(false));
-        Assert.Equal("Ogni 2 settimane il lunedì, giovedì, 13 volte", rule.Describe());
+
+        // The sentence is in the language of the app: checked in two languages, whatever the one of this PC is.
+        var language = GGCalendar.Core.Localization.L.Language;
+        try
+        {
+            GGCalendar.Core.Localization.L.Apply("it");
+            Assert.Equal("Ogni 2 settimane il lunedì, giovedì, 13 volte", rule.Describe());
+            GGCalendar.Core.Localization.L.Apply("en");
+            Assert.Equal("Every 2 weeks on Monday, Thursday, 13 times", rule.Describe());
+        }
+        finally
+        {
+            GGCalendar.Core.Localization.L.Apply(language);
+        }
     }
 
     [Fact]

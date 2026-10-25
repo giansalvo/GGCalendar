@@ -1,11 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
 public partial class ConfirmWindow : Window
 {
-    public ConfirmWindow() : this("Conferma", "", "OK") { }
+    public ConfirmWindow() : this(L.T("dialog.confirm"), "", L.T("common.ok")) { }
 
     public ConfirmWindow(string title, string message, string okText)
     {

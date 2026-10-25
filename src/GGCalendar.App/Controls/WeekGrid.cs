@@ -10,6 +10,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using GGCalendar.Core.Layout;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Controls;
 
@@ -119,7 +120,7 @@ public sealed class WeekGrid : Control
 
     private void UpdateHeight() => Height = Math.Max(1, LastHour - FirstHour) * HourHeight;
 
-    private string FormatTime(DateTime t) => t.ToString(Use24Hour ? "HH:mm" : "h:mm tt", CultureInfo.CurrentCulture);
+    private string FormatTime(DateTime t) => t.ToString(Use24Hour ? "HH:mm" : "h:mm tt", L.Culture);
 
     // ---------- Pointer handling ----------
 
@@ -367,7 +368,7 @@ public sealed class WeekGrid : Control
         {
             var y = Math.Round(Y(hour)) + 0.5;
             context.DrawLine(linePen, new Point(Gutter - 8, y), new Point(w, y));
-            var text = Text(DateTime.Today.AddHours(hour).ToString(Use24Hour ? "HH:mm" : "h tt", CultureInfo.CurrentCulture), 11, labelBrush);
+            var text = Text(DateTime.Today.AddHours(hour).ToString(Use24Hour ? "HH:mm" : "h tt", L.Culture), 11, labelBrush);
             context.DrawText(text, new Point(Gutter - 12 - text.Width, y - text.Height / 2));
         }
 
@@ -407,7 +408,7 @@ public sealed class WeekGrid : Control
             {
                 var showTime = rect.Height >= 38;
                 var time = Text($"{FormatTime(ev.Start)} - {FormatTime(ev.End)}", 11, new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)));
-                var title = Text(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
+                var title = Text(string.IsNullOrEmpty(ev.Title) ? L.T("common.untitled") : ev.Title, 12, Brushes.White, FontWeight.SemiBold);
                 // The title wraps over as many whole lines as fit above the time; the last visible line ends with "…".
                 var lineHeight = title.Height;
                 var lines = Math.Max(1, Math.Floor((inner.Height - (showTime ? time.Height : 0)) / lineHeight));
@@ -467,6 +468,6 @@ public sealed class WeekGrid : Control
     }
 
     private static FormattedText Text(string s, double size, IBrush brush, FontWeight weight = FontWeight.Normal) =>
-        new(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+        new(s, L.Culture, FlowDirection.LeftToRight,
             new Typeface(FontFamily.Default, FontStyle.Normal, weight), size, brush);
 }

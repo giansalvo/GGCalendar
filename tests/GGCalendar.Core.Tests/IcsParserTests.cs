@@ -71,8 +71,8 @@ public class IcsParserTests
         var result = IcsParser.Analyze(ics, "c");
 
         Assert.Equal("abc-123", Assert.Single(result.Events).IcsUid);
-        Assert.Contains(result.Warnings, w => w.Contains("RDATE"));
-        Assert.Contains(result.Warnings, w => w.Contains("allegati"));
+        Assert.True(result.Report.Has(IcsIssueCode.RdateIgnored));
+        Assert.True(result.Report.Has(IcsIssueCode.AttachIgnored));
         Assert.Contains("UID:abc-123", IcsWriter.Write(result.Events));
     }
 

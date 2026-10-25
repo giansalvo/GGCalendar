@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using GGCalendar.App.Localization;
+using GGCalendar.Core.Localization;
 using GGCalendar.Core.Models;
 
 namespace GGCalendar.App.Views;
@@ -25,26 +27,30 @@ public sealed class ReminderNotificationWindow : Window
         ShowInTaskbar = false;
         ShowActivated = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
-        Title = isAlarm ? "Sveglia" : "Promemoria";
 
         var fmt = use24Hour ? "HH:mm" : "h:mm tt";
-        var when = ev.IsAllDay ? ev.Start.ToString("dddd d MMMM") : $"{ev.Start.ToString("ddd d MMM")}, {ev.Start.ToString(fmt)} – {ev.End.ToString(fmt)}";
+        string When() => ev.IsAllDay ? ev.Start.ToString("dddd d MMMM", L.Culture)
+            : $"{ev.Start.ToString("ddd d MMM", L.Culture)}, {ev.Start.ToString(fmt, L.Culture)} – {ev.End.ToString(fmt, L.Culture)}";
 
-        var snooze = new Button { Content = "Posticipa 5 min" };
-        var dismiss = new Button { Content = isAlarm ? "Spegni" : "Chiudi" };
+        var snooze = new Button { Name = "ReminderSnooze" };
+        var dismiss = new Button { Name = "ReminderDismiss" };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(snooze, "Reminder.Snooze");
+        Avalonia.Automation.AutomationProperties.SetAutomationId(dismiss, "Reminder.Dismiss");
+        this.Live(w => w.Title = L.T(isAlarm ? "reminder.alarm" : "reminder.reminder"));
+        snooze.Live(b => b.Content = L.T("reminder.snooze"));
+        dismiss.Live(b => b.Content = L.T(isAlarm ? "reminder.turn_off" : "reminder.dismiss"));
         snooze.Click += (_, _) => { Result = ReminderAction.Snooze; Close(); };
         dismiss.Click += (_, _) => { Result = ReminderAction.Dismiss; Close(); };
 
         var panel = new StackPanel { Margin = new Thickness(20), Spacing = 8 };
-        panel.Children.Add(new TextBlock { Text = isAlarm ? "⏰ Sveglia" : "🔔 Promemoria", Opacity = 0.7, FontSize = 12 });
+        panel.Children.Add(new TextBlock { Opacity = 0.7, FontSize = 12 }.Live(b => b.Text = L.T(isAlarm ? "reminder.heading_alarm" : "reminder.heading_reminder")));
         panel.Children.Add(new TextBlock
         {
-            Text = string.IsNullOrWhiteSpace(ev.Title) ? "(Senza titolo)" : ev.Title,
             FontSize = 20,
             FontWeight = FontWeight.SemiBold,
             TextWrapping = TextWrapping.Wrap,
-        });
-        panel.Children.Add(new TextBlock { Text = when });
+        }.Live(b => b.Text = string.IsNullOrWhiteSpace(ev.Title) ? L.T("common.untitled") : ev.Title));
+        panel.Children.Add(new TextBlock().Live(b => b.Text = When()));
         if (ev.Location.Length > 0) panel.Children.Add(new TextBlock { Text = "📍 " + ev.Location, Opacity = 0.7 });
         panel.Children.Add(new StackPanel
         {

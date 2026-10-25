@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -19,8 +20,10 @@ public sealed class PromptWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         _input = new TextBox { Text = initial };
-        var ok = new Button { Content = "OK", Classes = { "accent" } };
-        var cancel = new Button { Content = "Annulla", IsCancel = true };
+        var ok = new Button { Content = L.T("common.ok"), Classes = { "accent" } };
+        var cancel = new Button { Content = L.T("common.cancel"), IsCancel = true };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(ok, "Dialog.Ok");
+        Avalonia.Automation.AutomationProperties.SetAutomationId(cancel, "Dialog.Cancel");
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => Close((string?)null);
         _input.KeyDown += (_, e) => { if (e.Key == Key.Enter) Accept(); };

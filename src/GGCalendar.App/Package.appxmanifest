@@ -21,7 +21,12 @@
   </Dependencies>
 
   <Resources>
+    <!-- The first one is the default language; the app shows its texts in these five (see GGCalendar.Core\Localization). -->
     <Resource Language="it-IT" />
+    <Resource Language="en-US" />
+    <Resource Language="de-DE" />
+    <Resource Language="es-ES" />
+    <Resource Language="fr-FR" />
   </Resources>
 
   <Applications>

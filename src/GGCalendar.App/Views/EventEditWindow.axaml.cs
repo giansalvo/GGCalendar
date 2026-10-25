@@ -11,6 +11,7 @@ using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -53,10 +54,10 @@ public partial class EventEditWindow : Window
         if (Vm?.TryBuild() is not { } ev) return;
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Esporta evento",
-            SuggestedFileName = (string.IsNullOrWhiteSpace(ev.Title) ? "evento" : string.Concat(ev.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c))) + ".ics",
+            Title = L.T("file.export_event_title"),
+            SuggestedFileName = (string.IsNullOrWhiteSpace(ev.Title) ? L.T("file.default_event_name") : string.Concat(ev.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c))) + ".ics",
             DefaultExtension = "ics",
-            FileTypeChoices = [new FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
+            FileTypeChoices = [new FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics"] }],
         });
         if (file is null) return;
 
@@ -106,9 +107,9 @@ public partial class EventEditWindow : Window
         if ((sender as Control)?.DataContext is not ReminderItemViewModel r || Vm is null) return;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Scegli un suono di notifica",
+            Title = L.T("common.choose_sound_title"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("File audio") { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
+            FileTypeFilter = [new FilePickerFileType(L.T("common.audio_files")) { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
         {

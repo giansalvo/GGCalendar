@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Política de privacidad – GGCalendar</title>
+<meta name="description" content="Política de privacidad de GGCalendar, la app de calendario para Windows 11 y Android con sincronización con Google Calendar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='24' rx='4' fill='%23fff' stroke='%231a56b8' stroke-width='2'/%3E%3Crect x='3' y='5' width='26' height='8' rx='4' fill='%231a56b8'/%3E%3C/svg%3E">
+<link rel="alternate" hreflang="it" href="../privacy.html">
+<link rel="alternate" hreflang="en" href="../en/privacy.html">
+<link rel="alternate" hreflang="de" href="../de/privacy.html">
+<link rel="alternate" hreflang="es" href="privacy.html">
+<link rel="alternate" hreflang="fr" href="../fr/privacy.html">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/script.js" defer></script>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">GGCalendar</a>
+  <nav class="main"><a href="index.html">Inicio</a><a class="btn btn-primary btn-sm" href="index.html#download">Descargar</a></nav><div class="langs" aria-label="Language"><a href="../privacy.html" hreflang="it" lang="it">Italiano</a><a href="../en/privacy.html" hreflang="en" lang="en">English</a><a href="../de/privacy.html" hreflang="de" lang="de">Deutsch</a><a class="on" href="privacy.html" hreflang="es" lang="es">Español</a><a href="../fr/privacy.html" hreflang="fr" lang="fr">Français</a></div>
+</div></header>
+
+<main class="legal"><div class="wrap">
+  <a class="back" href="index.html">← Volver al inicio</a>
+  <h1>Política de privacidad</h1>
+  <p class="updated">Última actualización: 11 de octubre de 2026 · GGCalendar v1 para Windows y GGCalendar Mobile para Android · Traducción del original italiano, que es el texto de referencia</p>
+
+  <p>Esta política describe cómo GGCalendar para Windows y GGCalendar Mobile para Android (conjuntamente, «la App») y el sitio web correspondiente tratan los datos personales, conforme al Reglamento (UE) 2016/679 (RGPD), y cómo la App utiliza los datos recibidos de las API de Google.</p>
+
+  <h2>1. Responsable del tratamiento y ámbito</h2>
+  <p>Giansalvo Gusinu, Sassari (Italia). Contacto: <a href="#" data-mail data-show data-subject="GGCalendar – Privacy">escribe al responsable</a>.</a>.</p>
+  <p>El responsable trata datos personales solo para el <strong>sitio web</strong> (sección 9) y para las <strong>comunicaciones por correo electrónico</strong> (sección 10). La App funciona íntegramente en tu dispositivo (ordenador o teléfono): el autor <strong>no recibe, no ve y no conserva</strong> tus eventos ni otros datos introducidos o sincronizados en la App. Si conectas una cuenta de Google, los datos de tu calendario son tratados por Google LLC como responsable independiente, según la <a href="https://policies.google.com/privacy?hl=es" rel="noopener">Política de privacidad de Google</a>.</a>.</p>
+
+  <h2>2. La App en breve</h2>
+  <ul>
+    <li>no requiere crear una cuenta: sin conectar Google funciona solo en local;</li>
+    <li>no envía datos a servidores del autor: el autor no gestiona ningún servidor para la App;</li>
+    <li>se comunica en la red solo con los servicios de Google, y solo si conectas una cuenta (sección 4);</li>
+    <li>no contiene publicidad ni herramientas de elaboración de perfiles y no recoge datos de uso ni de telemetría;</li>
+    <li>no vende ni cede datos a nadie.</li>
+  </ul>
+
+  <h2>3. Datos guardados en tu dispositivo</h2>
+  <h3>3.1 Windows</h3>
+  <p>La App guarda sus datos en la carpeta <code>%AppData%\GGCalendar</code> de tu usuario de Windows:</p>
+  <ul>
+    <li><code>calendar.db</code>: los calendarios y los eventos (título, fechas, lugar, descripción, invitados, recordatorios, colores), tanto de los calendarios locales como de la copia de los calendarios de Google sincronizados, además de los cambios pendientes de enviar a Google;</li>
+    <li><code>settings.json</code>: los ajustes de la App;</li>
+    <li><code>reminders.json</code>: los recordatorios ya mostrados o pospuestos;</li>
+    <li><code>google-accounts.json</code>: la dirección de correo de las cuentas de Google conectadas y el token de acceso correspondiente, <strong>cifrado</strong> con la protección de datos de Windows (DPAPI) y utilizable solo por tu usuario de Windows.</li>
+  </ul>
+  <p>La base de datos de eventos no está cifrada por la App y está protegida por el acceso a tu cuenta de Windows: te recomendamos proteger la cuenta con una contraseña y, si es posible, activar el cifrado del disco (BitLocker). La copia de seguridad, la conservación y la eliminación de estos archivos están bajo tu control (sección 8).</p>
+
+  <h3>3.2 Android</h3>
+  <p>La App guarda sus datos en el almacenamiento privado que Android reserva a cada app, no accesible para las demás apps:</p>
+  <ul>
+    <li>la base de datos de calendarios y eventos (mismo contenido descrito para Windows), con los cambios pendientes de enviar a Google;</li>
+    <li>los ajustes de la App y el estado de los recordatorios ya mostrados o pospuestos;</li>
+    <li>la dirección de correo de las cuentas de Google conectadas.</li>
+  </ul>
+  <p>En Android la App <strong>no conserva ningún token de acceso</strong>: cuando debe comunicarse con Google, se lo pide cada vez a Google Play Services, el componente del sistema que gestiona las cuentas de Google del teléfono. Los datos de la App están excluidos de la copia de seguridad automática de Android, por lo que no se copian en tu espacio de copia de seguridad de Google. Te recomendamos proteger el teléfono con un bloqueo de pantalla.</p>
+
+  <h2>4. Sincronización con Google Calendar (opcional)</h2>
+  <p>Si conectas una cuenta de Google, el acceso se realiza mediante la página de inicio de sesión de Google en el navegador (Windows) o mediante la elección de la cuenta y la pantalla de autorización de Google Play Services (Android), con el protocolo OAuth 2.0: la App no ve ni conserva tu contraseña de Google.</p>
+
+  <h3>4.1 Datos de Google a los que accede la App</h3>
+  <p>La App solicita el permiso <code>https://www.googleapis.com/auth/calendar</code> (ver, editar, compartir y eliminar definitivamente todos los calendarios a los que puedes acceder con Google Calendar), necesario para la sincronización en ambos sentidos. Con este permiso la App lee y escribe:</p>
+  <ul>
+    <li>la lista de tus calendarios (nombre, color, recordatorios predeterminados, nivel de acceso);</li>
+    <li>los eventos de esos calendarios: título, fechas y horas, lugar, descripción, repetición, invitados y sus direcciones de correo, recordatorios, disponibilidad, visibilidad, enlace de Google Meet y permisos de los invitados;</li>
+    <li>la dirección de correo de la cuenta, para identificarla en la App.</li>
+  </ul>
+
+  <h3>4.2 Cómo se utilizan</h3>
+  <p>Estos datos se utilizan <strong>exclusivamente</strong> para mostrarte tus calendarios en la App, para crear, modificar y eliminar eventos a petición tuya y para mostrarte los recordatorios en tu dispositivo. No se utilizan para publicidad, elaboración de perfiles ni análisis, ni para entrenar modelos de inteligencia artificial, y no los lee ninguna persona.</p>
+
+  <h3>4.3 Conservación</h3>
+  <p>Una copia de los datos sincronizados se conserva solo en tu dispositivo, como se indica en la sección 3, hasta que desconectes la cuenta o borres los datos de la App. Los datos originales permanecen en tu cuenta de Google y los gestiona Google.</p>
+
+  <h3>4.4 Compartición</h3>
+  <p>Los datos viajan solo entre tu dispositivo y los servidores de Google, mediante una conexión cifrada (HTTPS), sin pasar por servidores del autor ni de terceros, y no se transfieren a nadie más. A través de la App puedes, sin embargo, pedir a Google que contacte con otras personas:</p>
+  <ul>
+    <li>si añades invitados a un evento con la opción «enviar invitaciones» activada, Google les envía los correos de invitación, actualización o cancelación;</li>
+    <li>si añades una videollamada, Google crea el enlace de Google Meet;</li>
+    <li>los recordatorios de tipo «correo» los envía Google a tu dirección.</li>
+  </ul>
+
+  <h3>4.5 Uso limitado (Limited Use)</h3>
+  <blockquote>El uso y la transferencia a cualquier otra app de la información recibida de las API de Google por parte de GGCalendar se ajustarán a la <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de uso limitado (Limited Use).</a>, inclusi i requisiti di Limited Use (utilizzo limitato).</blockquote>
+
+  <h3>4.6 Revocar el acceso</h3>
+  <p>Puedes desconectar una cuenta en cualquier momento desde <em>Ajustes → Cuentas de Google</em>: la App revoca su propia autorización en Google y elimina del dispositivo el token (en Windows) y la copia de los calendarios de esa cuenta. Si en ese momento estás sin conexión, la cuenta se quita igualmente del dispositivo y puedes revocar el acceso desde <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>. Desconectar no borra los eventos de tu cuenta de Google.</a>. Lo scollegamento non cancella gli eventi dal tuo account Google.</p>
+
+  <h2>5. Datos de otras personas</h2>
+  <p>Los eventos pueden contener datos de otras personas, por ejemplo las direcciones de correo de los invitados. Estos datos los gestionas tú, en tu dispositivo y en tu cuenta de Google; el autor no tiene acceso a ellos. Te invitamos a introducir datos de terceros solo cuando sea necesario.</p>
+
+  <h2>6. Modelos de inteligencia artificial locales (Ollama, solo Windows)</h2>
+  <p>En la versión para Windows, en los ajustes se puede indicar la dirección de una instalación de Ollama (predeterminada: tu propio ordenador). En la versión 1 la App se limita a pedir a esa dirección la lista de modelos disponibles y <strong>no envía</strong> eventos ni otros datos del calendario. Si indicas la dirección de otro ordenador, la solicitud llega a ese ordenador.</p>
+
+  <h2>7. Importación, exportación, compartición e impresión</h2>
+  <p>Los archivos .ics que importas o exportas se leen y escriben solo en tu dispositivo, en las ubicaciones que elijas. En Android, cuando compartes o imprimes un evento, el contenido se pasa a la app o a la impresora que elijas (por ejemplo una app de correo o de mensajes), que lo trata según sus propias normas.</p>
+
+  <h3>7.1 Permisos solicitados en Android</h3>
+  <ul>
+    <li><strong>Internet</strong>: para comunicarse con Google y, para la comprobación de actualizaciones, con GitHub;</li>
+    <li><strong>Notificaciones, alarmas y temporizadores, pantalla completa, inicio del teléfono</strong>: para mostrar recordatorios y alarmas a la hora correcta, incluso con la pantalla bloqueada y tras un reinicio;</li>
+    <li><strong>Contactos</strong> (opcional): para sugerir las direcciones de correo de los invitados mientras escribes. Los contactos se leen solo en el teléfono y no se envían a nadie, salvo las direcciones que decidas añadir como invitados;</li>
+    <li><strong>Instalación de aplicaciones</strong>: para instalar las actualizaciones de la App descargadas de GitHub, solo cuando lo confirmes.</li>
+  </ul>
+  <p>Los sonidos de los recordatorios y los archivos .ics se eligen mediante el selector de archivos de Android: la App accede solo a los archivos que indiques.</p>
+
+  <h2>8. Borrar los datos de la App</h2>
+  <p>Para eliminar del dispositivo los datos de una sola cuenta de Google, desconéctala (sección 4.6).</p>
+  <p><strong>Android:</strong> la desinstalación de la App borra todos sus datos del teléfono. También puedes borrarlos sin desinstalar, desde <em>Ajustes → Aplicaciones → GGCalendar → Almacenamiento → Borrar datos</em>.</p>
+  <p><strong>Windows:</strong> la desinstalación de la App <strong>no</strong> borra los datos, para no perderlos en caso de reinstalación o actualización: para eliminarlos por completo, tras la desinstalación borra la carpeta <code>%AppData%\GGCalendar</code> (pega la ruta en la barra de direcciones del Explorador de archivos). Si habías conectado cuentas de Google sin desconectarlas, revoca también el acceso desde <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>.</a>.</p>
+
+  <h2>9. Datos tratados por el sitio web</h2>
+  <p>Las páginas de este sitio no utilizan cookies ni herramientas de análisis o de terceros. El sitio está alojado en <strong>Altervista</strong> (<a href="https://www.altervista.org" rel="noopener">altervista.org</a>), que registra en los logs del servidor datos técnicos de navegación (por ejemplo dirección IP, fecha y hora, página solicitada) con fines de seguridad y de correcto funcionamiento del servicio. Altervista puede además utilizar cookies propias o de terceros, por ejemplo para la publicidad en los sitios alojados gratuitamente: estos tratamientos los gestiona Altervista, que los describe en su propia política y en el banner de cookies que se muestra en la primera visita.</a>), che registra nei log del server dati tecnici di navigazione (ad esempio indirizzo IP, data e ora, pagina richiesta) per finalità di sicurezza e corretto funzionamento del servizio. Altervista può inoltre utilizzare cookie propri o di terze parti, ad esempio per la pubblicità sui siti ospitati gratuitamente: questi trattamenti sono gestiti da Altervista, che li descrive nella propria informativa e nel banner dei cookie mostrato alla prima visita.</p>
+  <p>Los archivos de instalación de la App (para Windows y para Android) se descargan de <strong>GitHub</strong> (GitHub, Inc., Estados Unidos), que trata los datos técnicos de la descarga, como la dirección IP, según su propia <a href="https://docs.github.com/es/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">declaración de privacidad</a>. La App para Android comprueba periódicamente en GitHub si hay una nueva versión: la solicitud no contiene datos personales, pero GitHub recibe la dirección IP del teléfono.</a>. L'App per Android controlla periodicamente su GitHub se è disponibile una nuova versione: la richiesta non contiene dati personali, ma GitHub riceve l'indirizzo IP del telefono.</p>
+
+  <h2>10. Comunicaciones por correo electrónico</h2>
+  <p>Si escribes a la dirección de contacto, usaré tu dirección de correo y el contenido del mensaje exclusivamente para responderte. Los mensajes se conservan durante el tiempo necesario para gestionar la solicitud y, en todo caso, no más de 24 meses desde el último intercambio, y no se ceden a terceros. La dirección de contacto es una cuenta de Gmail: los mensajes se conservan, por tanto, en los servidores de Google.</p>
+
+  <h2>11. Base jurídica</h2>
+  <p>El tratamiento de los datos de contacto se basa en la necesidad de dar respuesta a tu solicitud y en el interés legítimo de responder a las comunicaciones recibidas (art. 6, apdo. 1, letras b y f, RGPD). Los logs del servidor se basan en el interés legítimo en la seguridad del sitio (letra f). Para los datos presentes en la App el autor no realiza ningún tratamiento (sección 1).</p>
+
+  <h2>12. Transferencia de datos fuera de la Unión Europea</h2>
+  <p>Google (para la sincronización y para el correo de contacto) y GitHub (para la descarga y la comprobación de actualizaciones) pueden tratar datos en Estados Unidos. Ambas empresas están adheridas al EU-U.S. Data Privacy Framework y adoptan las cláusulas contractuales tipo aprobadas por la Comisión Europea.</p>
+
+  <h2>13. Tus derechos</h2>
+  <p>Tienes derecho a acceder a tus datos, rectificarlos, suprimirlos, limitar su tratamiento, oponerte y, cuando proceda, obtener su portabilidad. También puedes presentar una reclamación ante la autoridad italiana de protección de datos (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>). Para ejercer tus derechos escribe al contacto indicado arriba. Para los datos de tu cuenta de Google puedes usar también las herramientas de Google (<a href="https://myaccount.google.com" rel="noopener">myaccount.google.com</a>).</a>). Per esercitare i tuoi diritti scrivi al contatto indicato sopra. Per i dati del tuo account Google puoi usare anche gli strumenti di Google (<a href="https://myaccount.google.com" rel="noopener">myaccount.google.com</a>).</p>
+
+  <h2>14. Menores</h2>
+  <p>El autor no recoge conscientemente datos de menores a través de la App ni del sitio.</p>
+
+  <h2>15. Cambios en la política</h2>
+  <p>Esta política puede actualizarse, por ejemplo en caso de nuevas funciones en versiones futuras de la App. La fecha de la última actualización se indica arriba; los cambios relevantes se comunicarán en el sitio.</p>
+
+  <h2>16. Contacto</h2>
+  <p>Para cualquier pregunta sobre esta política: <a href="#" data-mail data-show data-subject="GGCalendar – Privacy">escribe al autor</a>.</a>.</p>
+  <noscript><p>Correo: profgusinu [arroba] gmail [punto] com</p></noscript>
+</div></main>
+
+<footer class="site"><div class="wrap">
+  <div>© 2026 Giansalvo Gusinu · GGCalendar v1 · GGCalendar Mobile</div>
+  <nav><a href="index.html">Inicio</a><a href="privacy.html">Privacidad</a><a href="terms.html">Términos de servicio</a></nav>
+</div></footer>
+</body>
+</html>

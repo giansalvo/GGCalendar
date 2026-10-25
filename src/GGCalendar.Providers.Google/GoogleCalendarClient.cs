@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.Providers.Google;
 
@@ -217,7 +218,7 @@ public sealed class GoogleCalendarClient
         var text = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode) throw new GoogleApiException(res.StatusCode, $"Google Calendar: {(int)res.StatusCode} {text}", ReasonOf(text), RetryAfterOf(res));
         var replyBoundary = res.Content.Headers.ContentType?.Parameters.FirstOrDefault(p => p.Name == "boundary")?.Value?.Trim('"')
-            ?? throw new GoogleApiException(res.StatusCode, "Google Calendar: risposta del batch non riconosciuta.");
+            ?? throw new GoogleApiException(res.StatusCode, L.T("google.batch_unrecognized"));
         return ParseBatch(text, replyBoundary, events.Count);
     }
 

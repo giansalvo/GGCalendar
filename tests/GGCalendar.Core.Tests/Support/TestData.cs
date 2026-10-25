@@ -37,6 +37,10 @@ public static class TestData
         if (new GoogleAccountStore(installed).Load().FirstOrDefault(a => a.Email.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase)) is { } testAccount)
             accounts.Save([testAccount]);
 
-        new SettingsStore().Save(new AppSettings());
+        // The tests do not depend on the language (they find controls by AutomationId and check messages by key), and run in the one
+        // of GGCALENDAR_TEST_LANGUAGE (Italian by default) so that a run always shows the same texts.
+        var language = Environment.GetEnvironmentVariable("GGCALENDAR_TEST_LANGUAGE") is { Length: > 0 } wanted ? wanted : "it";
+        new SettingsStore().Save(new AppSettings { Language = language });
+        GGCalendar.Core.Localization.L.Apply(language);
     }
 }

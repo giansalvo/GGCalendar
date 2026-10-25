@@ -1,0 +1,231 @@
+GGCalendar - Microsoft Store listing in English, German, Spanish and French
+(da incollare in Partner Center > Store listings, una lingua alla volta; la lingua italiana e' in appunti.txt)
+Francese, tedesco e spagnolo vanno riletti da un madrelingua prima dell'invio.
+
+Nelle "Notes for certification" di appunti.txt cambia "Italian UI only" in "UI in Italian, English, German, Spanish and French (language chosen in Settings, default: the language of Windows)",
+e i nomi dei comandi: Settings > "Google accounts" > "＋ Add Google account" (in inglese), "Disconnect" per scollegare.
+Package.appxmanifest elenca ora le cinque lingue (it-IT e' la prima, quella predefinita).
+
+================================================================
+English (en-US)
+================================================================
+
+Description
+
+GGCalendar is the ideal way to manage appointments and deadlines efficiently on Windows 11, with a modern interface that supports a light and a dark theme.
+
+Intuitive event management
+Plan your days with the day, week, 6-day, month, year and schedule views. Create, move and resize events simply by dragging them, even between different calendars. Manage recurring commitments, local calendars and the import/export of .ics files. A single click opens the quick card to edit, delete, send an email or join Google Meet meetings directly.
+
+Google sync and reminders
+Sync one or more Google Calendar accounts in both directions, keeping guests, permissions and Meet links up to date. Smart conflict handling protects your data by saving safety copies. Never miss an appointment thanks to desktop notifications, emails and long sound alarms, which also recover the reminders that fired while the app was closed.
+
+The interface speaks Italian, English, German, Spanish and French: choose the language in Settings, or let GGCalendar follow the language of Windows.
+
+--------
+
+What's new
+
+Alarms sync with Google and with GGCalendar Mobile (Android). An alarm set on the computer also rings on the phone and vice versa; if you remove it on one side it disappears on the other too.
+
+    An event cannot have a notification and an alarm with the same number of minutes before: the alarm stays.
+    Custom sounds stay on the computer; guests do not receive your alarms.
+
+------
+Product features
+
+ Day, week, 6-day, month, year and schedule views
+ Events created, moved and resized by dragging, even between different calendars
+ Local calendars and import/export of .ics files
+ Desktop notification, email reminders (sent by Google) and a sound alarm that rings until you switch it off, 2 minutes at most
+ Two-way sync with one or more Google accounts
+ Interface in five languages, chosen in Settings
+
+------
+Short description
+
+GGCalendar organises appointments and deadlines on Windows 11 with a light/dark theme. It offers several views, drag-and-drop, .ics handling and two-way sync with Google Calendar. It includes desktop notifications, email and alarms that recover missed reminders.
+
+----
+Additional information (search terms)
+
+appointment management
+deadline management
+modern calendar app
+easy event planning
+recurring events calendar
+import .ics file
+export .ics file
+
+------
+Licence
+
+The code is free software, distributed under the GNU GPL version 3 or later. The name "GGCalendar" and the logo remain the author's: they are not granted as a trademark, and whoever distributes modified versions must use a different name, logo and app identifier.
+
+================================================================
+Deutsch (de-DE)
+================================================================
+
+Beschreibung
+
+GGCalendar ist die ideale Lösung, um Termine und Fristen unter Windows 11 mit größter Effizienz zu verwalten, dank einer modernen Oberfläche mit hellem und dunklem Design.
+
+Intuitive Terminverwaltung
+Planen Sie Ihre Tage mit den Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht. Erstellen, verschieben und ändern Sie die Größe von Terminen einfach per Ziehen, auch zwischen verschiedenen Kalendern. Verwalten Sie wiederkehrende Termine, lokale Kalender sowie den Import und Export von .ics-Dateien. Mit einem einzigen Klick öffnen Sie die Schnellkarte, um zu bearbeiten, zu löschen, eine E-Mail zu senden oder direkt an Google-Meet-Besprechungen teilzunehmen.
+
+Google-Synchronisierung und Erinnerungen
+Synchronisieren Sie ein oder mehrere Google-Kalender-Konten in beide Richtungen und halten Sie Gäste, Berechtigungen und Meet-Links aktuell. Die intelligente Konfliktbehandlung schützt Ihre Daten, indem sie Sicherheitskopien speichert. Verpassen Sie nie einen Termin dank Desktop-Benachrichtigungen, E-Mails und lang anhaltenden Weckern, die auch Erinnerungen nachholen, die bei geschlossener App fällig waren.
+
+Die Oberfläche spricht Italienisch, Englisch, Deutsch, Spanisch und Französisch: Wählen Sie die Sprache in den Einstellungen oder lassen Sie GGCalendar der Sprache von Windows folgen.
+
+--------
+
+Neuigkeiten
+
+Wecker werden mit Google und mit GGCalendar Mobile (Android) synchronisiert. Ein auf dem Computer eingestellter Wecker klingelt auch auf dem Telefon und umgekehrt; wenn Sie ihn auf einer Seite entfernen, verschwindet er auch auf der anderen.
+
+    Ein Termin kann nicht eine Benachrichtigung und einen Wecker mit derselben Vorlaufzeit haben: Der Wecker bleibt.
+    Eigene Töne bleiben auf dem Computer; Gäste erhalten Ihre Wecker nicht.
+
+------
+Produktfunktionen
+
+ Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht
+ Termine per Ziehen erstellt, verschoben und in der Größe geändert, auch zwischen verschiedenen Kalendern
+ Lokale Kalender und Import/Export von .ics-Dateien
+ Desktop-Benachrichtigung, E-Mail-Erinnerungen (von Google gesendet) und ein Wecker mit Ton, der klingelt, bis Sie ihn ausschalten, höchstens 2 Minuten
+ Synchronisierung in beide Richtungen mit einem oder mehreren Google-Konten
+ Oberfläche in fünf Sprachen, in den Einstellungen wählbar
+
+------
+Kurzbeschreibung
+
+GGCalendar organisiert Termine und Fristen unter Windows 11 mit hellem/dunklem Design. Bietet mehrere Ansichten, Drag-and-drop, .ics-Verwaltung und Synchronisierung in beide Richtungen mit Google Kalender. Enthält Desktop-Benachrichtigungen, E-Mail und Wecker, die verpasste Erinnerungen nachholen.
+
+----
+Zusätzliche Informationen (Suchbegriffe)
+
+Terminverwaltung
+Fristenverwaltung
+moderne Kalender-App
+einfache Terminplanung
+wiederkehrende Termine Kalender
+.ics-Datei importieren
+.ics-Datei exportieren
+
+------
+Lizenz
+
+Der Code ist freie Software, verbreitet unter der GNU GPL Version 3 oder später. Der Name „GGCalendar“ und das Logo bleiben beim Autor: Sie werden nicht als Marke gewährt, und wer geänderte Versionen vertreibt, muss einen anderen Namen, ein anderes Logo und eine andere App-Kennung verwenden.
+
+================================================================
+Español (es-ES)
+================================================================
+
+Descripción
+
+GGCalendar es la solución ideal para gestionar compromisos y plazos con la máxima eficiencia en Windows 11, gracias a una interfaz moderna con tema claro y oscuro.
+
+Gestión intuitiva de eventos
+Planifica tus días con las vistas de día, semana, 6 días, mes, año y programa. Crea, mueve y cambia el tamaño de los eventos simplemente arrastrándolos, incluso entre calendarios distintos. Gestiona compromisos recurrentes, calendarios locales y la importación y exportación de archivos .ics. Con un solo clic accedes a la ficha rápida para editar, eliminar, enviar un correo o unirte directamente a las reuniones de Google Meet.
+
+Sincronización con Google y recordatorios
+Sincroniza en ambos sentidos una o más cuentas de Google Calendar, manteniendo al día invitados, permisos y enlaces de Meet. La gestión inteligente de conflictos protege tus datos guardando copias de seguridad. No te pierdas nunca una cita gracias a las notificaciones de escritorio, los correos y las alarmas sonoras prolongadas, que recuperan automáticamente también los recordatorios que saltaron con la app cerrada.
+
+La interfaz habla italiano, inglés, alemán, español y francés: elige el idioma en Ajustes o deja que GGCalendar siga el idioma de Windows.
+
+--------
+
+Novedades
+
+Las alarmas se sincronizan con Google y con GGCalendar Mobile (Android). Una alarma configurada en el ordenador suena también en el teléfono y viceversa; si la quitas de un lado, desaparece también del otro.
+
+    Un evento no puede tener una notificación y una alarma con los mismos minutos de antelación: se mantiene la alarma.
+    Los sonidos personalizados se quedan en el ordenador; los invitados no reciben tus alarmas.
+
+------
+Características del producto
+
+ Vistas de día, semana, 6 días, mes, año y programa
+ Eventos creados, movidos y redimensionados arrastrando, incluso entre calendarios distintos
+ Calendarios locales e importación/exportación de archivos .ics
+ Notificación de escritorio, recordatorios por correo (enviados por Google) y alarma sonora que suena hasta que la apagas, como máximo 2 minutos
+ Sincronización en ambos sentidos con una o más cuentas de Google
+ Interfaz en cinco idiomas, a elegir en Ajustes
+
+------
+Descripción breve
+
+GGCalendar organiza compromisos y plazos en Windows 11 con tema claro/oscuro. Ofrece varias vistas, arrastrar y soltar, gestión de .ics y sincronización bidireccional con Google Calendar. Incluye notificaciones de escritorio, correo y alarmas que recuperan los recordatorios perdidos.
+
+----
+Información adicional (términos de búsqueda)
+
+gestión de compromisos
+gestión de plazos
+app de calendario moderna
+planificación de eventos fácil
+eventos recurrentes calendario
+importar archivo .ics
+exportar archivo .ics
+
+------
+Licencia
+
+El código es software libre, distribuido con licencia GNU GPL versión 3 o posterior. El nombre «GGCalendar» y el logotipo siguen siendo del autor: no se conceden como marca, y quien distribuya versiones modificadas debe usar un nombre, un logotipo y un identificador de app distintos.
+
+================================================================
+Français (fr-FR)
+================================================================
+
+Description
+
+GGCalendar est la solution idéale pour gérer rendez-vous et échéances avec un maximum d'efficacité sous Windows 11, grâce à une interface moderne avec thème clair et sombre.
+
+Gestion intuitive des événements
+Planifiez vos journées avec les vues jour, semaine, 6 jours, mois, année et programme. Créez, déplacez et redimensionnez les événements simplement en les faisant glisser, même entre agendas différents. Gérez les engagements récurrents, les agendas locaux et l'importation/exportation de fichiers .ics. Un seul clic ouvre la fiche rapide pour modifier, supprimer, envoyer un e-mail ou rejoindre directement les réunions Google Meet.
+
+Synchronisation Google et rappels
+Synchronisez dans les deux sens un ou plusieurs comptes Google Agenda en gardant à jour invités, autorisations et liens Meet. La gestion intelligente des conflits protège vos données en enregistrant des copies de sécurité. Ne manquez plus aucun rendez-vous grâce aux notifications de bureau, aux e-mails et aux alarmes sonores prolongées, qui récupèrent aussi automatiquement les rappels déclenchés application fermée.
+
+L'interface parle italien, anglais, allemand, espagnol et français : choisissez la langue dans les Paramètres, ou laissez GGCalendar suivre la langue de Windows.
+
+--------
+
+Nouveautés
+
+Les alarmes se synchronisent avec Google et avec GGCalendar Mobile (Android). Une alarme réglée sur l'ordinateur sonne aussi sur le téléphone et inversement ; si vous la supprimez d'un côté, elle disparaît aussi de l'autre.
+
+    Un événement ne peut pas avoir une notification et une alarme avec le même délai : l'alarme est conservée.
+    Les sons personnalisés restent sur l'ordinateur ; les invités ne reçoivent pas vos alarmes.
+
+------
+Caractéristiques du produit
+
+ Vues jour, semaine, 6 jours, mois, année et programme
+ Événements créés, déplacés et redimensionnés par glisser-déposer, même entre agendas différents
+ Agendas locaux et importation/exportation de fichiers .ics
+ Notification de bureau, rappels par e-mail (envoyés par Google) et alarme sonore qui sonne jusqu'à ce que vous l'arrêtiez, 2 minutes au maximum
+ Synchronisation dans les deux sens avec un ou plusieurs comptes Google
+ Interface en cinq langues, au choix dans les Paramètres
+
+------
+Description courte
+
+GGCalendar organise rendez-vous et échéances sous Windows 11 avec thème clair/sombre. Il propose plusieurs vues, le glisser-déposer, la gestion des .ics et la synchronisation bidirectionnelle avec Google Agenda. Il inclut notifications de bureau, e-mail et alarmes qui récupèrent les rappels manqués.
+
+----
+Informations supplémentaires (termes de recherche)
+
+gestion des rendez-vous
+gestion des échéances
+application d'agenda moderne
+planification d'événements facile
+événements récurrents agenda
+importer un fichier .ics
+exporter un fichier .ics
+
+------
+Licence
+
+Le code est un logiciel libre, distribué sous licence GNU GPL version 3 ou ultérieure. Le nom « GGCalendar » et le logo restent à l'auteur : ils ne sont pas concédés comme marque, et quiconque distribue des versions modifiées doit utiliser un nom, un logo et un identifiant d'application différents.

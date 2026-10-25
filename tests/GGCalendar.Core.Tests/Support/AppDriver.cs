@@ -58,6 +58,7 @@ public static class AppDriver
 
     public static MainWindow OpenApp()
     {
+        GGCalendar.Core.Localization.L.Apply(new SettingsStore().Load().Language);
         var window = new MainWindow { DataContext = new MainViewModel(new CalendarStore()) };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -141,7 +142,7 @@ public static class AppDriver
         var vm = Vm(window);
         return WaitForAsync(() =>
         {
-            if (!vm.IsSyncing && vm.SyncStatus.StartsWith("Errore", StringComparison.Ordinal))
+            if (!vm.IsSyncing && vm.SyncIsError)
                 throw new XunitException($"La prima sincronizzazione dell'account di prova è fallita ({vm.SyncStatus}). Se l'account è stato scollegato o il suo accesso revocato, ricollegalo nell'app installata e rilancia i test.");
             return !vm.IsSyncing && vm.Calendars.Any(c => c.Id == TestCalendarId) ? vm : null;
         }, "il calendario dell'account di prova (prima sincronizzazione)", SyncTimeout);
@@ -159,7 +160,14 @@ public static class AppDriver
         root.GetVisualDescendants().OfType<Button>().FirstOrDefault(match)
         ?? throw new XunitException("Pulsante non trovato nella finestra.");
 
-    public static Button FindButton(Visual root, string content) => FindButton(root, b => b.Content as string == content);
+    /// <summary>The button with this AutomationId (the tests never look for a button by its text: the text depends on the language).</summary>
+    public static Button FindButton(Visual root, string automationId) =>
+        root.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) == automationId)
+        ?? throw new XunitException($"Pulsante {automationId} non trovato nella finestra.");
+
+    public static Control FindById(Visual root, string automationId) =>
+        root.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetAutomationId(c) == automationId)
+        ?? throw new XunitException($"Controllo {automationId} non trovato nella finestra.");
 
     public static void Click(Button button)
     {
@@ -173,10 +181,10 @@ public static class AppDriver
     {
         var vm = Vm(window);
         await WaitForQuietAsync(window);
-        Click(FindButton(window, b => ToolTip.GetTip(b) as string == "Sincronizza ora"));
+        Click(FindButton(window, "Main.SyncNow"));
         Assert.True(vm.IsSyncing, "Il pulsante \"Sincronizza ora\" non ha avviato nessuna sincronizzazione (account non collegato?).");
         await WaitForQuietAsync(window);
-        Assert.StartsWith("Sincronizzato", vm.SyncStatus);
+        Assert.True(vm.Status?.Is("status.synced") == true, $"Dopo la sincronizzazione lo stato è {vm.Status?.Key}: {vm.SyncStatus}");
     }
 
     // Events
@@ -184,7 +192,7 @@ public static class AppDriver
     /// <summary>The "Crea" button, the editor filled in as <paramref name="spec"/> says, and "Salva". Returns the new event.</summary>
     public static async Task<CalendarEvent> CreateEventAsync(MainWindow window, EventSpec spec)
     {
-        ChooseCreateMenuItem(window, "Evento");
+        ChooseCreateMenuItem(window, "Menu.CreateEvent");
         var dialog = await WaitForAsync(() => window.OwnedWindows.OfType<EventEditWindow>().FirstOrDefault(), "la finestra dell'evento");
         var editor = (EventEditViewModel)dialog.DataContext!;
         dialog.FindControl<TextBox>("TitleBox")!.Text = spec.Title;
@@ -215,7 +223,7 @@ public static class AppDriver
             colors.SelectedItem = editor.ColorOptions.First(c => string.Equals(c.Hex, hex, StringComparison.OrdinalIgnoreCase));
         }
 
-        Click(FindButton(dialog, "Salva"));
+        Click(FindButton(dialog, "Edit.Save"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
         return Vm(window).AllEvents.Single(e => e.Title == spec.Title);
     }
@@ -271,7 +279,7 @@ public static class AppDriver
     {
         var question = await WaitForAsync(() => window.OwnedWindows.OfType<SeriesScopeWindow>().FirstOrDefault(), "la domanda su quali eventi della serie");
         question.FindControl<RadioButton>(scope switch { SeriesScope.This => "ThisOne", SeriesScope.ThisAndFollowing => "ThisAndFollowing", _ => "AllEvents" })!.IsChecked = true;
-        Click(FindButton(question, "OK"));
+        Click(FindButton(question, "Dialog.Ok"));
     }
 
     /// <summary>Opens an event (or one occurrence of a series) with a double click on it in the agenda and returns its editor.</summary>
@@ -285,23 +293,23 @@ public static class AppDriver
 
     public static async Task CancelEditorAsync(MainWindow window, Window dialog)
     {
-        Click(FindButton(dialog, "Annulla"));
+        Click(FindButton(dialog, "Edit.Cancel"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura della finestra");
     }
 
     /// <summary>The trash button of the editor; for a repeating event the app then asks which events to delete.</summary>
     public static async Task DeleteFromEditorAsync(MainWindow window, EventEditWindow dialog, SeriesScope? scope = null)
     {
-        Click(FindButton(dialog, b => ToolTip.GetTip(b) as string == "Elimina evento"));
+        Click(FindButton(dialog, "Edit.Delete"));
         if (scope is { } s) await ChooseScopeAsync(window, s);
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
     }
 
     /// <summary>An entry of the menu that the "Crea" button opens ("Evento", "Calendario Locale").</summary>
-    public static void ChooseCreateMenuItem(MainWindow window, string header)
+    public static void ChooseCreateMenuItem(MainWindow window, string automationId)
     {
-        var button = FindButton(window, b => b.Content is string text && text.StartsWith("＋  Crea", StringComparison.Ordinal));
-        var item = ((MenuFlyout)button.Flyout!).Items.OfType<MenuItem>().First(i => i.Header as string == header);
+        var button = FindButton(window, "Main.Create");
+        var item = ((MenuFlyout)button.Flyout!).Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == automationId);
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Dispatcher.UIThread.RunJobs();
     }
@@ -309,10 +317,10 @@ public static class AppDriver
     /// <summary>"Crea" > "Calendario Locale" and the name typed in the question. Returns the id of the new calendar.</summary>
     public static async Task<string> CreateLocalCalendarAsync(MainWindow window, string name)
     {
-        ChooseCreateMenuItem(window, "Calendario Locale");
+        ChooseCreateMenuItem(window, "Menu.CreateLocalCalendar");
         var prompt = await WaitForAsync(() => window.OwnedWindows.OfType<PromptWindow>().FirstOrDefault(), "la richiesta del nome del calendario");
         prompt.GetVisualDescendants().OfType<TextBox>().First().Text = name;
-        Click(FindButton(prompt, "OK"));
+        Click(FindButton(prompt, "Dialog.Ok"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura della richiesta");
         return Vm(window).Calendars.Single(c => c.Name == name).Id;
     }
@@ -360,7 +368,7 @@ public static class AppDriver
     public static async Task RetitleAsync(MainWindow window, EventEditWindow dialog, string newTitle)
     {
         dialog.FindControl<TextBox>("TitleBox")!.Text = newTitle;
-        Click(FindButton(dialog, "Salva"));
+        Click(FindButton(dialog, "Edit.Save"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
     }
 

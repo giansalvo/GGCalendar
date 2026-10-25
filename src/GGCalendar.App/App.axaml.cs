@@ -15,6 +15,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // The language comes first: the texts of the view model and of the window are made in it.
+        GGCalendar.Core.Localization.L.Apply(new GGCalendar.Data.SettingsStore().Load().Language);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow

@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
         x:Class="GGCalendar.App.Views.RecurrenceWindow"
@@ -6,7 +6,7 @@
         Icon="/Assets/GGCalendar.ico"
         Width="460" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Title="Ricorrenza personalizzata">
+        Title="{loc:T recurrence.title}">
 
     <Window.Styles>
         <Style Selector="ToggleButton.day">
@@ -20,10 +20,10 @@
     </Window.Styles>
 
     <StackPanel Margin="28,24,28,20" Spacing="18">
-        <TextBlock Text="Ricorrenza personalizzata" FontSize="22" />
+        <TextBlock Text="{loc:T recurrence.title}" FontSize="22" />
 
         <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="Ripeti ogni" VerticalAlignment="Center" />
+            <TextBlock Text="{loc:T recurrence.repeat_every}" VerticalAlignment="Center" />
             <NumericUpDown Value="{Binding Interval}" Minimum="1" Maximum="999" FormatString="0" Width="110" />
             <ComboBox ItemsSource="{x:Static vm:RecurrenceViewModel.Frequencies}" SelectedItem="{Binding Frequency}" Width="150">
                 <ComboBox.ItemTemplate>
@@ -33,7 +33,7 @@
         </StackPanel>
 
         <StackPanel Spacing="8" IsVisible="{Binding IsWeekly}">
-            <TextBlock Text="Si ripete il" />
+            <TextBlock Text="{loc:T recurrence.repeats_on}" />
             <ItemsControl ItemsSource="{Binding Days}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
@@ -47,22 +47,22 @@
         </StackPanel>
 
         <StackPanel Spacing="10">
-            <TextBlock Text="Fine" />
-            <RadioButton GroupName="End" Content="Mai" IsChecked="{Binding EndsNever}" />
+            <TextBlock Text="{loc:T recurrence.end}" />
+            <RadioButton GroupName="End" Content="{loc:T recurrence.never}" IsChecked="{Binding EndsNever}" />
             <StackPanel Orientation="Horizontal" Spacing="10">
-                <RadioButton GroupName="End" Content="Data" IsChecked="{Binding EndsOnDate}" Width="90" />
+                <RadioButton GroupName="End" Content="{loc:T recurrence.on_date}" IsChecked="{Binding EndsOnDate}" Width="90" />
                 <CalendarDatePicker SelectedDate="{Binding UntilDate}" IsEnabled="{Binding EndsOnDate}" FirstDayOfWeek="Monday" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10">
-                <RadioButton GroupName="End" Content="Dopo" IsChecked="{Binding EndsAfter}" Width="90" />
+                <RadioButton GroupName="End" Content="{loc:T recurrence.after}" IsChecked="{Binding EndsAfter}" Width="90" />
                 <NumericUpDown Value="{Binding Count}" Minimum="1" Maximum="999" FormatString="0" Width="110" IsEnabled="{Binding EndsAfter}" />
-                <TextBlock Text="occorrenze" VerticalAlignment="Center" />
+                <TextBlock Text="{loc:T recurrence.occurrences}" VerticalAlignment="Center" />
             </StackPanel>
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-            <Button Content="Annulla" Classes="link" Click="OnCancel" />
-            <Button Content="Fine" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnOk" />
+            <Button Content="{loc:T common.cancel}" Classes="link" Click="OnCancel" />
+            <Button Content="{loc:T recurrence.end}" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnOk" />
         </StackPanel>
     </StackPanel>
 </Window>

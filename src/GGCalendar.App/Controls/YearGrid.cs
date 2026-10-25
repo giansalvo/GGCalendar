@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Controls;
 
@@ -113,7 +114,7 @@ public sealed class YearGrid : Control
         var fg = dark ? Brushes.White : Brushes.Black;
         var muted = new SolidColorBrush(Color.Parse(dark ? "#80868B" : "#70757A"));
         var accent = new SolidColorBrush(Color.Parse("#1A73E8"));
-        var culture = CultureInfo.GetCultureInfo("it-IT");
+        var culture = L.Culture;
         var typeface = new Typeface(FontFamily.Default);
         var withEvents = new HashSet<DateTime>();
         foreach (var ev in Events ?? [])

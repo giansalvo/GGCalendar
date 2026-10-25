@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- WithCulture="false": ".it." in a file name would make MSBuild put the file in a satellite assembly. -->
+    <EmbeddedResource Include="Localization\Strings.*.json" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NodaTime" Version="3.3.5" />
   </ItemGroup>
 

@@ -46,9 +46,9 @@ public class NetworkUiTests
         var created = await CreateEventAsync(window, new EventSpec(title));
         var vm = Vm(window);
         await WaitForQuietAsync(window);
-        Click(FindButton(window, b => Avalonia.Controls.ToolTip.GetTip(b) as string == "Sincronizza ora"));
+        Click(FindButton(window, "Main.SyncNow"));
         await WaitForQuietAsync(window);
-        Assert.StartsWith("Errore", vm.SyncStatus);
+        Assert.True(vm.SyncIsError, $"Senza rete lo stato dovrebbe essere un errore: {vm.Status?.Key}");
         Assert.Contains(vm.AllEvents, e => e.Title == title); // the event is still there
         Assert.Contains(new GGCalendar.Data.CalendarStore().GetPending(), p => p.EventId == created.Id); // and still waits to be sent
 

@@ -21,10 +21,10 @@ public class ReminderUiTests
     public Task T02_AnEventKeepsTheStandardReminderAfterSyncingAndReopening() => InAppAsync(async window =>
     {
         // The editor of a new event proposes the standard reminder: a notification 30 minutes before.
-        ChooseCreateMenuItem(window, "Evento");
+        ChooseCreateMenuItem(window, "Menu.CreateEvent");
         var empty = await WaitForAsync(() => window.OwnedWindows.OfType<EventEditWindow>().FirstOrDefault(), "l'editor");
         var proposed = Assert.Single(((EventEditViewModel)empty.DataContext!).Reminders);
-        Assert.Equal(("Notifica", 30m, "minuti"), (proposed.Method.Label, proposed.Value, proposed.Unit.Label));
+        Assert.Equal((ReminderMethod.Popup, 30m, 1), (proposed.Method.Method, proposed.Value, proposed.Unit.Minutes));
         await CancelEditorAsync(window, empty);
 
         // The user saves it without touching the reminders, syncs and reopens the app and the event.
@@ -35,7 +35,7 @@ public class ReminderUiTests
         window = await ReopenAsync(window);
         var (dialog, editor) = await OpenEditorAsync(window, title, day);
         var kept = Assert.Single(editor.Reminders);
-        Assert.Equal(("Notifica", 30m, "minuti"), (kept.Method.Label, kept.Value, kept.Unit.Label));
+        Assert.Equal((ReminderMethod.Popup, 30m, 1), (kept.Method.Method, kept.Value, kept.Unit.Minutes));
         await CancelEditorAsync(window, dialog);
 
         // Google holds the same notification.
@@ -60,7 +60,7 @@ public class ReminderUiTests
         var toast = await WaitForAsync(() => ToastFor(title), "la notifica del promemoria", NotificationWait);
         Assert.True(DateTime.Now >= start.AddMinutes(-30).AddSeconds(-1), "La notifica è comparsa prima dell'ora del promemoria.");
         Assert.Contains(toast.GetVisualDescendants(), v => v is TextBlock t && t.Text?.Contains(start.ToString(Vm(window).Settings.Use24HourClock ? "HH:mm" : "h:mm tt")) == true);
-        Click(FindButton(toast, "Chiudi"));
+        Click(FindButton(toast, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(title) is null ? window : null, "la chiusura della notifica");
 
         await PauseAsync(TimeSpan.FromSeconds(30));
@@ -78,7 +78,7 @@ public class ReminderUiTests
         await CreateEventAsync(window, new EventSpec(second) { CalendarId = calendar, Start = InMinutes(34) });
 
         var toast = await WaitForAsync(() => ToastFor(first), "la prima notifica", NotificationWait);
-        Click(FindButton(toast, "Chiudi"));
+        Click(FindButton(toast, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(first) is null ? window : null, "la chiusura della notifica");
 
         window = await ReopenAsync(window);
@@ -89,7 +89,7 @@ public class ReminderUiTests
             Assert.Null(ToastFor(first));
             return ToastFor(second);
         }, "la seconda notifica dopo la riapertura", TimeSpan.FromMinutes(5));
-        Click(FindButton(next, "Chiudi"));
+        Click(FindButton(next, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(second) is null ? window : null, "la chiusura della notifica");
         Assert.Null(ToastFor(first));
     });
@@ -103,7 +103,7 @@ public class ReminderUiTests
         await CreateEventAsync(window, new EventSpec(title) { CalendarId = calendar, Start = InMinutes(31) });
 
         var toast = await WaitForAsync(() => ToastFor(title), "la notifica del promemoria", NotificationWait);
-        Click(FindButton(toast, "Posticipa 5 min"));
+        Click(FindButton(toast, "Reminder.Snooze"));
         var snoozedAt = DateTime.Now;
         await WaitForAsync(() => ToastFor(title) is null ? window : null, "la chiusura della notifica");
 
@@ -113,7 +113,7 @@ public class ReminderUiTests
         var again = await WaitForAsync(() => ToastFor(title), "la notifica posticipata", TimeSpan.FromMinutes(2));
         var waited = DateTime.Now - snoozedAt;
         Assert.InRange(waited.TotalSeconds, 290, 335);
-        Click(FindButton(again, "Chiudi"));
+        Click(FindButton(again, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(title) is null ? window : null, "la chiusura della notifica");
         await PauseAsync(TimeSpan.FromSeconds(30));
         Assert.Null(ToastFor(title)); // and only once
@@ -134,9 +134,9 @@ public class ReminderUiTests
             CalendarId = calendar, Start = InMinutes(3), Reminders = [new EventReminder(ReminderMethod.Alarm, 1)],
         });
         var toast = await WaitForAsync(() => ToastFor(first), "la notifica della sveglia", NotificationWait);
-        Assert.Equal("Sveglia", toast.Title);
+        Assert.Equal(GGCalendar.Core.Localization.L.T("reminder.alarm"), toast.Title);
         await PauseAsync(TimeSpan.FromSeconds(8)); // the person listens
-        Click(FindButton(toast, "Spegni"));
+        Click(FindButton(toast, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(first) is null ? window : null, "la chiusura della sveglia");
 
         // Second alarm: nobody turns it off; it must stop by itself after at most two minutes, the notification stays.
@@ -149,7 +149,7 @@ public class ReminderUiTests
         TellThePerson("Seconda sveglia: lasciala suonare senza spegnerla. Deve fermarsi da sola dopo al massimo 2 minuti.");
         await PauseAsync(TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(15));
         Assert.NotNull(ToastFor(second)); // the notification is still on screen
-        Click(FindButton(ringing, "Spegni"));
+        Click(FindButton(ringing, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(second) is null ? window : null, "la chiusura della sveglia");
         TellThePerson("Test della sveglia finito: comunica se e quando hai sentito il suono, e quando si è fermato.");
     });

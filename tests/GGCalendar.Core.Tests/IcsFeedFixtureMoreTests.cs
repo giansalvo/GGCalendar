@@ -167,7 +167,7 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
         Assert.Equal((true, new DateTime(2026, 11, 3), new DateTime(2026, 11, 6)), (three.IsAllDay, three.Start, three.End));
         var open = Event(feed, "[TEST GGCAL] Tutto il giorno senza fine");
         Assert.Equal((true, new DateTime(2026, 11, 5), new DateTime(2026, 11, 6)), (open.IsAllDay, open.Start, open.End));
-        Assert.Contains(feed.Warnings, w => w.Contains("RDATE"));
+        Assert.True(feed.Report.Has(IcsIssueCode.RdateIgnored));
     }
 
     [Fact]

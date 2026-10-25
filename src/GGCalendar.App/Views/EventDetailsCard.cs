@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -18,7 +19,7 @@ namespace GGCalendar.App.Views;
 /// </summary>
 public sealed class EventDetailsCard : Border
 {
-    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("it-IT");
+    private static CultureInfo Culture => L.Culture;
     private const string IconFont = "Segoe Fluent Icons, Segoe MDL2 Assets";
 
     public event Action? EditRequested;
@@ -51,15 +52,15 @@ public sealed class EventDetailsCard : Border
 
         // Actions
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2 };
-        actions.Children.Add(IconButton("", "Modifica evento", fg, () => EditRequested?.Invoke()));
-        actions.Children.Add(IconButton("", "Elimina evento", fg, () => DeleteRequested?.Invoke()));
-        if (ev.Attendees.Count > 0) actions.Children.Add(IconButton("", "Scrivi un'email agli invitati", fg, () => MailRequested?.Invoke()));
-        var more = IconButton("", "Altre opzioni", fg, null);
-        var export = new MenuItem { Header = "Esporta come file .ics…" };
+        actions.Children.Add(IconButton("", L.T("details.edit"), fg, () => EditRequested?.Invoke()));
+        actions.Children.Add(IconButton("", L.T("edit.delete_event"), fg, () => DeleteRequested?.Invoke()));
+        if (ev.Attendees.Count > 0) actions.Children.Add(IconButton("", L.T("details.mail"), fg, () => MailRequested?.Invoke()));
+        var more = IconButton("", L.T("details.more"), fg, null);
+        var export = new MenuItem { Header = L.T("details.export") };
         export.Click += (_, _) => ExportRequested?.Invoke();
         more.Flyout = new MenuFlyout { Items = { export } };
         actions.Children.Add(more);
-        actions.Children.Add(IconButton("", "Chiudi", fg, () => CloseRequested?.Invoke()));
+        actions.Children.Add(IconButton("", L.T("common.close"), fg, () => CloseRequested?.Invoke()));
 
         var body = new StackPanel { Spacing = 14, Margin = new Thickness(0, 6, 0, 0) };
 
@@ -67,7 +68,7 @@ public sealed class EventDetailsCard : Border
         var title = new StackPanel { Spacing = 2 };
         title.Children.Add(new TextBlock
         {
-            Text = string.IsNullOrWhiteSpace(ev.Title) ? "(Senza titolo)" : ev.Title,
+            Text = string.IsNullOrWhiteSpace(ev.Title) ? L.T("common.untitled") : ev.Title,
             FontSize = 22, Foreground = fg, TextWrapping = TextWrapping.Wrap,
         });
         title.Children.Add(Muted(When(ev, use24Hour), muted));
@@ -81,7 +82,7 @@ public sealed class EventDetailsCard : Border
         // Google Meet
         if (ev.MeetLink is { Length: > 0 } meet)
         {
-            var join = new Button { Content = "Partecipa con Google Meet", Classes = { "accent" }, CornerRadius = new CornerRadius(18), Padding = new Thickness(18, 6) };
+            var join = new Button { Content = L.T("details.join_meet"), Classes = { "accent" }, CornerRadius = new CornerRadius(18), Padding = new Thickness(18, 6) };
             join.Click += (_, _) => JoinMeetRequested?.Invoke();
             var meetPanel = new StackPanel { Spacing = 4 };
             meetPanel.Children.Add(join);
@@ -102,9 +103,9 @@ public sealed class EventDetailsCard : Border
         if (ev.Attendees.Count > 0)
         {
             var guests = new StackPanel { Spacing = 2 };
-            guests.Children.Add(Text(ev.Attendees.Count == 1 ? "1 invitato" : $"{ev.Attendees.Count} invitati", fg));
-            foreach (var a in ev.Attendees.Take(6)) guests.Children.Add(Muted(a.Email + (a.IsOptional ? " (facoltativo)" : ""), muted));
-            if (ev.Attendees.Count > 6) guests.Children.Add(Muted($"e altri {ev.Attendees.Count - 6}", muted));
+            guests.Children.Add(Text(L.N("details.guests", ev.Attendees.Count), fg));
+            foreach (var a in ev.Attendees.Take(6)) guests.Children.Add(Muted(a.Email + (a.IsOptional ? L.T("details.optional") : ""), muted));
+            if (ev.Attendees.Count > 6) guests.Children.Add(Muted(L.T("details.and_others", ev.Attendees.Count - 6), muted));
             body.Children.Add(Row(Icon("", muted), guests));
         }
 
@@ -181,21 +182,19 @@ public sealed class EventDetailsCard : Border
     {
         var when = r.Minutes switch
         {
-            0 => "all'inizio",
-            var m when m % 10080 == 0 => Plural(m / 10080, "settimana", "settimane") + " prima",
-            var m when m % 1440 == 0 => Plural(m / 1440, "giorno", "giorni") + " prima",
-            var m when m % 60 == 0 => Plural(m / 60, "ora", "ore") + " prima",
-            var m => Plural(m, "minuto", "minuti") + " prima",
+            0 => L.T("reminder.at_start"),
+            var m when m % 10080 == 0 => L.N("reminder.before_weeks", m / 10080),
+            var m when m % 1440 == 0 => L.N("reminder.before_days", m / 1440),
+            var m when m % 60 == 0 => L.N("reminder.before_hours", m / 60),
+            var m => L.N("reminder.before_minutes", m),
         };
         return r.Method switch
         {
-            ReminderMethod.Alarm => "Sveglia " + when,
-            ReminderMethod.Email => "Email " + when,
+            ReminderMethod.Alarm => L.T("reminder.with_alarm", when),
+            ReminderMethod.Email => L.T("reminder.with_email", when),
             _ => Capitalize(when),
         };
     }
-
-    private static string Plural(int n, string one, string many) => n == 1 ? $"1 {one}" : $"{n} {many}";
 
     private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0], Culture) + s[1..];
 }

@@ -31,6 +31,9 @@ public sealed class AppSettings
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;
+
+    /// <summary>"system" (the language of Windows, read when the app starts) or a language code ("it", "en", "de", "es", "fr").</summary>
+    public string Language { get; set; } = "system";
     public int DefaultEventMinutes { get; set; } = 60;
     public int SnapMinutes { get; set; } = 15;
     public string PrimaryTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
