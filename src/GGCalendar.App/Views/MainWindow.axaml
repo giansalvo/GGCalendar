@@ -107,7 +107,8 @@
                     <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="Tasto destro su un calendario: importa, esporta, elimina" TextWrapping="Wrap" />
                 </StackPanel>
                 <ScrollViewer Margin="0,16,0,0">
-                    <ItemsControl ItemsSource="{Binding Accounts}">
+                    <!-- Right margin: the scroll bar grows over the list when the pointer is on it and must not cover the arrows. -->
+                    <ItemsControl ItemsSource="{Binding Accounts}" Margin="0,0,20,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:AccountGroup">
                                 <StackPanel Margin="0,0,0,12">
