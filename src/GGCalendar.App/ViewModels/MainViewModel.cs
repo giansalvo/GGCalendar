@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Subscriptions;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Data;
 using GGCalendar.Core.Localization;
@@ -16,7 +17,7 @@ using GGCalendar.App.Controls;
 
 namespace GGCalendar.App.ViewModels;
 
-public sealed partial class CalendarItemViewModel(CalendarInfo info, Action changed) : ObservableObject
+public sealed partial class CalendarItemViewModel(CalendarInfo info, Action changed, SubscriptionRecord? subscription = null) : ObservableObject
 {
     public string Id { get; } = info.Id;
     /// <summary>The account's own calendar (on Google its id is the account email): shown first, as "Il mio calendario" like the Android app.</summary>
@@ -24,17 +25,31 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string Name => IsPrimary ? L.T("main.my_calendar") : info.Name;
 
     /// <summary>The language changed: the name of the account's own calendar is shown again.</summary>
-    public void LanguageChanged() => OnPropertyChanged(nameof(Name));
+    public void LanguageChanged()
+    {
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(ProblemText));
+    }
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
 
     /// <summary>The account as shown to the user: "Local" (in the language shown) for the calendars of this PC.</summary>
-    public string DisplayAccountName => IsLocal ? L.T("main.local_account") : info.AccountName;
+    public string DisplayAccountName => IsLocal ? L.T("main.local_account") : IsSubscription ? L.T("main.public_calendars") : info.AccountName;
 
     /// <summary>Calendars that live only on this PC; Google calendars are removed by disconnecting their account.</summary>
-    public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id);
+    public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id) && !SubscriptionRecord.IsSubscriptionId(info.Id);
 
-    public bool IsGoogle => !IsLocal;
+    /// <summary>A public calendar followed by its address: read-only, downloaded again from time to time.</summary>
+    public bool IsSubscription { get; } = SubscriptionRecord.IsSubscriptionId(info.Id);
+
+    public bool IsGoogle => !IsLocal && !IsSubscription;
+
+    /// <summary>The last refresh of the subscription failed: a warning sign beside the name, the reason in the tooltip.</summary>
+    public bool HasProblem => subscription?.LastError is { Length: > 0 };
+
+    public string ProblemText => SubscriptionMessages.Error(subscription?.LastError) is { } m ? L.T("sub.error_tooltip", m.Text) : "";
+
+    public SubscriptionRecord? Subscription => subscription;
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; } = info.IsVisible;
@@ -51,12 +66,15 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     public IReadOnlyList<CalendarItemViewModel> Calendars { get; } = calendars;
 
     /// <summary>What is shown as the name of the account: its address, or "Local" for the calendars of this PC.</summary>
-    public string DisplayName => Calendars.All(c => c.IsLocal) ? L.T("main.local_account") : AccountName;
+    public string DisplayName => IsSubscriptions ? L.T("main.public_calendars") : Calendars.All(c => c.IsLocal) ? L.T("main.local_account") : AccountName;
+
+    /// <summary>The group of the public calendars (read-only, by address).</summary>
+    public bool IsSubscriptions => Calendars.Count > 0 && Calendars.All(c => c.IsSubscription);
 
     /// <summary>First letter of the account, drawn in the round avatar.</summary>
     public string Initial => DisplayName.Length > 0 ? char.ToUpperInvariant(DisplayName[0]).ToString() : "?";
 
-    public string Kind => Calendars.Any(c => !c.IsLocal) ? L.T("main.kind_google") : L.T("main.kind_local");
+    public string Kind => IsSubscriptions ? L.T("main.kind_public") : Calendars.Any(c => !c.IsLocal) ? L.T("main.kind_google") : L.T("main.kind_local");
 
     /// <summary>The language changed: the kind of account is shown again.</summary>
     public void LanguageChanged()
@@ -156,7 +174,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
     }
 
-    private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events) Load()
+    private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) Load()
     {
         var infos = _store.GetCalendars();
         if (infos.Count == 0)
@@ -167,15 +185,16 @@ public sealed partial class MainViewModel : ViewModelBase
             infos = [local];
         }
 
-        return (infos, _store.GetAllEvents());
+        return (infos, _store.GetAllEvents(), _store.GetSubscriptions().ToDictionary(r => r.CalendarId));
     }
 
-    private void Apply((IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events) data)
+    private void Apply((IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) data)
     {
-        var (infos, events) = data;
+        var (infos, events, subscriptions) = data;
         _calendars.Clear();
         Accounts.Clear();
-        foreach (var g in infos.GroupBy(c => c.AccountName))
+        // The public calendars are the last group.
+        foreach (var g in infos.GroupBy(c => c.AccountName).OrderBy(g => g.Key == Services.SubscriptionService.AccountName ? 1 : 0))
         {
             var items = g.Select(info =>
             {
@@ -185,7 +204,7 @@ public sealed partial class MainViewModel : ViewModelBase
                     _store.SetCalendarVisible(info.Id, item!.IsVisible);
                     _changeCount++;
                     Refresh();
-                });
+                }, subscriptions.GetValueOrDefault(info.Id));
                 return item;
             }).ToList();
             // The account's own calendar first, then the others by name.
@@ -325,6 +344,12 @@ public sealed partial class MainViewModel : ViewModelBase
 
     private static bool IsRemote(string calendarId) => Services.GoogleSyncService.IsGoogleCalendar(calendarId);
 
+    /// <summary>Public calendars (by address) cannot be changed: no event is added, edited, moved, deleted or imported in them.</summary>
+    public static bool IsReadOnly(string calendarId) => SubscriptionRecord.IsSubscriptionId(calendarId);
+
+    /// <summary>True when the event belongs to a read-only calendar.</summary>
+    public static bool IsReadOnly(CalendarEvent ev) => IsReadOnly(ev.CalendarId);
+
     /// <summary>Raised after a local change was queued for Google, so the host can sync soon.</summary>
     public event Action? ChangeQueued;
 
@@ -374,6 +399,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     public (int Imported, int Skipped) ImportEvents(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
     {
+        if (IsReadOnly(calendarId)) return (0, 0);
         var plan = PlanImport(calendarId, events, onExisting);
         _store.ApplyImport(plan.Removed, plan.Added, IsRemote(calendarId));
         FinishImport(calendarId, plan);
@@ -383,6 +409,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Like <see cref="ImportEvents"/>, but the events are written to the store off the UI thread (one transaction), so the window keeps answering.</summary>
     public async Task<(int Imported, int Skipped)> ImportEventsAsync(string calendarId, IReadOnlyList<CalendarEvent> events, ImportDuplicates onExisting)
     {
+        if (IsReadOnly(calendarId)) return (0, 0);
         var plan = PlanImport(calendarId, events, onExisting);
         var remote = IsRemote(calendarId);
         _changeCount++; // a background reload that started before the import must not put the old list back
@@ -455,7 +482,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();
 
-    private static readonly string[] CalendarPalette = ["#1A73E8", "#0B8043", "#E67C73", "#8E24AA", "#F6BF26", "#039BE5", "#D50000", "#616161"];
+    public static readonly string[] CalendarPalette = ["#1A73E8", "#0B8043", "#E67C73", "#8E24AA", "#F6BF26", "#039BE5", "#D50000", "#616161"];
 
     /// <summary>Creates a calendar that lives only on this PC (not synced).</summary>
     public string CreateLocalCalendar(string name)
@@ -476,6 +503,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void AddEvent(CalendarEvent ev)
     {
+        if (IsReadOnly(ev)) return;
         _allEvents.Add(ev);
         _store.UpsertEvent(ev);
         Changed();
@@ -488,6 +516,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var i = _allEvents.FindIndex(e => e.Id == ev.Id);
         if (i < 0) return;
         var old = _allEvents[i];
+        if (IsReadOnly(old) || IsReadOnly(ev)) return;
         var oldRemote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents[i] = ev;
         _store.UpsertEvent(ev);
@@ -529,11 +558,19 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         // Prefer a Google account's primary calendar (its remote id is the account email), so new events sync by default;
         // the local calendar sorts first ("Locale") but is only the fallback.
-        var visible = _calendars.Where(c => c.IsVisible).ToList();
+        var writable = _calendars.Where(c => !c.IsSubscription).ToList();
+        if (writable.Count == 0)
+        {
+            // Only public calendars are left: a local calendar is made, so that a new event has a place.
+            CreateLocalCalendar(L.T("main.default_calendar"));
+            writable = _calendars.Where(c => !c.IsSubscription).ToList();
+        }
+
+        var visible = writable.Where(c => c.IsVisible).ToList();
         var calendar = visible.FirstOrDefault(c => IsRemote(c.Id) && c.Id == Services.GoogleSyncService.LocalCalendarId(c.AccountName, c.AccountName))
             ?? visible.FirstOrDefault(c => IsRemote(c.Id))
             ?? visible.FirstOrDefault()
-            ?? _calendars.First();
+            ?? writable.First();
         return new CalendarEvent(Guid.NewGuid().ToString("N"), calendar.Id, "", start, end)
         {
             IsAllDay = allDay,
@@ -732,6 +769,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void DeleteEvent(CalendarEvent ev)
     {
+        if (IsReadOnly(ev)) return;
         var remote = _store.GetRemoteInfo(ev.Id)?.RemoteId;
         _allEvents.RemoveAll(e => e.Id == ev.Id);
         _store.DeleteEvent(ev.Id);

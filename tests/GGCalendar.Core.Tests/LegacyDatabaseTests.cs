@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Models;
 using GGCalendar.Data;
@@ -17,6 +17,7 @@ public class LegacyDatabaseTests(ITestOutputHelper output)
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
+    [InlineData(4)]
     public void T15_ADatabaseOfAnOlderVersionOpensWithEverythingInIt(int version)
     {
         var path = Path.Combine(Path.GetTempPath(), $"ggcal-legacy-{Guid.NewGuid():N}.db");
@@ -41,7 +42,7 @@ public class LegacyDatabaseTests(ITestOutputHelper output)
             {
                 c.Open();
                 using var cmd = c.CreateCommand();
-                cmd.CommandText = $"ALTER TABLE outbox DROP COLUMN base; PRAGMA user_version = {version};";
+                cmd.CommandText = $"ALTER TABLE outbox DROP COLUMN base; DROP TABLE subscriptions; PRAGMA user_version = {version};";
                 cmd.ExecuteNonQuery();
             }
 
@@ -51,6 +52,7 @@ public class LegacyDatabaseTests(ITestOutputHelper output)
             Assert.Equal(2, vm.Calendars.Count);
             Assert.Equal(5, vm.AllEvents.Count);
             Assert.Equal("remote", Assert.Single(store.GetPending()).EventId);
+            Assert.Empty(store.GetSubscriptions()); // the table of the subscriptions is created by the migration
             var shown = vm.ExpandedBetween(Day, Day.AddDays(7)).OrderBy(e => e.Start).Select(e => (e.Title, e.Start)).ToList();
             Assert.Contains(("Riunione", Day.AddHours(10)), shown);
             Assert.Contains(("Giornata", Day), shown);
