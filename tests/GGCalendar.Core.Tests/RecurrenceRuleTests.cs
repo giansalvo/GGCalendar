@@ -3,6 +3,8 @@ using Xunit;
 
 namespace GGCalendar.Core.Tests;
 
+// In the serial collection: the test below changes the language, which is global.
+[Collection(GGCalendar.Core.Tests.Support.AppDriver.CollectionName)]
 public class RecurrenceRuleTests
 {
     [Fact]

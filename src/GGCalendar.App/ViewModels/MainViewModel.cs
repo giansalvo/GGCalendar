@@ -100,12 +100,26 @@ public sealed partial class MainViewModel : ViewModelBase
         Settings = new AppSettings();
         Reload();
         SelectedDate = DateTime.Today;
-        L.Changed += OnLanguageChanged;
+        // Weak: the language is a global, and a view model that nobody uses any more must not stay alive (nor be refreshed) because of it.
+        var weak = new WeakReference<MainViewModel>(this);
+        Action? handler = null;
+        handler = () =>
+        {
+            if (weak.TryGetTarget(out var viewModel)) viewModel.OnLanguageChanged();
+            else L.Changed -= handler;
+        };
+        L.Changed += handler;
     }
 
     /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
     private void OnLanguageChanged()
     {
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(OnLanguageChanged);
+            return;
+        }
+
         foreach (var calendar in _calendars) calendar.LanguageChanged();
         foreach (var account in Accounts) account.LanguageChanged();
         OnPropertyChanged(nameof(ViewModeName));

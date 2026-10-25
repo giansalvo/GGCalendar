@@ -24,7 +24,7 @@ public class ReminderUiTests
         ChooseCreateMenuItem(window, "Menu.CreateEvent");
         var empty = await WaitForAsync(() => window.OwnedWindows.OfType<EventEditWindow>().FirstOrDefault(), "l'editor");
         var proposed = Assert.Single(((EventEditViewModel)empty.DataContext!).Reminders);
-        Assert.Equal(("Notifica", 30m, "minuti"), (proposed.Method.Label, proposed.Value, proposed.Unit.Label));
+        Assert.Equal((ReminderMethod.Popup, 30m, 1), (proposed.Method.Method, proposed.Value, proposed.Unit.Minutes));
         await CancelEditorAsync(window, empty);
 
         // The user saves it without touching the reminders, syncs and reopens the app and the event.
@@ -35,7 +35,7 @@ public class ReminderUiTests
         window = await ReopenAsync(window);
         var (dialog, editor) = await OpenEditorAsync(window, title, day);
         var kept = Assert.Single(editor.Reminders);
-        Assert.Equal(("Notifica", 30m, "minuti"), (kept.Method.Label, kept.Value, kept.Unit.Label));
+        Assert.Equal((ReminderMethod.Popup, 30m, 1), (kept.Method.Method, kept.Value, kept.Unit.Minutes));
         await CancelEditorAsync(window, dialog);
 
         // Google holds the same notification.
@@ -134,7 +134,7 @@ public class ReminderUiTests
             CalendarId = calendar, Start = InMinutes(3), Reminders = [new EventReminder(ReminderMethod.Alarm, 1)],
         });
         var toast = await WaitForAsync(() => ToastFor(first), "la notifica della sveglia", NotificationWait);
-        Assert.Equal("Sveglia", toast.Title);
+        Assert.Equal(GGCalendar.Core.Localization.L.T("reminder.alarm"), toast.Title);
         await PauseAsync(TimeSpan.FromSeconds(8)); // the person listens
         Click(FindButton(toast, "Reminder.Dismiss"));
         await WaitForAsync(() => ToastFor(first) is null ? window : null, "la chiusura della sveglia");
