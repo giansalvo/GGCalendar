@@ -116,19 +116,19 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ReminderItemViewModel">
                                         <WrapPanel Margin="0,0,0,8" ItemSpacing="8" LineSpacing="6" MaxWidth="520">
-                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Methods}" SelectedItem="{Binding Method}" Width="120">
+                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Methods}" SelectedItem="{Binding Method}" MinWidth="120">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:ReminderMethodOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
                                             <NumericUpDown Value="{Binding Value}" Minimum="0" Maximum="9999" FormatString="0" Width="110" />
-                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Units}" SelectedItem="{Binding Unit}" Width="120">
+                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Units}" SelectedItem="{Binding Unit}" MinWidth="120">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:ReminderUnitOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
                                             <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsPopup}">
-                                                <ComboBox ItemsSource="{Binding SoundOptions}" SelectedItem="{Binding Sound}" Width="230">
+                                                <ComboBox ItemsSource="{Binding SoundOptions}" SelectedItem="{Binding Sound}" MinWidth="230">
                                                     <ComboBox.ItemTemplate>
                                                         <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
                                                     </ComboBox.ItemTemplate>
