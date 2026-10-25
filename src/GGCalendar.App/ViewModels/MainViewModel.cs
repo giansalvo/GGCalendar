@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,8 @@ using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Data;
 using GGCalendar.Core.Localization;
+using GGCalendar.Core.Zones;
+using GGCalendar.App.Controls;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -72,7 +75,10 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     public string Chevron => IsExpanded ? "" : "";
 }
 
-public sealed record AgendaItem(CalendarEvent Event, string Time, string Title, string ColorHex);
+public sealed record AgendaItem(CalendarEvent Event, string Time, string Title, string ColorHex, string? SecondTime = null)
+{
+    public bool HasSecondTime => SecondTime is not null;
+}
 
 public sealed record AgendaDay(string Label, bool IsToday, IReadOnlyList<AgendaItem> Items);
 
@@ -114,12 +120,6 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
     private void OnLanguageChanged()
     {
-        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(OnLanguageChanged);
-            return;
-        }
-
         foreach (var calendar in _calendars) calendar.LanguageChanged();
         foreach (var account in Accounts) account.LanguageChanged();
         OnPropertyChanged(nameof(ViewModeName));
@@ -209,7 +209,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>0 = giorno, 1 = settimana, 2 = mese, 3 = anno, 4 = programma, 5 = 6 giorni.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName))]
+    [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName), nameof(ShowAgendaEmpty))]
     public partial int ViewModeIndex { get; set; } = 1;
 
     private static readonly string[] ViewModeKeys = ["main.view_day", "main.view_week", "main.view_month", "main.view_year", "main.view_agenda", "main.view_6days"];
@@ -245,7 +245,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public partial int MonthNumber { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAgendaEmpty))]
     public partial IReadOnlyList<AgendaDay> AgendaDays { get; set; } = [];
+
+    /// <summary>The "no events in the next 30 days" message of the schedule view: shown only when there is nothing to list.</summary>
+    public bool ShowAgendaEmpty => IsAgenda && AgendaDays.Count == 0;
 
     [ObservableProperty]
     public partial int FirstHour { get; set; }
@@ -255,6 +259,32 @@ public sealed partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string TimeZoneLabel { get; set; } = "";
+
+    /// <summary>The second time zone of the settings (a second column of hours in the grids), or null.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TimeAxisWidth), nameof(DaysMargin), nameof(TimeZoneLabelMargin), nameof(SecondZoneLabel), nameof(HasSecondZone))]
+    public partial SecondZone? SecondZone { get; set; }
+
+    public bool HasSecondZone => SecondZone is not null;
+
+    /// <summary>"NY: 08:00 – 09:00": the hours of a timed event in the second time zone, or null (no second zone, or all-day event).</summary>
+    public string? SecondZoneText(CalendarEvent ev)
+    {
+        if (SecondZone is not { Zone: { } other } second || ev.IsAllDay) return null;
+        return L.T("time.there", second.Label, SecondZones.Range(ev.Start, ev.End, TimeZoneInfo.Local, other, Settings.Use24HourClock, L.Culture));
+    }
+
+    /// <summary>Name of the second column, as written above it.</summary>
+    public string SecondZoneLabel => SecondZone?.Label ?? "";
+
+    /// <summary>Width of the area of the hours: one column, or two with a second time zone.</summary>
+    public double TimeAxisWidth => SecondZone is null ? WeekGrid.BaseGutter : WeekGrid.BaseGutter + WeekGrid.ZoneColumnWidth;
+
+    /// <summary>Margin of the day headers, so that they stay above the day columns.</summary>
+    public Avalonia.Thickness DaysMargin => new(TimeAxisWidth, 4, 12, 4);
+
+    /// <summary>Margin of the offset label of this PC: after the name of the second column when there is one.</summary>
+    public Avalonia.Thickness TimeZoneLabelMargin => new(HasSecondZone ? 8 + WeekGrid.ZoneColumnWidth : 8, 0, 0, 6);
 
     [ObservableProperty]
     public partial DateTime? SelectedDate { get; set; }
@@ -288,11 +318,8 @@ public sealed partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowWeekends));
         FirstHour = value.HideOutsideHours ? value.DayStartHour : 0;
         LastHour = value.HideOutsideHours ? value.DayEndHour : 24;
-        var zone = TimeZoneInfo.TryFindSystemTimeZoneById(value.PrimaryTimeZoneId ?? "", out var z) ? z : TimeZoneInfo.Local;
-        var offset = zone.GetUtcOffset(DateTime.UtcNow);
-        TimeZoneLabel = offset.Minutes == 0
-            ? $"GMT{(offset < TimeSpan.Zero ? "-" : "+")}{Math.Abs(offset.Hours):00}"
-            : $"GMT{(offset < TimeSpan.Zero ? "-" : "+")}{Math.Abs(offset.Hours):00}:{Math.Abs(offset.Minutes):00}";
+        TimeZoneLabel = SecondZones.OffsetLabel(TimeZoneInfo.Local, DateTime.Today);
+        SecondZone = SecondZones.From(value);
         Refresh();
     }
 
@@ -784,7 +811,8 @@ public sealed partial class MainViewModel : ViewModelBase
                 .Select(e => new AgendaItem(e,
                     e.IsAllDay ? L.T("common.all_day") : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
                     string.IsNullOrWhiteSpace(e.Title) ? L.T("common.untitled") : e.Title,
-                    e.ColorHex ?? (CalendarColors.TryGetValue(e.CalendarId, out var c) ? c : "#1A73E8")))
+                    e.ColorHex ?? (CalendarColors.TryGetValue(e.CalendarId, out var c) ? c : "#1A73E8"),
+                    SecondZoneText(e)))
                 .ToList();
             if (items.Count > 0)
                 groups.Add(new AgendaDay(Culture.TextInfo.ToTitleCase(d.ToString("dddd d MMMM", Culture)), d.Date == DateTime.Today, items));

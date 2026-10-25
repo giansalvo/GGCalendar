@@ -31,7 +31,7 @@ public sealed class EventDetailsCard : Border
 
     /// <param name="ev">The clicked event (an occurrence for repeating events).</param>
     /// <param name="recurrence">RRULE of the series the event belongs to, if any.</param>
-    public EventDetailsCard(CalendarEvent ev, string? recurrence, string colorHex, string calendarName, string accountName, bool use24Hour, bool dark)
+    public EventDetailsCard(CalendarEvent ev, string? recurrence, string colorHex, string calendarName, string accountName, bool use24Hour, bool dark, string? secondZoneText = null)
     {
         IBrush fg = new SolidColorBrush(Color.Parse(dark ? "#E8EAED" : "#1F1F1F"));
         var muted = new SolidColorBrush(Color.Parse(dark ? "#BDC1C6" : "#5F6368"));
@@ -72,6 +72,8 @@ public sealed class EventDetailsCard : Border
             FontSize = 22, Foreground = fg, TextWrapping = TextWrapping.Wrap,
         });
         title.Children.Add(Muted(When(ev, use24Hour), muted));
+        if (secondZoneText is not null)
+            title.Children.Add(new TextBlock { Text = secondZoneText, Foreground = muted, FontSize = 12, Name = "SecondZoneText" });
         if (RecurrenceRule.Parse(recurrence) is { } rule) title.Children.Add(Muted(rule.Describe(), muted));
         body.Children.Add(Row(new Border
         {

@@ -56,6 +56,9 @@ public static class AppDriver
     // The window of the app that is open now: after a reopen it is the new one, and it is the one to clean up and close.
     private static MainWindow? _current;
 
+    /// <summary>The window of the app that is open now (after a reopen, the new one).</summary>
+    public static MainWindow? CurrentWindow => _current;
+
     public static MainWindow OpenApp()
     {
         GGCalendar.Core.Localization.L.Apply(new SettingsStore().Load().Language);

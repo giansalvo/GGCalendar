@@ -15,7 +15,14 @@ public class RecurrenceRuleTests
         Assert.Equal(13, rule.Count);
         Assert.Equal("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;COUNT=13", rule.ToRrule(false));
 
-        // The sentence is in the language of the app: checked in two languages, whatever the one of this PC is.
+    }
+
+    [Fact]
+    public Task DescribesTheRuleInTheLanguageOfTheApp() => GGCalendar.Core.Tests.Support.HeadlessApp.RunAsync(() =>
+    {
+        // The sentence is in the language of the app: checked in two languages, whatever the one of this PC is. On the thread of the
+        // interface, where the windows and view models of other tests listen to the language.
+        var rule = RecurrenceRule.Parse("FREQ=WEEKLY;INTERVAL=2;BYDAY=TH,MO;COUNT=13")!;
         var language = GGCalendar.Core.Localization.L.Language;
         try
         {
@@ -28,7 +35,9 @@ public class RecurrenceRuleTests
         {
             GGCalendar.Core.Localization.L.Apply(language);
         }
-    }
+
+        return Task.CompletedTask;
+    });
 
     [Fact]
     public void UntilIsDateOnlyForAllDayAndUtcForTimed()

@@ -14,8 +14,9 @@ namespace GGCalendar.Core.Tests;
 public class LocalizationTests
 {
     /// <summary>Runs <paramref name="body"/> and puts the language back as it was, whatever happens.</summary>
-    private static void KeepingLanguage(Action body)
+    private static Task KeepingLanguage(Action body) => Support.HeadlessApp.RunAsync(() =>
     {
+        // On the thread of the interface: the windows and view models of other tests listen to the language, and they must be told there.
         var language = L.Language;
         try
         {
@@ -25,7 +26,9 @@ public class LocalizationTests
         {
             L.Apply(language);
         }
-    }
+
+        return Task.CompletedTask;
+    });
 
     [Theory]
     [Trait("TestCase", "T129")]
@@ -49,7 +52,7 @@ public class LocalizationTests
 
     [Fact]
     [Trait("TestCase", "T130")]
-    public void T130_ChangingTheLanguageIsAnnouncedOnceAndNotWhenItStaysTheSame() => KeepingLanguage(() =>
+    public Task T130_ChangingTheLanguageIsAnnouncedOnceAndNotWhenItStaysTheSame() => KeepingLanguage(() =>
     {
         L.Apply("it");
         var announced = 0;
@@ -170,7 +173,7 @@ public class LocalizationTests
 
     [Fact]
     [Trait("TestCase", "T133")]
-    public void T133_AMessageKeepsItsKeyAndIsMadeAgainInTheNewLanguage() => KeepingLanguage(() =>
+    public Task T133_AMessageKeepsItsKeyAndIsMadeAgainInTheNewLanguage() => KeepingLanguage(() =>
     {
         var imported = Msg.Join(Msg.Count("status.imported", 5, "Lavoro"), Msg.Count("status.imported_skipped", 1), Msg.Literal("."));
         var one = Msg.Count("status.exported", 1, "Lavoro");

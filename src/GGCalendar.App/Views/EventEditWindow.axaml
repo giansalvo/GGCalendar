@@ -78,6 +78,7 @@
                 <CheckBox Content="{loc:T edit.all_day}" IsChecked="{Binding IsAllDay}" />
                 <ComboBox ItemsSource="{Binding RecurrenceOptions}" SelectedItem="{Binding Recurrence}" MinWidth="240" DisplayMemberBinding="{ReflectionBinding Label}" />
                 <TextBlock Text="{Binding TimeZoneText}" Classes="hint" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding SecondZoneText}" IsVisible="{Binding HasSecondZoneText}" AutomationProperties.AutomationId="Edit.SecondZone" Classes="hint" VerticalAlignment="Center" />
             </StackPanel>
         </StackPanel>
 
