@@ -113,11 +113,11 @@ public class SyncRegressionTests
 
         Assert.Single(result.Conflicts);
         Assert.Equal("Titolo Google", rig.Store.GetEvent(local.Id)!.Title);
-        var copy = rig.Local("Titolo locale (conflitto)");
+        var copy = rig.Local("Titolo locale" + GGCalendar.Core.Localization.L.T("sync.conflict_suffix"));
         Assert.NotNull(copy);
         Assert.NotEqual(local.Id, copy.Id);
         Assert.Equal("Titolo Google", rig.Google.Summary(remoteId));
-        Assert.NotNull(rig.Google.FindBySummary("Titolo locale (conflitto)")); // the copy was sent in the same sync
+        Assert.NotNull(rig.Google.FindBySummary("Titolo locale" + GGCalendar.Core.Localization.L.T("sync.conflict_suffix"))); // the copy was sent in the same sync
         Assert.Empty(rig.Store.GetPending());
     }
 
