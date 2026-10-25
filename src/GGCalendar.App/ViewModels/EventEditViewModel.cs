@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Zones;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Core.Localization;
 
@@ -75,7 +76,8 @@ public sealed partial class EventEditViewModel : ViewModelBase
         _volume = settings.ReminderVolumePercent;
         IsNew = isNew;
         Use24Hour = settings.Use24HourClock;
-        TimeZoneText = TimeZoneInfo.TryFindSystemTimeZoneById(settings.PrimaryTimeZoneId, out var tz) ? tz.DisplayName : TimeZoneInfo.Local.DisplayName;
+        TimeZoneText = TimeZoneInfo.Local.DisplayName;
+        _secondZone = SecondZones.From(settings);
         Calendars = calendars;
         SelectedCalendar = calendars.FirstOrDefault(c => c.Id == ev.CalendarId) ?? calendars.FirstOrDefault();
 
@@ -164,10 +166,36 @@ public sealed partial class EventEditViewModel : ViewModelBase
     [ObservableProperty] public partial TimeSpan? StartTime { get; set; }
     [ObservableProperty] public partial TimeSpan? EndTime { get; set; }
 
+    private readonly SecondZone? _secondZone;
+
+    /// <summary>"NY: 08:00 – 09:00": the hours of the event in the second time zone of the settings, while it is being edited.</summary>
+    public string? SecondZoneText
+    {
+        get
+        {
+            if (_secondZone?.Zone is not { } other || IsAllDay || StartDate is null || EndDate is null || StartTime is null || EndTime is null) return null;
+            var start = StartDate.Value.Date + StartTime.Value;
+            var end = EndDate.Value.Date + EndTime.Value;
+            return L.T("time.there", _secondZone.Label, SecondZones.Range(start, end, TimeZoneInfo.Local, other, Use24Hour, L.Culture));
+        }
+    }
+
+    public bool HasSecondZoneText => SecondZoneText is not null;
+
+    private void SecondZoneChanged()
+    {
+        OnPropertyChanged(nameof(SecondZoneText));
+        OnPropertyChanged(nameof(HasSecondZoneText));
+    }
+
+    partial void OnEndDateChanged(DateTime? value) => SecondZoneChanged();
+    partial void OnEndTimeChanged(TimeSpan? value) => SecondZoneChanged();
+
     private bool _shifting;
 
     partial void OnStartDateChanged(DateTime? oldValue, DateTime? newValue)
     {
+        SecondZoneChanged();
         if (_shifting || oldValue is null || newValue is null || EndDate is null) return;
         _shifting = true;
         EndDate = EndDate.Value.Date + (newValue.Value.Date - oldValue.Value.Date);
@@ -177,6 +205,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     // Like Google Calendar: moving the start keeps the duration, so the end follows.
     partial void OnStartTimeChanged(TimeSpan? oldValue, TimeSpan? newValue)
     {
+        SecondZoneChanged();
         if (_shifting || oldValue is null || newValue is null || EndTime is null || EndDate is null) return;
         _shifting = true;
         var end = EndDate.Value.Date + EndTime.Value + (newValue.Value - oldValue.Value);
@@ -226,7 +255,11 @@ public sealed partial class EventEditViewModel : ViewModelBase
         Recurrence = option;
     }
 
-    partial void OnIsAllDayChanged(bool value) => OnPropertyChanged(nameof(IsTimed));
+    partial void OnIsAllDayChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsTimed));
+        SecondZoneChanged();
+    }
     partial void OnMeetLinkChanged(string? value) => OnPropertyChanged(nameof(HasMeetLink));
 
     private void BuildSoundOptions(IEnumerable<EventReminder> existing)

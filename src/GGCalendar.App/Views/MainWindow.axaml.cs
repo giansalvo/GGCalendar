@@ -299,7 +299,8 @@ public partial class MainWindow : Window
         var series = ev.SeriesMasterId is { } masterId ? vm.AllEvents.FirstOrDefault(e => e.Id == masterId) : vm.ResolveMaster(ev);
         var card = new EventDetailsCard(ev, series?.Recurrence, ev.ColorHex ?? calendar?.ColorHex ?? "#1A73E8",
             calendar?.Name ?? "", calendar?.DisplayAccountName ?? "", vm.Settings.Use24HourClock,
-            ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
+            ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark,
+            vm.SecondZoneText(ev));
         card.EditRequested += async () => { CloseDetails(); await EditAsync(ev, isNew: false); };
         card.DeleteRequested += async () => { CloseDetails(); await DeleteAsync(ev); };
         card.MailRequested += async () => await MailGuestsAsync(ev);

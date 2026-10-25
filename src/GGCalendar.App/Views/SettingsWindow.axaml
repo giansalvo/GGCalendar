@@ -71,20 +71,19 @@
                 <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanInvite" Content="{loc:T guests.invite}" IsChecked="{Binding DefaultGuestsCanInvite}" />
                 <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanSeeList" Content="{loc:T guests.see_list}" IsChecked="{Binding DefaultGuestsCanSeeList}" />
 
-                <TextBlock Classes="section" Text="{loc:T settings.time_zones}" />
-                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="8">
-                    <TextBlock Text="{loc:T settings.primary}" VerticalAlignment="Center" />
-                    <ComboBox AutomationProperties.AutomationId="Settings.PrimaryTimeZone" Grid.Column="1" ItemsSource="{Binding TimeZones}" SelectedItem="{Binding PrimaryTimeZone}" HorizontalAlignment="Stretch">
+                <TextBlock Classes="section" Text="{loc:T settings.second_zone}" />
+                <TextBlock Classes="hint" Text="{loc:T settings.second_zone_hint}" TextWrapping="Wrap" />
+                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="{loc:T settings.second_zone_pick}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.SecondaryTimeZone" Grid.Column="1" ItemsSource="{Binding SecondaryTimeZones}" SelectedItem="{Binding SecondaryTimeZone}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBlock Grid.Row="1" Text="{loc:T settings.secondary}" VerticalAlignment="Center" />
-                    <ComboBox AutomationProperties.AutomationId="Settings.SecondaryTimeZone" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding SecondaryTimeZones}" SelectedItem="{Binding SecondaryTimeZone}" HorizontalAlignment="Stretch">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.second_zone_label}" VerticalAlignment="Center" IsVisible="{Binding HasSecondaryZone}" />
+                    <TextBox AutomationProperties.AutomationId="Settings.SecondaryTimeZoneLabel" Grid.Row="1" Grid.Column="1" Text="{Binding SecondaryTimeZoneLabel}" MaxLength="12"
+                             PlaceholderText="{Binding SecondaryLabelPlaceholder}" Width="160" HorizontalAlignment="Left" IsVisible="{Binding HasSecondaryZone}" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="hint" Text="{Binding SecondaryLabelHint}" IsVisible="{Binding HasSecondaryZone}" />
                 </Grid>
 
                 <TextBlock Classes="section" Text="{loc:T settings.google_accounts}" />

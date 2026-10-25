@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Zones;
 using GGCalendar.Core.Ollama;
 using GGCalendar.Providers.Google;
 using GGCalendar.Core.Localization;
@@ -61,9 +62,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
         FirstDayOfWeek = Weekdays.First(w => w.Day == s.FirstDayOfWeek);
 
         TimeZones = TimeZoneInfo.GetSystemTimeZones().Select(z => new TimeZoneOption(z.Id, z.DisplayName)).ToList();
-        PrimaryTimeZone = FindZone(s.PrimaryTimeZoneId) ?? FindZone(TimeZoneInfo.Local.Id);
         SecondaryTimeZone = s.SecondaryTimeZoneId is null ? NoSecondaryZone : FindZone(s.SecondaryTimeZoneId) ?? NoSecondaryZone;
         SecondaryTimeZones = [NoSecondaryZone, .. TimeZones];
+        SecondaryTimeZoneLabel = s.SecondaryTimeZoneLabel ?? "";
 
         foreach (var m in new[] { s.OllamaModel, s.OllamaFallbackModel }.Where(m => !string.IsNullOrEmpty(m)).Distinct())
             Models.Add(m!);
@@ -193,8 +194,26 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial int DefaultEventMinutes { get; set; }
     [ObservableProperty] public partial int SnapMinutes { get; set; }
     [ObservableProperty] public partial WeekdayOption FirstDayOfWeek { get; set; }
-    [ObservableProperty] public partial TimeZoneOption? PrimaryTimeZone { get; set; }
-    [ObservableProperty] public partial TimeZoneOption SecondaryTimeZone { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSecondaryZone), nameof(SecondaryLabelHint), nameof(SecondaryLabelPlaceholder))]
+    public partial TimeZoneOption SecondaryTimeZone { get; set; }
+
+    /// <summary>What the user typed as the name of the second column (up to <see cref="SecondZones.MaxLabel"/> characters).</summary>
+    [ObservableProperty] public partial string SecondaryTimeZoneLabel { get; set; }
+
+    public bool HasSecondaryZone => !string.IsNullOrEmpty(SecondaryTimeZone.Id);
+
+    /// <summary>The name the column has when the box is left empty.</summary>
+    public string SecondaryLabelPlaceholder => HasSecondaryZone ? SecondZones.DefaultLabel(SecondaryTimeZone.Id) : "";
+
+    public string SecondaryLabelHint => L.T("settings.second_zone_label_hint", SecondZones.MaxLabel, SecondaryLabelPlaceholder);
+
+    // Only the length is cut while typing: trimming would eat the space between two words.
+    partial void OnSecondaryTimeZoneLabelChanged(string value)
+    {
+        var cut = string.Concat(value.EnumerateRunes().Take(SecondZones.MaxLabel).Select(r => r.ToString()));
+        if (cut.Length < value.Length) SecondaryTimeZoneLabel = cut;
+    }
     [ObservableProperty] public partial string OllamaUrl { get; set; }
     [ObservableProperty] public partial string? OllamaModel { get; set; }
     [ObservableProperty] public partial string OllamaFallbackModel { get; set; }
@@ -229,7 +248,6 @@ public sealed partial class SettingsViewModel : ViewModelBase
     {
         Error = "";
         if (DayEndHour <= DayStartHour) { Error = L.T("settings.error_day_end"); return null; }
-        if (PrimaryTimeZone is null) { Error = L.T("settings.error_primary_zone"); return null; }
         // Ollama is optional: without a model (not installed, or no models) the other settings must still save.
 
         return new AppSettings
@@ -254,8 +272,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             ReminderVolumePercent = ReminderVolumePercent,
             DefaultReminderSound = DefaultSound.Path ?? new AppSettings().DefaultReminderSound,
             SnapMinutes = SnapMinutes,
-            PrimaryTimeZoneId = PrimaryTimeZone.Id,
-            SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == PrimaryTimeZone.Id ? null : SecondaryTimeZone.Id,
+            SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == TimeZoneInfo.Local.Id ? null : SecondaryTimeZone.Id,
+            SecondaryTimeZoneLabel = SecondZones.ClampLabel(SecondaryTimeZoneLabel) is { Length: > 0 } label ? label : null,
             OllamaUrl = OllamaUrl.Trim(),
             OllamaModel = OllamaModel ?? "",
             OllamaFallbackModel = OllamaFallbackModel == NoFallback ? null : OllamaFallbackModel,

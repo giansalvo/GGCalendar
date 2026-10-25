@@ -30,6 +30,10 @@ public sealed class AllDayStrip : Control
     public static readonly StyledProperty<int> DayCountProperty =
         AvaloniaProperty.Register<AllDayStrip, int>(nameof(DayCount), 7);
 
+    /// <summary>Width of the area of the hours of the grid below (see <see cref="GutterProperty"/>).</summary>
+    public static readonly StyledProperty<double> GutterProperty =
+        AvaloniaProperty.Register<AllDayStrip, double>(nameof(Gutter), WeekGrid.BaseGutter);
+
     public static readonly StyledProperty<bool> DimPastProperty =
         AvaloniaProperty.Register<AllDayStrip, bool>(nameof(DimPast), true);
 
@@ -38,10 +42,11 @@ public sealed class AllDayStrip : Control
 
     static AllDayStrip()
     {
-        AffectsRender<AllDayStrip>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty, DimPastProperty);
+        AffectsRender<AllDayStrip>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty, DimPastProperty, GutterProperty);
     }
 
     public bool DimPast { get => GetValue(DimPastProperty); set => SetValue(DimPastProperty, value); }
+    public double Gutter { get => GetValue(GutterProperty); set => SetValue(GutterProperty, value); }
 
     public DateTime WeekStart { get => GetValue(WeekStartProperty); set => SetValue(WeekStartProperty, value); }
     public IReadOnlyList<CalendarEvent>? Events { get => GetValue(EventsProperty); set => SetValue(EventsProperty, value); }
@@ -102,7 +107,7 @@ public sealed class AllDayStrip : Control
     {
         base.OnDoubleTapped(e);
         var p = e.GetPosition(this);
-        if (p.X < WeekGrid.Gutter) return;
+        if (p.X < Gutter) return;
 
         for (var i = _hits.Count - 1; i >= 0; i--)
         {
@@ -113,8 +118,8 @@ public sealed class AllDayStrip : Control
             }
         }
 
-        var colW = (Bounds.Width - WeekGrid.Gutter) / Math.Max(1, DayCount);
-        var day = (int)Math.Clamp(Math.Floor((p.X - WeekGrid.Gutter) / colW), 0, DayCount - 1);
+        var colW = (Bounds.Width - Gutter) / Math.Max(1, DayCount);
+        var day = (int)Math.Clamp(Math.Floor((p.X - Gutter) / colW), 0, DayCount - 1);
         DayDoubleClicked?.Invoke(WeekStart.Date.AddDays(day));
     }
 
@@ -124,12 +129,12 @@ public sealed class AllDayStrip : Control
         var line = dark ? Color.Parse("#3C4043") : Color.Parse("#DADCE0");
         var linePen = new Pen(new SolidColorBrush(line), 1);
         var days = Math.Max(1, DayCount);
-        var colW = (Bounds.Width - WeekGrid.Gutter) / days;
+        var colW = (Bounds.Width - Gutter) / days;
 
         context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
         for (var d = 0; d <= days; d++)
         {
-            var x = Math.Round(WeekGrid.Gutter + d * colW) + 0.5;
+            var x = Math.Round(Gutter + d * colW) + 0.5;
             context.DrawLine(linePen, new Point(x, 0), new Point(x, Bounds.Height));
         }
 
@@ -138,7 +143,7 @@ public sealed class AllDayStrip : Control
         _hits.Clear();
         foreach (var (ev, first, last, row) in _layout)
         {
-            var rect = new Rect(WeekGrid.Gutter + first * colW + 2, 2 + row * (RowHeight + RowGap),
+            var rect = new Rect(Gutter + first * colW + 2, 2 + row * (RowHeight + RowGap),
                 (last - first + 1) * colW - 5, RowHeight);
             _hits.Add((rect, ev));
             var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8");

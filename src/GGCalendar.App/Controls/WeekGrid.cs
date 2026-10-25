@@ -11,13 +11,19 @@ using Avalonia.Threading;
 using GGCalendar.Core.Layout;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
+using GGCalendar.Core.Zones;
 
 namespace GGCalendar.App.Controls;
 
 /// <summary>Hour grid with the timed events of one week, drawn directly for speed and drag &amp; drop control.</summary>
 public sealed class WeekGrid : Control
 {
-    public const double Gutter = 56;
+    /// <summary>The room of the hours of this PC, to the left of the day columns.</summary>
+    public const double BaseGutter = 56;
+
+    /// <summary>The room of the second column of hours (the second time zone), when there is one.</summary>
+    public const double ZoneColumnWidth = 52;
+
     public const double HourHeight = 48;
     private const double ResizeEdge = 7;
     private const double DragThreshold = 4;
@@ -52,6 +58,14 @@ public sealed class WeekGrid : Control
     public static readonly StyledProperty<bool> DimPastProperty =
         AvaloniaProperty.Register<WeekGrid, bool>(nameof(DimPast), true);
 
+    /// <summary>Width of the area of the hours: <see cref="BaseGutter"/>, plus <see cref="ZoneColumnWidth"/> when there is a second time zone.</summary>
+    public static readonly StyledProperty<double> GutterProperty =
+        AvaloniaProperty.Register<WeekGrid, double>(nameof(Gutter), BaseGutter);
+
+    /// <summary>The second time zone to write next to the hours, or null.</summary>
+    public static readonly StyledProperty<SecondZone?> SecondZoneProperty =
+        AvaloniaProperty.Register<WeekGrid, SecondZone?>(nameof(SecondZone));
+
     private enum DragMode { None, Pending, Move, Resize, Create }
 
     private readonly List<(Rect Rect, CalendarEvent Event)> _hits = [];
@@ -69,7 +83,7 @@ public sealed class WeekGrid : Control
     static WeekGrid()
     {
         AffectsRender<WeekGrid>(WeekStartProperty, EventsProperty, CalendarColorsProperty, DayCountProperty,
-            FirstHourProperty, LastHourProperty, Use24HourProperty, DimPastProperty);
+            FirstHourProperty, LastHourProperty, Use24HourProperty, DimPastProperty, GutterProperty, SecondZoneProperty);
     }
 
     public WeekGrid()
@@ -93,6 +107,8 @@ public sealed class WeekGrid : Control
     public int LastHour { get => GetValue(LastHourProperty); set => SetValue(LastHourProperty, value); }
     public bool DimPast { get => GetValue(DimPastProperty); set => SetValue(DimPastProperty, value); }
     public bool Use24Hour { get => GetValue(Use24HourProperty); set => SetValue(Use24HourProperty, value); }
+    public double Gutter { get => GetValue(GutterProperty); set => SetValue(GutterProperty, value); }
+    public SecondZone? SecondZone { get => GetValue(SecondZoneProperty); set => SetValue(SecondZoneProperty, value); }
 
     public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
     public event Action<DateTime, DateTime>? EventCreated;
@@ -372,6 +388,8 @@ public sealed class WeekGrid : Control
             context.DrawText(text, new Point(Gutter - 12 - text.Width, y - text.Height / 2));
         }
 
+        DrawSecondZone(context, labelBrush, linePen);
+
         for (var d = 0; d <= days; d++)
         {
             var x = Math.Round(Gutter + d * colW) + 0.5;
@@ -380,6 +398,50 @@ public sealed class WeekGrid : Control
 
         DrawEvents(context, colW, days, bg);
         DrawNowLine(context, colW, days);
+    }
+
+    /// <summary>
+    /// The second column of hours: the hour there of each line of the first day (summer time and half hours as they are on that day),
+    /// the date where it changes, and in the columns of the days whose hours differ (a clock changed in the week) their own labels.
+    /// </summary>
+    private void DrawSecondZone(DrawingContext context, IBrush labelBrush, Pen linePen)
+    {
+        if (SecondZone?.Zone is not { } other) return;
+        var local = TimeZoneInfo.Local;
+        var days = Math.Max(1, DayCount);
+        var rows = Enumerable.Range(0, days).Select(d => SecondZones.Rows(WeekStart.AddDays(d), local, other)).ToList();
+        var right = Gutter - 12 - 40;
+
+        string Hour(TimeOnly t) => DateTime.Today.Add(t.ToTimeSpan()).ToString(Use24Hour ? "HH:mm" : "h:mm tt", L.Culture);
+        string Day(DateOnly d) => d.ToString("d MMM", L.Culture);
+
+        // The date of the first line, written at the top of the column.
+        if (rows[0][Math.Clamp(FirstHour, 0, 23)] is var first)
+        {
+            var date = Text(Day(first.Date), 9, labelBrush);
+            context.DrawText(date, new Point(right - date.Width, 2));
+        }
+
+        for (var hour = FirstHour + 1; hour < LastHour && hour < 24; hour++)
+        {
+            var y = Math.Round(Y(hour)) + 0.5;
+            var row = rows[0][hour];
+            var text = Text(Hour(row.Time), 11, labelBrush);
+            context.DrawText(text, new Point(right - text.Width, y - text.Height / 2));
+            if (row.ShowDate)
+            {
+                var date = Text(Day(row.Date), 9, labelBrush);
+                context.DrawText(date, new Point(right - date.Width, y + text.Height / 2 - 1));
+            }
+
+            // A day whose hours are not those of the first one has its own labels, at the left of its column.
+            for (var d = 1; d < days; d++)
+            {
+                if (SecondZones.SameHours(rows[0], rows[d])) continue;
+                var own = Text(Hour(rows[d][hour].Time), 9, labelBrush);
+                context.DrawText(own, new Point(Gutter + d * ColumnWidth + 4, y - own.Height / 2));
+            }
+        }
     }
 
     private void DrawEvents(DrawingContext context, double colW, int days, Color background)

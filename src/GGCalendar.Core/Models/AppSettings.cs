@@ -36,8 +36,11 @@ public sealed class AppSettings
     public string Language { get; set; } = "system";
     public int DefaultEventMinutes { get; set; } = 60;
     public int SnapMinutes { get; set; } = 15;
-    public string PrimaryTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+    /// <summary>Second time zone of the time grids (a system zone id), or null for none.</summary>
     public string? SecondaryTimeZoneId { get; set; }
+
+    /// <summary>Name of the column of the second time zone (up to 6 characters); null or empty: the name of its city.</summary>
+    public string? SecondaryTimeZoneLabel { get; set; }
     public bool NotificationsEnabled { get; set; } = true;
     public string DefaultReminderSound { get; set; } = @"C:\Windows\Media\Windows Notify Calendar.wav";
     public int ReminderVolumePercent { get; set; } = 80;

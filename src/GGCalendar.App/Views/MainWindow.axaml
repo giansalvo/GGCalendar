@@ -204,7 +204,10 @@
                                         <Border Background="Transparent" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened">
                                             <Grid ColumnDefinitions="18,170,*">
                                                 <Ellipse Width="10" Height="10" Fill="{Binding ColorHex}" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="muted" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Time}" Classes="muted" />
+                                                    <TextBlock Text="{Binding SecondTime}" IsVisible="{Binding HasSecondTime}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                             </Grid>
                                         </Border>
@@ -220,8 +223,11 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center" Name="AgendaEmpty" />
 
         <DockPanel IsVisible="{Binding IsTimeGrid}">
-            <Panel DockPanel.Dock="Top"><TextBlock Text="{Binding TimeZoneLabel}" Classes="muted" FontSize="11" Margin="8,0,0,6" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
-            <ItemsControl ItemsSource="{Binding Days}" Margin="56,4,12,4">
+            <Panel DockPanel.Dock="Top">
+            <!-- Above the hours: the offset of this PC and, with a second time zone, the name of its column. -->
+            <TextBlock Text="{Binding SecondZoneLabel}" AutomationProperties.AutomationId="Main.SecondZoneLabel" IsVisible="{Binding HasSecondZone}" FontSize="11" FontWeight="SemiBold" Classes="muted" Margin="8,0,0,6" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
+            <TextBlock Text="{Binding TimeZoneLabel}" Classes="muted" FontSize="11" Margin="{Binding TimeZoneLabelMargin}" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
+            <ItemsControl ItemsSource="{Binding Days}" Margin="{Binding DaysMargin}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Rows="1" />
@@ -247,14 +253,14 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             </Panel>
-            <ctl:AllDayStrip Name="AllDay" DimPast="{Binding Settings.DimPastEvents}" DockPanel.Dock="Top" Margin="0,0,12,0"
+            <ctl:AllDayStrip Name="AllDay" Gutter="{Binding TimeAxisWidth}" DimPast="{Binding Settings.DimPastEvents}" DockPanel.Dock="Top" Margin="0,0,12,0"
                              WeekStart="{Binding WeekStart}" DayCount="{Binding DayCount}"
                              Events="{Binding VisibleEvents}"
                              CalendarColors="{Binding CalendarColors}" />
             <ScrollViewer Name="GridScroll">
                 <!-- Same 12px right margin as the day headers and the all-day strip, so the columns line up:
                      the Fluent scrollbar overlays the content instead of taking space, and sits in that margin. -->
-                <ctl:WeekGrid Name="Grid" Margin="0,0,12,0" DimPast="{Binding Settings.DimPastEvents}"
+                <ctl:WeekGrid Name="Grid" Gutter="{Binding TimeAxisWidth}" SecondZone="{Binding SecondZone}" Margin="0,0,12,0" DimPast="{Binding Settings.DimPastEvents}"
                               WeekStart="{Binding WeekStart}" DayCount="{Binding DayCount}"
                               Events="{Binding VisibleEvents}"
                               CalendarColors="{Binding CalendarColors}"
