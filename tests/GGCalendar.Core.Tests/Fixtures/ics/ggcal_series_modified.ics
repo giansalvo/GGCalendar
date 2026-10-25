@@ -11,7 +11,7 @@ UID:serie-mod@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261102T090000
 DTEND;TZID=Europe/Rome:20261102T100000
 RRULE:FREQ=DAILY;COUNT=5
-SUMMARY:[PROVA] Serie con occorrenza modificata
+SUMMARY:[TEST GGCAL] Serie con occorrenza modificata
 END:VEVENT
 BEGIN:VEVENT
 DTSTAMP:20260101T000000Z
@@ -19,6 +19,6 @@ UID:serie-mod@ggcalendar.test
 RECURRENCE-ID;TZID=Europe/Rome:20261104T090000
 DTSTART;TZID=Europe/Rome:20261104T150000
 DTEND;TZID=Europe/Rome:20261104T160000
-SUMMARY:[PROVA] Occorrenza spostata nel pomeriggio
+SUMMARY:[TEST GGCAL] Occorrenza spostata nel pomeriggio
 END:VEVENT
 END:VCALENDAR

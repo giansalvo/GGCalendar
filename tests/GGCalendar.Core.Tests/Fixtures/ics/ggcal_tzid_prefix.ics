@@ -10,13 +10,13 @@ DTSTAMP:20260101T000000Z
 UID:tp1@ggcalendar.test
 DTSTART;TZID=/mozilla.org/20050126_1/Europe/Rome:20261102T090000
 DTEND;TZID=/mozilla.org/20050126_1/Europe/Rome:20261102T100000
-SUMMARY:[PROVA] Fuso con prefisso Mozilla
+SUMMARY:[TEST GGCAL] Fuso con prefisso Mozilla
 END:VEVENT
 BEGIN:VEVENT
 DTSTAMP:20260101T000000Z
 UID:tp2@ggcalendar.test
 DTSTART;TZID=Fuso/Che Non Esiste:20261103T090000
 DTEND;TZID=Fuso/Che Non Esiste:20261103T100000
-SUMMARY:[PROVA] Fuso sconosciuto senza definizione
+SUMMARY:[TEST GGCAL] Fuso sconosciuto senza definizione
 END:VEVENT
 END:VCALENDAR

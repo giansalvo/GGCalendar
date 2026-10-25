@@ -39,20 +39,20 @@ UID:win-rome@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;TZID=W. Europe Standard Time:20261027T100000
 DTEND;TZID=W. Europe Standard Time:20261027T110000
-SUMMARY:[PROVA] 10:00 in W. Europe Standard Time
+SUMMARY:[TEST GGCAL] 10:00 in W. Europe Standard Time
 END:VEVENT
 BEGIN:VEVENT
 UID:win-ny@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;TZID=Eastern Standard Time:20261027T100000
 DTEND;TZID=Eastern Standard Time:20261027T110000
-SUMMARY:[PROVA] 10:00 in Eastern Standard Time
+SUMMARY:[TEST GGCAL] 10:00 in Eastern Standard Time
 END:VEVENT
 BEGIN:VEVENT
 UID:win-unknown@ggcalendar.test
 DTSTAMP:20260101T000000Z
 DTSTART;TZID=Fuso Inventato:20261028T100000
 DTEND;TZID=Fuso Inventato:20261028T110000
-SUMMARY:[PROVA] Fuso sconosciuto (usa quello del telefono)
+SUMMARY:[TEST GGCAL] Fuso sconosciuto (usa quello del telefono)
 END:VEVENT
 END:VCALENDAR

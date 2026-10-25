@@ -10,7 +10,7 @@ DTSTAMP:20260101T000000Z
 UID:at@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261102T090000
 DTEND;TZID=Europe/Rome:20261102T100000
-SUMMARY:[PROVA] Con allegato e categorie
+SUMMARY:[TEST GGCAL] Con allegato e categorie
 ATTACH:https://example.com/documento.pdf
 CATEGORIES:LAVORO,PROVA
 END:VEVENT

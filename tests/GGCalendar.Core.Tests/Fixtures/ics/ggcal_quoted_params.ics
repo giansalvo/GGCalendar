@@ -10,7 +10,7 @@ DTSTAMP:20260101T000000Z
 UID:qp@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261102T090000
 DTEND;TZID=Europe/Rome:20261102T100000
-SUMMARY:[PROVA] Partecipante con nome complicato
+SUMMARY:[TEST GGCAL] Partecipante con nome complicato
 ATTENDEE;CN="Verdi; Anna: dott.";ROLE=REQ-PARTICIPANT:mailto:anna.verdi@example.com
 ATTENDEE;CN="Rossi, Luca";PARTSTAT=ACCEPTED:mailto:luca.rossi@example.com
 END:VEVENT

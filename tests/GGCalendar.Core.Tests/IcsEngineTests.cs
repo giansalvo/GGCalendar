@@ -50,7 +50,7 @@ public class IcsEngineTests
     {
         var only = Assert.Single(Analyze("ggcal_fold_lf").Events);
 
-        Assert.Equal(("[PROVA] " + string.Concat(Enumerable.Repeat("Titolo piegato con spazio ", 6))).Trim(), only.Title.Trim());
+        Assert.Equal(("[TEST GGCAL] " + string.Concat(Enumerable.Repeat("Titolo piegato con spazio ", 6))).Trim(), only.Title.Trim());
         Assert.Equal(string.Concat(Enumerable.Repeat("Luogo piegato con tabulazione ", 6)).Trim(), only.Location.Trim());
     }
 
@@ -60,7 +60,7 @@ public class IcsEngineTests
     {
         var only = Assert.Single(Analyze("ggcal_escapes").Events);
 
-        Assert.Equal("[PROVA] Virgola, punto e virgola; barra \\ fine", only.Title);
+        Assert.Equal("[TEST GGCAL] Virgola, punto e virgola; barra \\ fine", only.Title);
         Assert.Equal("Sala A, piano 2; ala nord", only.Location);
         Assert.Equal("Riga uno\nRiga due, con virgola\nOrario 10:30 e barra \\ finale", only.Description);
     }
@@ -140,7 +140,7 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_multi_vcalendar");
 
-        Assert.Equal(["[PROVA] Nel primo calendario", "[PROVA] Nel secondo calendario"], feed.Events.Select(e => e.Title).Order().ToArray());
+        Assert.Equal(["[TEST GGCAL] Nel primo calendario", "[TEST GGCAL] Nel secondo calendario"], feed.Events.Select(e => e.Title).Order().ToArray());
     }
 
     [Fact]
@@ -180,8 +180,8 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_bad_dates");
 
-        Assert.Equal(["[PROVA] Evento valido", "[PROVA] Fine prima dell'inizio"], feed.Events.Select(e => e.Title).Order().ToArray());
-        var fixedEnd = Event(feed, "[PROVA] Fine prima dell'inizio");
+        Assert.Equal(["[TEST GGCAL] Evento valido", "[TEST GGCAL] Fine prima dell'inizio"], feed.Events.Select(e => e.Title).Order().ToArray());
+        var fixedEnd = Event(feed, "[TEST GGCAL] Fine prima dell'inizio");
         Assert.True(fixedEnd.End > fixedEnd.Start);
         Assert.True(feed.Report.Has(IcsIssueCode.MissingStart));
         Assert.True(feed.Report.Has(IcsIssueCode.InvalidDate));
@@ -246,7 +246,7 @@ public class IcsEngineTests
         var vm = Open();
         vm.ImportEvents("dest", feed.Events, ImportDuplicates.Skip);
 
-        foreach (var title in new[] { "[PROVA] UNTIL data", "[PROVA] UNTIL UTC", "[PROVA] UNTIL locale" })
+        foreach (var title in new[] { "[TEST GGCAL] UNTIL data", "[TEST GGCAL] UNTIL UTC", "[TEST GGCAL] UNTIL locale" })
         {
             var shown = Shown(vm, title, Nov, Jan);
             Assert.Equal(InRome("20261105T090000"), shown[^1].Start);
@@ -262,7 +262,7 @@ public class IcsEngineTests
         var vm = Open();
         vm.ImportEvents("dest", feed.Events, ImportDuplicates.Skip);
 
-        var shown = Shown(vm, "[PROVA] Serie con date escluse", Nov, Jan);
+        var shown = Shown(vm, "[TEST GGCAL] Serie con date escluse", Nov, Jan);
 
         Assert.Equal(6, shown.Count);
         foreach (var day in new[] { 3, 4, 5, 7 })
@@ -275,10 +275,10 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_alarm_limits");
 
-        Assert.Empty(Event(feed, "[PROVA] Promemoria dopo l'inizio").Reminders);
-        Assert.Empty(Event(feed, "[PROVA] Promemoria a 30 giorni").Reminders);
-        Assert.Equal(5, Event(feed, "[PROVA] Otto promemoria").Reminders.Count);
-        Assert.Single(Event(feed, "[PROVA] Due promemoria uguali").Reminders);
+        Assert.Empty(Event(feed, "[TEST GGCAL] Promemoria dopo l'inizio").Reminders);
+        Assert.Empty(Event(feed, "[TEST GGCAL] Promemoria a 30 giorni").Reminders);
+        Assert.Equal(5, Event(feed, "[TEST GGCAL] Otto promemoria").Reminders.Count);
+        Assert.Single(Event(feed, "[TEST GGCAL] Due promemoria uguali").Reminders);
         Assert.True(feed.Report.Has(IcsIssueCode.AlarmAfterStart));
         Assert.True(feed.Report.Has(IcsIssueCode.AlarmTooEarly));
         Assert.True(feed.Report.Has(IcsIssueCode.TooManyAlarms));
@@ -310,8 +310,8 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_control_chars");
 
-        Assert.Equal("[PROVA] Con caratteri di controllo", Event(feed, "[PROVA] Con caratteri di controllo").Title);
-        var cut = feed.Events.Single(e => e.Title.StartsWith("[PROVA] AAAA", StringComparison.Ordinal)).Title;
+        Assert.Equal("[TEST GGCAL] Con caratteri di controllo", Event(feed, "[TEST GGCAL] Con caratteri di controllo").Title);
+        var cut = feed.Events.Single(e => e.Title.StartsWith("[TEST GGCAL] AAAA", StringComparison.Ordinal)).Title;
         Assert.Equal(1023, cut.Length);
         Assert.False(char.IsHighSurrogate(cut[^1]));
         Assert.True(feed.Report.Has(IcsIssueCode.FieldTruncated));
@@ -323,8 +323,8 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_vtimezone_dst");
 
-        Assert.Equal(Utc("20260715T090000"), Event(feed, "[PROVA] 12:00 d'estate (UTC+3 = 09:00 UTC)").Start);
-        Assert.Equal(Utc("20260115T100000"), Event(feed, "[PROVA] 12:00 d'inverno (UTC+2 = 10:00 UTC)").Start);
+        Assert.Equal(Utc("20260715T090000"), Event(feed, "[TEST GGCAL] 12:00 d'estate (UTC+3 = 09:00 UTC)").Start);
+        Assert.Equal(Utc("20260115T100000"), Event(feed, "[TEST GGCAL] 12:00 d'inverno (UTC+2 = 10:00 UTC)").Start);
     }
 
     [Fact]
@@ -342,8 +342,8 @@ public class IcsEngineTests
     {
         var feed = Analyze("ggcal_tzid_prefix");
 
-        Assert.Equal(InRome("20261102T090000"), Event(feed, "[PROVA] Fuso con prefisso Mozilla").Start);
-        Assert.Equal(new DateTime(2026, 11, 3, 9, 0, 0), Event(feed, "[PROVA] Fuso sconosciuto senza definizione").Start);
+        Assert.Equal(InRome("20261102T090000"), Event(feed, "[TEST GGCAL] Fuso con prefisso Mozilla").Start);
+        Assert.Equal(new DateTime(2026, 11, 3, 9, 0, 0), Event(feed, "[TEST GGCAL] Fuso sconosciuto senza definizione").Start);
         Assert.True(feed.Report.Has(IcsIssueCode.UnknownTimeZone));
     }
 
@@ -399,7 +399,7 @@ public class IcsEngineTests
     public void T84_NoLineIsLongerThan75BytesNoCharacterIsCutAndSpecialCharactersSurviveTheRoundTrip()
     {
         var day = new DateTime(2026, 11, 3);
-        var title = "[PROVA] " + string.Concat(Enumerable.Repeat("àèìòù€☕日本語😀", 8));
+        var title = "[TEST GGCAL] " + string.Concat(Enumerable.Repeat("àèìòù€☕日本語😀", 8));
         var location = "Sala A, piano 2; ala nord";
         var description = "riga uno\nriga due, con virgola; e punto e virgola";
         var ev = new CalendarEvent("x", "dest", title, day.AddHours(10), day.AddHours(11), Location: location, Description: description) { Reminders = [], IcsUid = "x@t" };

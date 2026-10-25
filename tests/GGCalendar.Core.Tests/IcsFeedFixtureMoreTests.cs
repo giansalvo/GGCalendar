@@ -56,8 +56,8 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
         {
             var shown = Shown(vm, November, December).Where(e => e.CalendarId == calendar).ToList();
             Assert.Equal(5, shown.Count);
-            Assert.Equal(4, shown.Count(e => e.Title == "[PROVA] Serie con occorrenza modificata"));
-            var moved = Assert.Single(shown, e => e.Title == "[PROVA] Occorrenza spostata nel pomeriggio");
+            Assert.Equal(4, shown.Count(e => e.Title == "[TEST GGCAL] Serie con occorrenza modificata"));
+            var moved = Assert.Single(shown, e => e.Title == "[TEST GGCAL] Occorrenza spostata nel pomeriggio");
             Assert.Equal((InRome("20261104T150000"), InRome("20261104T160000")), (moved.Start, moved.End));
         }
     }
@@ -97,10 +97,10 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_orphan_occurrence");
 
-        var orphan = Event(feed, "[PROVA] Occorrenza senza serie madre");
+        var orphan = Event(feed, "[TEST GGCAL] Occorrenza senza serie madre");
         Assert.Null(orphan.SeriesMasterId);
         Assert.Equal(InRome("20261105T110000"), orphan.Start);
-        Assert.Contains(feed.Events, e => e.Title == "[PROVA] Evento normale accanto");
+        Assert.Contains(feed.Events, e => e.Title == "[TEST GGCAL] Evento normale accanto");
         Assert.NotEmpty(feed.Warnings);
     }
 
@@ -110,7 +110,7 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_other_components");
 
-        Assert.Equal(["[PROVA] Evento dopo", "[PROVA] Evento prima"], feed.Events.Select(e => e.Title).Order().ToArray());
+        Assert.Equal(["[TEST GGCAL] Evento dopo", "[TEST GGCAL] Evento prima"], feed.Events.Select(e => e.Title).Order().ToArray());
         Assert.NotEmpty(feed.Warnings);
     }
 
@@ -141,7 +141,7 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_multibyte_fold");
 
-        Assert.Equal("[PROVA] " + string.Concat(Enumerable.Repeat("àèìòù€☕日本語😀", 12)), Assert.Single(feed.Events).Title);
+        Assert.Equal("[TEST GGCAL] " + string.Concat(Enumerable.Repeat("àèìòù€☕日本語😀", 12)), Assert.Single(feed.Events).Title);
     }
 
     [Fact]
@@ -161,11 +161,11 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_duration_rdate");
 
-        var ninety = Event(feed, "[PROVA] Durata 90 minuti");
+        var ninety = Event(feed, "[TEST GGCAL] Durata 90 minuti");
         Assert.Equal(TimeSpan.FromMinutes(90), ninety.End - ninety.Start);
-        var three = Event(feed, "[PROVA] Durata 3 giorni");
+        var three = Event(feed, "[TEST GGCAL] Durata 3 giorni");
         Assert.Equal((true, new DateTime(2026, 11, 3), new DateTime(2026, 11, 6)), (three.IsAllDay, three.Start, three.End));
-        var open = Event(feed, "[PROVA] Tutto il giorno senza fine");
+        var open = Event(feed, "[TEST GGCAL] Tutto il giorno senza fine");
         Assert.Equal((true, new DateTime(2026, 11, 5), new DateTime(2026, 11, 6)), (open.IsAllDay, open.Start, open.End));
         Assert.Contains(feed.Warnings, w => w.Contains("RDATE"));
     }
@@ -177,9 +177,9 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
         var feed = Analyze("ggcal_alarms_advanced");
 
         Assert.Equal(4, feed.Events.Count);
-        Assert.Contains(Event(feed, "[PROVA] Relativo alla fine").Reminders, r => r.Minutes == 30); // 90 min before an end that is 60 min after the start
-        Assert.Contains(Event(feed, "[PROVA] Con ripetizione").Reminders, r => r.Minutes == 15);
-        var two = Event(feed, "[PROVA] Audio ed email, due promemoria").Reminders;
+        Assert.Contains(Event(feed, "[TEST GGCAL] Relativo alla fine").Reminders, r => r.Minutes == 30); // 90 min before an end that is 60 min after the start
+        Assert.Contains(Event(feed, "[TEST GGCAL] Con ripetizione").Reminders, r => r.Minutes == 15);
+        var two = Event(feed, "[TEST GGCAL] Audio ed email, due promemoria").Reminders;
         Assert.Contains(two, r => r is { Method: ReminderMethod.Alarm, Minutes: 30 });
         Assert.Contains(two, r => r is { Method: ReminderMethod.Email, Minutes: 2880 });
         Assert.NotEmpty(feed.Warnings); // the absolute trigger cannot be kept
@@ -213,7 +213,7 @@ public class IcsFeedFixtureMoreTests(ITestOutputHelper output)
     {
         var feed = Analyze("ggcal_windows1252");
 
-        Assert.Equal("[PROVA] Caffè, perché? àèìòù €", Assert.Single(feed.Events).Title);
+        Assert.Equal("[TEST GGCAL] Caffè, perché? àèìòù €", Assert.Single(feed.Events).Title);
     }
 
     [Fact]

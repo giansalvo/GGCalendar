@@ -11,6 +11,6 @@ UID:dst@ggcalendar.test
 DTSTART;TZID=Europe/Rome:20261023T100000
 DTEND;TZID=Europe/Rome:20261023T110000
 RRULE:FREQ=DAILY;COUNT=6
-SUMMARY:[PROVA] Ogni giorno alle 10 a cavallo del cambio ora
+SUMMARY:[TEST GGCAL] Ogni giorno alle 10 a cavallo del cambio ora
 END:VEVENT
 END:VCALENDAR
