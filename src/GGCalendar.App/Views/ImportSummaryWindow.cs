@@ -14,7 +14,7 @@ public sealed class ImportSummaryWindow : Window
     private readonly RadioButton _replace = new() { Content = "Sostituisci quelli già presenti con la versione del file", GroupName = "dup" };
     private readonly RadioButton _copy = new() { Content = "Importa comunque come copie", GroupName = "dup" };
 
-    public ImportSummaryWindow(string calendarName, int total, int existing, IReadOnlyList<string> warnings)
+    public ImportSummaryWindow(string calendarName, int total, int existing, IReadOnlyList<string> warnings, string? notice = null)
     {
         Title = "Importa file .ics";
         Width = 520;
@@ -36,6 +36,9 @@ public sealed class ImportSummaryWindow : Window
             panel.Children.Add(_replace);
             panel.Children.Add(_copy);
         }
+
+        if (notice is not null)
+            panel.Children.Add(new TextBlock { Text = notice, TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Color.Parse("#E37400")) });
 
         if (warnings.Count > 0)
         {

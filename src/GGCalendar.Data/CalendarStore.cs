@@ -200,6 +200,42 @@ public sealed class CalendarStore
         ("$rec", string.IsNullOrEmpty(ev.Recurrence) ? 0 : 1), ("$remote", remoteId), ("$etag", etag),
         ("$data", JsonSerializer.Serialize(ev, Json)));
 
+    /// <summary>
+    /// Applies an import in one transaction (one write to the disk instead of one per event): the events that the import replaces are
+    /// removed with their modified occurrences, the new ones are stored, and for a calendar that lives on Google the matching deletions
+    /// and creations are queued.
+    /// </summary>
+    public void ApplyImport(IReadOnlyList<CalendarEvent> removed, IReadOnlyList<CalendarEvent> added, bool remoteDestination) =>
+        WithConnection(c =>
+        {
+            using var tx = c.BeginTransaction();
+            var now = DateTime.UtcNow.ToString("O");
+            foreach (var old in removed)
+            {
+                string? remoteId = null;
+                if (remoteDestination)
+                {
+                    using var cmd = Command(c, "SELECT remote_id FROM events WHERE id = $id", [("$id", old.Id)]);
+                    remoteId = cmd.ExecuteScalar() as string;
+                }
+
+                RemoveSeries(c, old.Id);
+                if (remoteDestination && remoteId is not null)
+                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, 'Delete', $p, $t)",
+                        ("$e", old.Id), ("$c", old.CalendarId), ("$p", remoteId), ("$t", now));
+            }
+
+            foreach (var ev in added)
+            {
+                Upsert(c, ev, null, null);
+                if (remoteDestination)
+                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, $op, $p, $t)",
+                        ("$e", ev.Id), ("$c", ev.CalendarId), ("$op", OutboxOperation.Create.ToString()), ("$p", JsonSerializer.Serialize(ev, Json)), ("$t", now));
+            }
+
+            tx.Commit();
+        });
+
     public void DeleteEvent(string eventId) => WithConnection(c => Run(c, "DELETE FROM events WHERE id = $id", ("$id", eventId)));
 
     /// <summary>Deletes an event together with the modified or cancelled occurrences that belong to it.</summary>

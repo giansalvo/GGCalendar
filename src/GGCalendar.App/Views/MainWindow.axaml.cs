@@ -419,10 +419,40 @@ public partial class MainWindow : Window
         return bytes;
     }
 
+    /// <summary>Above this many events, an import into a Google calendar warns that sending them will take a while.</summary>
+    private const int ManyEventsForGoogle = 200;
+
+    /// <summary>
+    /// Runs slow work with the window disabled. A small progress window appears only if the work lasts more than a moment, so short
+    /// operations show nothing.
+    /// </summary>
+    private async Task<T> RunBusyAsync<T>(string message, Func<Task<T>> work)
+    {
+        if (Vm is { } vm) vm.SyncStatus = message;
+        IsEnabled = false;
+        BusyWindow? busy = null;
+        try
+        {
+            var task = work();
+            if (await Task.WhenAny(task, Task.Delay(300)) != task)
+            {
+                busy = new BusyWindow(message);
+                busy.Show(this);
+            }
+
+            return await task;
+        }
+        finally
+        {
+            busy?.Close();
+            IsEnabled = true;
+        }
+    }
+
     private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;
-        var parsed = IcsParser.AnalyzeFile(bytes, calendarId);
+        var parsed = await RunBusyAsync("Lettura del file .ics…", () => Task.Run(() => IcsParser.AnalyzeFile(bytes, calendarId)));
         var total = parsed.Events.Count(e => e.SeriesMasterId is null);
         if (total == 0)
         {
@@ -431,14 +461,17 @@ public partial class MainWindow : Window
         }
 
         var existing = vm.FindExisting(calendarId, parsed.Events).Count;
+        var notice = GoogleSyncService.IsGoogleCalendar(calendarId) && total > ManyEventsForGoogle
+            ? $"Il calendario è su Google: i {total} eventi saranno inviati uno alla volta nelle prossime sincronizzazioni e potrebbe volerci del tempo."
+            : null;
         var mode = ImportDuplicates.Skip;
-        if (existing > 0 || parsed.Warnings.Count > 0)
+        if (existing > 0 || parsed.Warnings.Count > 0 || notice is not null)
         {
-            if (await new ImportSummaryWindow(calendarName, total, existing, parsed.Warnings).ShowDialog<ImportDuplicates?>(this) is not { } chosen) return;
+            if (await new ImportSummaryWindow(calendarName, total, existing, parsed.Warnings, notice).ShowDialog<ImportDuplicates?>(this) is not { } chosen) return;
             mode = chosen;
         }
 
-        var (imported, skipped) = vm.ImportEvents(calendarId, parsed.Events, mode);
+        var (imported, skipped) = await RunBusyAsync($"Importazione di {total} eventi in corso…", () => vm.ImportEventsAsync(calendarId, parsed.Events, mode));
         vm.SyncStatus = $"Importati {imported} eventi nel calendario \"{calendarName}\"" +
             (skipped > 0 ? $", {skipped} già presenti saltati" : "") +
             (parsed.Warnings.Count > 0 ? ". Avvisi: " + string.Join(" ", parsed.Warnings) : ".");
