@@ -216,7 +216,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-        <TextBlock IsVisible="{Binding IsAgenda}" Text="{loc:T main.agenda_empty}" Classes="muted"
+        <TextBlock IsVisible="{Binding ShowAgendaEmpty}" Text="{loc:T main.agenda_empty}" Classes="muted"
                    HorizontalAlignment="Center" VerticalAlignment="Center" Name="AgendaEmpty" />
 
         <DockPanel IsVisible="{Binding IsTimeGrid}">

@@ -209,7 +209,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>0 = giorno, 1 = settimana, 2 = mese, 3 = anno, 4 = programma, 5 = 6 giorni.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName))]
+    [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName), nameof(ShowAgendaEmpty))]
     public partial int ViewModeIndex { get; set; } = 1;
 
     private static readonly string[] ViewModeKeys = ["main.view_day", "main.view_week", "main.view_month", "main.view_year", "main.view_agenda", "main.view_6days"];
@@ -245,7 +245,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public partial int MonthNumber { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAgendaEmpty))]
     public partial IReadOnlyList<AgendaDay> AgendaDays { get; set; } = [];
+
+    /// <summary>The "no events in the next 30 days" message of the schedule view: shown only when there is nothing to list.</summary>
+    public bool ShowAgendaEmpty => IsAgenda && AgendaDays.Count == 0;
 
     [ObservableProperty]
     public partial int FirstHour { get; set; }
