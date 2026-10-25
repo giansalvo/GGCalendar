@@ -519,6 +519,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnCalendarToggled(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is CalendarItemViewModel item) item.IsVisible = !item.IsVisible;
+    }
+
     private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;

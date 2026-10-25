@@ -105,7 +105,15 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:AccountGroup">
                                 <StackPanel Margin="0,0,0,12">
-                                    <TextBlock Text="{Binding AccountName}" Classes="muted" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,4" />
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,6">
+                                        <Border Width="32" Height="32" CornerRadius="16" Background="#A8C7FA" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Initial}" Foreground="#0B2A52" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding AccountName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11" />
+                                        </StackPanel>
+                                    </Grid>
                                     <ItemsControl ItemsSource="{Binding Calendars}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:CalendarItemViewModel">
@@ -119,7 +127,15 @@
                                                             <MenuItem Header="Elimina calendario…" Click="OnDeleteCalendar" IsVisible="{Binding IsLocal}" />
                                                         </ContextMenu>
                                                     </Border.ContextMenu>
-                                                    <CheckBox IsChecked="{Binding IsVisible}" Content="{Binding Name}" Foreground="{Binding ColorHex}" Margin="4,0" />
+                                                    <!-- Round avatar for the account, rounded squares for the calendars: filled with the calendar colour and a tick when shown, an outline when hidden. -->
+                                                    <Grid ColumnDefinitions="Auto,*" Background="Transparent" Cursor="Hand" Margin="4,3" Tapped="OnCalendarToggled">
+                                                        <Border Width="20" Height="20" CornerRadius="4" BorderThickness="2" BorderBrush="{Binding ColorHex}" VerticalAlignment="Center">
+                                                            <Border Background="{Binding ColorHex}" CornerRadius="1" Margin="-2" IsVisible="{Binding IsVisible}">
+                                                                <TextBlock Text="&#x2713;" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            </Border>
+                                                        </Border>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    </Grid>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

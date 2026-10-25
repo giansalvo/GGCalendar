@@ -15,7 +15,9 @@ namespace GGCalendar.App.ViewModels;
 public sealed partial class CalendarItemViewModel(CalendarInfo info, Action changed) : ObservableObject
 {
     public string Id { get; } = info.Id;
-    public string Name { get; } = info.Name;
+    /// <summary>The account's own calendar (on Google its id is the account email): shown first, as "Il mio calendario" like the Android app.</summary>
+    public bool IsPrimary { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase);
+    public string Name { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase) ? "Il mio calendario" : info.Name;
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
 
@@ -31,7 +33,13 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public partial bool IsDropTarget { get; set; }
 }
 
-public sealed record AccountGroup(string AccountName, IReadOnlyList<CalendarItemViewModel> Calendars);
+public sealed record AccountGroup(string AccountName, IReadOnlyList<CalendarItemViewModel> Calendars)
+{
+    /// <summary>First letter of the account, drawn in the round avatar.</summary>
+    public string Initial => AccountName.Length > 0 ? char.ToUpperInvariant(AccountName[0]).ToString() : "?";
+
+    public string Kind => Calendars.Any(c => !c.IsLocal) ? "Google" : "Su questo PC";
+}
 
 public sealed record AgendaItem(CalendarEvent Event, string Time, string Title, string ColorHex);
 
@@ -120,6 +128,8 @@ public sealed partial class MainViewModel : ViewModelBase
                 });
                 return item;
             }).ToList();
+            // The account's own calendar first, then the others by name.
+            items = items.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
             _calendars.AddRange(items);
             Accounts.Add(new AccountGroup(g.Key, items));
         }
