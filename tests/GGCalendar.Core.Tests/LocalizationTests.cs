@@ -129,6 +129,8 @@ public class LocalizationTests
             // A text written in a window: an attribute that shows text and is neither a key, nor a binding, nor an icon.
             if (file.EndsWith(".axaml"))
             {
+                foreach (Match m in Regex.Matches(text, @"StringFormat='([^']*)'"))
+                    if (Regex.IsMatch(m.Groups[1].Value, "[A-Za-zÀ-ÿ]{3,}")) hardCoded.Add($"{Path.GetFileName(file)}: StringFormat='{m.Groups[1].Value}'");
                 foreach (Match m in Regex.Matches(text, @"\s(Content|Text|Header|ToolTip\.Tip|Title|Watermark|PlaceholderText)=""([^""{]*)"""))
                 {
                     var value = m.Groups[2].Value;

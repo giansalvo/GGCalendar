@@ -298,7 +298,7 @@ public partial class MainWindow : Window
         // A modified occurrence belongs to the series of its master; any other event is (or expands from) itself.
         var series = ev.SeriesMasterId is { } masterId ? vm.AllEvents.FirstOrDefault(e => e.Id == masterId) : vm.ResolveMaster(ev);
         var card = new EventDetailsCard(ev, series?.Recurrence, ev.ColorHex ?? calendar?.ColorHex ?? "#1A73E8",
-            calendar?.Name ?? "", calendar?.AccountName ?? "", vm.Settings.Use24HourClock,
+            calendar?.Name ?? "", calendar?.DisplayAccountName ?? "", vm.Settings.Use24HourClock,
             ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
         card.EditRequested += async () => { CloseDetails(); await EditAsync(ev, isNew: false); };
         card.DeleteRequested += async () => { CloseDetails(); await DeleteAsync(ev); };

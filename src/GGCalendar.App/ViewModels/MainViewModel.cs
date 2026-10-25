@@ -25,6 +25,9 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
 
+    /// <summary>The account as shown to the user: "Local" (in the language shown) for the calendars of this PC.</summary>
+    public string DisplayAccountName => IsLocal ? L.T("main.local_account") : info.AccountName;
+
     /// <summary>Calendars that live only on this PC; Google calendars are removed by disconnecting their account.</summary>
     public bool IsLocal { get; } = !Services.GoogleSyncService.IsGoogleCalendar(info.Id);
 
@@ -44,13 +47,21 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     public string AccountName { get; } = accountName;
     public IReadOnlyList<CalendarItemViewModel> Calendars { get; } = calendars;
 
+    /// <summary>What is shown as the name of the account: its address, or "Local" for the calendars of this PC.</summary>
+    public string DisplayName => Calendars.All(c => c.IsLocal) ? L.T("main.local_account") : AccountName;
+
     /// <summary>First letter of the account, drawn in the round avatar.</summary>
-    public string Initial => AccountName.Length > 0 ? char.ToUpperInvariant(AccountName[0]).ToString() : "?";
+    public string Initial => DisplayName.Length > 0 ? char.ToUpperInvariant(DisplayName[0]).ToString() : "?";
 
     public string Kind => Calendars.Any(c => !c.IsLocal) ? L.T("main.kind_google") : L.T("main.kind_local");
 
     /// <summary>The language changed: the kind of account is shown again.</summary>
-    public void LanguageChanged() => OnPropertyChanged(nameof(Kind));
+    public void LanguageChanged()
+    {
+        OnPropertyChanged(nameof(Kind));
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(Initial));
+    }
 
     /// <summary>False when the user folded the calendars of this account away (the arrow beside its name).</summary>
     [ObservableProperty]
@@ -74,6 +85,9 @@ public enum ImportDuplicates { Skip, Replace, Copy }
 public sealed partial class MainViewModel : ViewModelBase
 {
     private static CultureInfo Culture => L.Culture;
+
+    /// <summary>The name the local calendars have as account in the database: it is a key, not a text to show (see <see cref="AccountGroup.DisplayName"/>).</summary>
+    public const string LocalAccountName = "Locale";
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
@@ -95,6 +109,7 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var calendar in _calendars) calendar.LanguageChanged();
         foreach (var account in Accounts) account.LanguageChanged();
         OnPropertyChanged(nameof(ViewModeName));
+        OnPropertyChanged(nameof(WeekLabel));
         OnPropertyChanged(nameof(SyncStatus));
         Refresh();
     }
@@ -133,7 +148,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (infos.Count == 0)
         {
             // First run: a local calendar so the app is usable before any account is connected.
-            var local = new CalendarInfo("local-personale", "Locale", "Personale", "#1A73E8");
+            var local = new CalendarInfo("local-personale", LocalAccountName, L.T("main.default_calendar"), "#1A73E8");
             _store.UpsertCalendar(local);
             infos = [local];
         }
@@ -237,7 +252,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public partial string Title { get; set; } = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WeekLabel))]
     public partial int WeekNumber { get; set; }
+
+    /// <summary>"Week 43", in the language shown now.</summary>
+    public string WeekLabel => L.T("main.week_number", WeekNumber);
 
     [ObservableProperty]
     public partial IReadOnlyList<DayHeader> Days { get; set; } = [];
@@ -402,7 +421,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var id = "local-" + Guid.NewGuid().ToString("N")[..8];
         var color = CalendarPalette[_calendars.Count % CalendarPalette.Length];
-        _store.UpsertCalendar(new CalendarInfo(id, "Locale", name, color));
+        _store.UpsertCalendar(new CalendarInfo(id, LocalAccountName, name, color));
         Reload();
         return id;
     }
