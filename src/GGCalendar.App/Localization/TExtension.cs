@@ -12,5 +12,5 @@ public sealed class TExtension(string key) : MarkupExtension
     public string Key { get; set; } = key;
 
     public override object ProvideValue(IServiceProvider serviceProvider) =>
-        new Binding($"[{Key}]") { Source = LocSource.Instance, Mode = BindingMode.OneWay };
+        new Binding(nameof(LocText.Value)) { Source = LocText.For(Key), Mode = BindingMode.OneWay };
 }
