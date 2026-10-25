@@ -321,7 +321,7 @@ public class SubscriptionUiTests
         window.MouseDown(center, MouseButton.Left);
         window.MouseUp(center, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        var card = await WaitForAsync(() => window.GetVisualDescendants().OfType<EventDetailsCard>().FirstOrDefault(), "la scheda dell'evento");
+        var card = await WaitForAsync(() => window.FindControl<Avalonia.Controls.Primitives.Popup>("DetailsPopup")?.Child as EventDetailsCard, "la scheda dell'evento");
         Assert.Single(card.GetVisualDescendants().OfType<Button>());
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
