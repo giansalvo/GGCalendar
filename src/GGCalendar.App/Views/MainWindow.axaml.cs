@@ -323,6 +323,12 @@ public partial class MainWindow : Window
         AllDay.InvalidateVisual();
         Month.InvalidateVisual();
         Year.InvalidateVisual();
+
+        // The small calendar writes its month and day names when it is built: showing it as years and back makes it write them again.
+        var shown = MiniCalendar.DisplayDate;
+        MiniCalendar.DisplayMode = CalendarMode.Year;
+        MiniCalendar.DisplayMode = CalendarMode.Month;
+        MiniCalendar.DisplayDate = shown;
     }
 
     private void CloseDetails()

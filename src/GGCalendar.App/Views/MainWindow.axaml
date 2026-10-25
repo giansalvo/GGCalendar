@@ -101,7 +101,7 @@
                     </Button.Flyout>
                 </Button>
                 <Viewbox DockPanel.Dock="Top" Height="250" StretchDirection="DownOnly">
-                    <Calendar SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
+                    <Calendar Name="MiniCalendar" SelectedDate="{Binding SelectedDate, Mode=TwoWay}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}" Width="300" />
                 </Viewbox>
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
                     <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="{loc:T main.calendars_hint}" TextWrapping="Wrap" />
