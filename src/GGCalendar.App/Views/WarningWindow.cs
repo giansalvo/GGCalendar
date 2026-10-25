@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -15,7 +16,8 @@ public sealed class WarningWindow : Window
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        var ok = new Button { Content = "OK", Classes = { "accent" }, IsDefault = true, IsCancel = true };
+        var ok = new Button { Content = L.T("common.ok"), Classes = { "accent" }, IsDefault = true, IsCancel = true };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(ok, "Dialog.Ok");
         ok.Click += (_, _) => Close();
         Content = new StackPanel
         {

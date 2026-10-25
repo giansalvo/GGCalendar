@@ -59,20 +59,20 @@ public class LocalUiTests
 
     private static async Task<SettingsWindow> OpenSettingsAsync(MainWindow window)
     {
-        Click(FindButton(window, b => ToolTip.GetTip(b) as string == "Impostazioni"));
+        Click(FindButton(window, "Main.Settings"));
         return await WaitForAsync(() => window.OwnedWindows.OfType<SettingsWindow>().FirstOrDefault(), "la finestra delle impostazioni");
     }
 
-    private static void Check(Visual dialog, string text, bool value) =>
-        dialog.GetVisualDescendants().OfType<CheckBox>().First(c => c.Content as string == text).IsChecked = value;
+    private static void Check(Visual dialog, string automationId, bool value) =>
+        ((CheckBox)FindById(dialog, automationId)).IsChecked = value;
 
     /// <summary>Changes four options the way a user would: 24-hour clock, week numbers, start of the day and theme.</summary>
     private static void ChangeOptions(Visual dialog, bool use24Hour, bool weekNumbers, int dayStart, int theme)
     {
-        Check(dialog, "Orologio a 24 ore", use24Hour);
-        Check(dialog, "Mostra i numeri di settimana", weekNumbers);
-        dialog.GetVisualDescendants().OfType<ComboBox>().First(c => c.ItemsSource is IReadOnlyList<int>).SelectedItem = dayStart;
-        dialog.GetVisualDescendants().OfType<ComboBox>().First(c => c.Items.OfType<ComboBoxItem>().Any(i => i.Content as string == "Scuro")).SelectedIndex = theme;
+        Check(dialog, "Settings.Use24HourClock", use24Hour);
+        Check(dialog, "Settings.ShowWeekNumbers", weekNumbers);
+        ((ComboBox)FindById(dialog, "Settings.DayStartHour")).SelectedItem = dayStart;
+        ((ComboBox)FindById(dialog, "Settings.ThemeIndex")).SelectedIndex = theme;
         Dispatcher.UIThread.RunJobs();
     }
 
@@ -103,7 +103,7 @@ public class LocalUiTests
         // Changed and cancelled: nothing changes, not even the file.
         var dialog = await OpenSettingsAsync(window);
         ChangeOptions(dialog, !h24, !weeks, start + 1, newTheme);
-        Click(FindButton(dialog, "Annulla"));
+        Click(FindButton(dialog, "Settings.Cancel"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
         var vm = Vm(window);
         Assert.Equal((h24, weeks, start, theme), (vm.Settings.Use24HourClock, vm.Settings.ShowWeekNumbers, vm.Settings.DayStartHour, vm.Settings.Theme));
@@ -113,7 +113,7 @@ public class LocalUiTests
         // Changed and saved: it applies at once and survives closing and opening the app.
         dialog = await OpenSettingsAsync(window);
         ChangeOptions(dialog, !h24, !weeks, start + 1, newTheme);
-        Click(FindButton(dialog, "Salva"));
+        Click(FindButton(dialog, "Settings.Save"));
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
         vm = Vm(window);
         Assert.Equal((!h24, !weeks, start + 1, newTheme), (vm.Settings.Use24HourClock, vm.Settings.ShowWeekNumbers, vm.Settings.DayStartHour, vm.Settings.Theme));

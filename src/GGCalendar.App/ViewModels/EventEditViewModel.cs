@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -20,11 +21,11 @@ public sealed record ColorOption(string? Hex, string Label);
 
 public sealed partial class ReminderItemViewModel : ObservableObject
 {
-    public static IReadOnlyList<ReminderMethodOption> Methods { get; } =
-        [new(ReminderMethod.Popup, "Notifica"), new(ReminderMethod.Alarm, "Sveglia"), new(ReminderMethod.Email, "Email")];
+    public static IReadOnlyList<ReminderMethodOption> Methods =>
+        [new(ReminderMethod.Popup, L.T("method.popup")), new(ReminderMethod.Alarm, L.T("method.alarm")), new(ReminderMethod.Email, L.T("method.email"))];
 
-    public static IReadOnlyList<ReminderUnitOption> Units { get; } =
-        [new("minuti", 1), new("ore", 60), new("giorni", 1440), new("settimane", 10080)];
+    public static IReadOnlyList<ReminderUnitOption> Units =>
+        [new(L.T("unit.minutes"), 1), new(L.T("unit.hours"), 60), new(L.T("unit.days"), 1440), new(L.T("unit.weeks"), 10080)];
 
     public ReminderItemViewModel(EventReminder r, IReadOnlyList<SoundOption> sounds)
     {
@@ -114,7 +115,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     public bool IsNew { get; }
     public bool Use24Hour { get; }
     public string TimeZoneText { get; }
-    public string Header => IsNew ? "Nuovo evento" : "Modifica evento";
+    public string Header => IsNew ? L.T("edit.new_event") : L.T("edit.edit_event");
     public IReadOnlyList<CalendarItemViewModel> Calendars { get; }
 
     public ObservableCollection<ReminderItemViewModel> Reminders { get; } = [];
@@ -130,27 +131,27 @@ public sealed partial class EventEditViewModel : ViewModelBase
 
     public ObservableCollection<ChoiceOption<string?>> RecurrenceOptions { get; } =
     [
-        new(null, "Non si ripete"),
-        new("FREQ=DAILY", "Ogni giorno"),
-        new("FREQ=WEEKLY", "Ogni settimana"),
-        new("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Tutti i giorni feriali (lun-ven)"),
-        new("FREQ=MONTHLY", "Ogni mese"),
-        new("FREQ=YEARLY", "Ogni anno"),
-        new(CustomRecurrence, "Personalizza…"),
+        new(null, L.T("recurrence.none")),
+        new("FREQ=DAILY", L.T("recurrence.every_day")),
+        new("FREQ=WEEKLY", L.T("recurrence.every_week")),
+        new("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", L.T("recurrence.weekdays")),
+        new("FREQ=MONTHLY", L.T("recurrence.every_month")),
+        new("FREQ=YEARLY", L.T("recurrence.every_year")),
+        new(CustomRecurrence, L.T("recurrence.custom")),
     ];
 
     public IReadOnlyList<ChoiceOption<EventAvailability>> AvailabilityOptions { get; } =
-        [new(EventAvailability.Busy, "Occupato"), new(EventAvailability.Free, "Libero")];
+        [new(EventAvailability.Busy, L.T("availability.busy")), new(EventAvailability.Free, L.T("availability.free"))];
 
     public IReadOnlyList<ChoiceOption<EventVisibility>> VisibilityOptions { get; } =
-        [new(EventVisibility.Default, "Visibilità predefinita"), new(EventVisibility.Public, "Pubblico"), new(EventVisibility.Private, "Privato")];
+        [new(EventVisibility.Default, L.T("visibility.default")), new(EventVisibility.Public, L.T("visibility.public")), new(EventVisibility.Private, L.T("visibility.private"))];
 
     public IReadOnlyList<ColorOption> ColorOptions { get; } =
     [
-        new(null, "Colore del calendario"), new("#D50000", "Pomodoro"), new("#E67C73", "Fenicottero"),
-        new("#F4511E", "Mandarino"), new("#F6BF26", "Banana"), new("#33B679", "Salvia"), new("#0B8043", "Basilico"),
-        new("#039BE5", "Pavone"), new("#3F51B5", "Mirtillo"), new("#7986CB", "Lavanda"), new("#8E24AA", "Uva"),
-        new("#616161", "Grafite"),
+        new(null, L.T("color.calendar")), new("#D50000", L.T("color.tomato")), new("#E67C73", L.T("color.flamingo")),
+        new("#F4511E", L.T("color.tangerine")), new("#F6BF26", L.T("color.banana")), new("#33B679", L.T("color.sage")), new("#0B8043", L.T("color.basil")),
+        new("#039BE5", L.T("color.peacock")), new("#3F51B5", L.T("color.blueberry")), new("#7986CB", L.T("color.lavender")), new("#8E24AA", L.T("color.grape")),
+        new("#616161", L.T("color.graphite")),
     ];
 
     [ObservableProperty] public partial CalendarItemViewModel? SelectedCalendar { get; set; }
@@ -230,17 +231,17 @@ public sealed partial class EventEditViewModel : ViewModelBase
 
     private void BuildSoundOptions(IEnumerable<EventReminder> existing)
     {
-        SoundOptions.Add(new SoundOption("Suono predefinito", null));
-        SoundOptions.Add(new SoundOption("Nessun suono", EventReminder.NoSound));
+        SoundOptions.Add(new SoundOption(L.T("settings.default_sound"), null));
+        SoundOptions.Add(new SoundOption(L.T("sound.none"), EventReminder.NoSound));
         if (Directory.Exists(SoundService.MediaFolder))
         {
             foreach (var f in Directory.EnumerateFiles(SoundService.MediaFolder, "*.wav").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-                SoundOptions.Add(new SoundOption("Windows: " + Path.GetFileNameWithoutExtension(f), f));
+                SoundOptions.Add(new SoundOption(L.T("sound.windows", Path.GetFileNameWithoutExtension(f)), f));
         }
 
         foreach (var p in existing.Select(r => r.SoundPath).Where(p => p is not null && p != EventReminder.NoSound).Distinct())
         {
-            if (SoundOptions.All(s => s.Path != p)) SoundOptions.Add(new SoundOption("File: " + Path.GetFileName(p), p));
+            if (SoundOptions.All(s => s.Path != p)) SoundOptions.Add(new SoundOption(L.T("sound.file", Path.GetFileName(p)), p));
         }
     }
 
@@ -250,7 +251,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
         var option = SoundOptions.FirstOrDefault(s => s.Path == path);
         if (option is null)
         {
-            option = new SoundOption("File: " + Path.GetFileName(path), path);
+            option = new SoundOption(L.T("sound.file", Path.GetFileName(path)), path);
             SoundOptions.Add(option);
         }
 
@@ -292,7 +293,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
         Error = "";
         foreach (var raw in NewAttendee.Split([',', ';', ' ', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            if (!EmailPattern.IsMatch(raw)) { Error = $"Indirizzo email non valido: {raw}"; return; }
+            if (!EmailPattern.IsMatch(raw)) { Error = L.T("edit.error_email", raw); return; }
             if (!Attendees.Any(a => a.Email.Equals(raw, StringComparison.OrdinalIgnoreCase)))
                 Attendees.Add(new AttendeeViewModel(new EventAttendee(raw)));
         }
@@ -314,8 +315,8 @@ public sealed partial class EventEditViewModel : ViewModelBase
         Error = "";
         if (!string.IsNullOrWhiteSpace(NewAttendee)) AddAttendee();
         if (Error.Length > 0) return null;
-        if (SelectedCalendar is null) { Error = "Seleziona un calendario."; return null; }
-        if (StartDate is null || EndDate is null) { Error = "Inserisci le date."; return null; }
+        if (SelectedCalendar is null) { Error = L.T("edit.error_calendar"); return null; }
+        if (StartDate is null || EndDate is null) { Error = L.T("edit.error_dates"); return null; }
 
         DateTime start, end;
         if (IsAllDay)
@@ -325,12 +326,12 @@ public sealed partial class EventEditViewModel : ViewModelBase
         }
         else
         {
-            if (StartTime is null || EndTime is null) { Error = "Inserisci gli orari."; return null; }
+            if (StartTime is null || EndTime is null) { Error = L.T("edit.error_times"); return null; }
             start = StartDate.Value.Date + StartTime.Value;
             end = EndDate.Value.Date + EndTime.Value;
         }
 
-        if (end <= start) { Error = "La fine deve essere successiva all'inizio."; return null; }
+        if (end <= start) { Error = L.T("edit.error_end"); return null; }
 
         return _original with
         {

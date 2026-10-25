@@ -13,6 +13,7 @@ using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Reminders;
 using GGCalendar.Data;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -32,7 +33,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
-        Closed += (_, _) => { _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); };
+        L.Changed += OnLanguageChanged;
+        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -172,7 +174,7 @@ public partial class MainWindow : Window
         if (Vm is not { } vm || _google.AccountEmails.Count == 0) return;
         if (!await _syncLock.WaitAsync(0)) return;
         vm.IsSyncing = true;
-        vm.SyncStatus = "Sincronizzazione...";
+        vm.SetStatus("status.syncing");
         try
         {
             // With many changes waiting (an import into a Google calendar) the sending lasts long: say how far it is, and let the user stop it.
@@ -187,14 +189,13 @@ public partial class MainWindow : Window
                     Dispatcher.UIThread.Post(() =>
                     {
                         if (finished) return;
-                        if (!vm.SyncStatus.StartsWith("Interruzione", StringComparison.Ordinal)) vm.SyncStatus = $"Invio a Google: {done} di {total} eventi...";
+                        if (progress is null || !progress.StopRequested) vm.SetStatus("status.sending", done, total);
                         if (progress is null)
                         {
                             progress = new SyncProgressWindow(() => cts.Cancel(), async () =>
                             {
                                 var waiting = await Task.Run(vm.CountUnsentCreations);
-                                var sure = await new ConfirmWindow("Scartare gli eventi non inviati?",
-                                    $"{waiting} eventi non ancora inviati a Google saranno eliminati anche da questo PC. Quelli già inviati restano su Google.", "Scarta")
+                                var sure = await new ConfirmWindow(L.T("confirm.discard_title"), L.N("confirm.discard_text", waiting), L.T("confirm.discard_button"))
                                     .ShowDialog<bool>(progress!);
                                 if (!sure) return false;
                                 discard = true;
@@ -211,33 +212,33 @@ public partial class MainWindow : Window
             progress?.Close();
             _syncCts = null;
             if (result.Changed) await vm.ReloadAsync();
-            var conflicts = result.Conflicts.Count > 0 ? " Conflitti: " + string.Join(" | ", result.Conflicts) : "";
+            var conflicts = result.Conflicts.Count > 0 ? Msg.Of("status.conflicts", Msg.JoinWith(" | ", result.Conflicts)) : Msg.Literal("");
             var waiting = result.Pending > 0
-                ? $" {result.Pending} modifiche sono ancora da inviare a Google" + (result.RetryAt is { } at ? $": Google ha rallentato l'invio, riprovo alle {at.ToLocalTime():HH:mm}." : ".")
-                : "";
+                ? Msg.Join(Msg.Count("status.pending", result.Pending), result.RetryAt is { } at ? Msg.Of("status.pending_retry", at.ToLocalTime().DateTime) : Msg.Literal("."))
+                : Msg.Literal("");
             if (result.Cancelled)
             {
                 if (discard)
                 {
                     var thrownAway = await vm.DiscardUnsentCreationsAsync();
-                    vm.SyncStatus = $"Invio a Google interrotto: {thrownAway} eventi non ancora inviati sono stati scartati ed eliminati da questo PC.";
+                    vm.SetStatus(Msg.Count("status.send_stopped_discarded", thrownAway));
                 }
                 else
                 {
-                    vm.SyncStatus = $"Invio a Google interrotto: {result.Pending} modifiche restano in coda e saranno inviate alla prossima sincronizzazione.";
+                    vm.SetStatus(Msg.Count("status.send_stopped_queued", result.Pending));
                 }
 
                 return;
             }
 
-            vm.SyncStatus = result.Errors.Count > 0
-                ? "Errore di sincronizzazione: " + string.Join(" | ", result.Errors) + conflicts + waiting
-                : $"Sincronizzato alle {DateTime.Now:HH:mm}." + conflicts + waiting;
+            vm.SetStatus(Msg.Join(
+                result.Errors.Count > 0 ? Msg.Of("error.sync", Msg.JoinWith(" | ", result.Errors)) : Msg.Of("status.synced", DateTime.Now),
+                conflicts, waiting));
             if (result.RetryAt is { } retryAt) ScheduleRetry(retryAt);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or Microsoft.Data.Sqlite.SqliteException)
         {
-            vm.SyncStatus = "Errore di sincronizzazione: " + ex.Message;
+            vm.SetStatus("error.sync", ex.Message);
         }
         finally
         {
@@ -314,6 +315,16 @@ public partial class MainWindow : Window
         card.Focus();
     }
 
+    /// <summary>The language changed: what is drawn by hand shows the new names of months and days, and the card of an event is closed (it is made again when opened).</summary>
+    private void OnLanguageChanged()
+    {
+        CloseDetails();
+        Grid.InvalidateVisual();
+        AllDay.InvalidateVisual();
+        Month.InvalidateVisual();
+        Year.InvalidateVisual();
+    }
+
     private void CloseDetails()
     {
         DetailsPopup.IsOpen = false;
@@ -337,10 +348,10 @@ public partial class MainWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
-            Title = "Esporta evento",
-            SuggestedFileName = SafeFileName(string.IsNullOrWhiteSpace(ev.Title) ? "evento" : ev.Title) + ".ics",
+            Title = L.T("file.export_event_title"),
+            SuggestedFileName = SafeFileName(string.IsNullOrWhiteSpace(ev.Title) ? L.T("file.default_event_name") : ev.Title) + ".ics",
             DefaultExtension = "ics",
-            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics"] }],
         });
         if (file is null) return;
         try
@@ -352,7 +363,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            if (Vm is { } vm) vm.SyncStatus = "Errore di esportazione: " + ex.Message;
+            if (Vm is { } vm) vm.SetStatus("error.export", ex.Message);
         }
     }
 
@@ -380,7 +391,7 @@ public partial class MainWindow : Window
     {
         if (Vm is not { } vm) return;
         if (!vm.IsRecurring(ev)) { vm.MoveEvent(ev, start, end); return; }
-        var scope = await new SeriesScopeWindow("Sposta evento ricorrente").ShowDialog<SeriesScope?>(this);
+        var scope = await new SeriesScopeWindow(L.T("scope.move_title")).ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.MoveOccurrence(ev, start, end, s);
     }
 
@@ -406,11 +417,11 @@ public partial class MainWindow : Window
         if (master.CalendarId == target.Id) return;
         if (!string.IsNullOrEmpty(master.Recurrence) || master.SeriesMasterId is not null || master.Attendees.Count > 0)
         {
-            var message = $"L'evento verrà spostato nel calendario \"{target.Name}\".\n\n" +
-                (string.IsNullOrEmpty(master.Recurrence) ? "" : "• Verrà spostata l'intera serie.\n") +
-                (master.Attendees.Count > 0 ? "• Se il calendario è di un altro account, l'evento viene ricreato: gli invitati riceveranno un nuovo invito e le risposte già date si perdono.\n" : "") +
-                "• Un eventuale link Meet verrà rimosso.";
-            if (!await new ConfirmWindow("Spostare in un altro calendario?", message, "Sposta").ShowDialog<bool>(this)) return;
+            var message = L.T("move.text", target.Name) + "\n\n" +
+                (string.IsNullOrEmpty(master.Recurrence) ? "" : L.T("move.series") + "\n") +
+                (master.Attendees.Count > 0 ? L.T("move.guests") + "\n" : "") +
+                L.T("move.meet");
+            if (!await new ConfirmWindow(L.T("move.title"), message, L.T("move.button")).ShowDialog<bool>(this)) return;
         }
 
         vm.ChangeCalendar(ev, target.Id);
@@ -421,7 +432,7 @@ public partial class MainWindow : Window
         if (Vm is not { } vm) return;
         CloseDetails();
         if (!vm.IsRecurring(ev)) { vm.DeleteEvent(ev); return; }
-        var scope = await new SeriesScopeWindow("Elimina evento ricorrente").ShowDialog<SeriesScope?>(this);
+        var scope = await new SeriesScopeWindow(L.T("scope.delete_title")).ShowDialog<SeriesScope?>(this);
         if (scope is { } s) vm.DeleteOccurrence(ev, s);
     }
 
@@ -452,7 +463,7 @@ public partial class MainWindow : Window
         SeriesScope? scope = null;
         if (!isNew && vm.IsRecurring(ev))
         {
-            scope = await new SeriesScopeWindow("Modifica evento ricorrente").ShowDialog<SeriesScope?>(this);
+            scope = await new SeriesScopeWindow(L.T("scope.edit_title")).ShowDialog<SeriesScope?>(this);
             if (scope is null) return;
         }
 
@@ -477,15 +488,15 @@ public partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Importa file .ics",
+            Title = L.T("import.title"),
             AllowMultiple = false,
-            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics", "*.ical"] }],
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics", "*.ical"] }],
         });
         if (files.Count == 0) return null;
         await using var stream = await files[0].OpenReadAsync();
         var bytes = IcsSources.ReadLimited(stream);
         if (bytes is null)
-            await new WarningWindow("File troppo grande", $"Il file supera il limite di {IcsSources.MaxBytes / (1024 * 1024)} MB e non è stato importato.").ShowDialog(this);
+            await new WarningWindow(L.T("import.too_large_title"), L.T("import.too_large", IcsSources.MaxBytes / (1024 * 1024))).ShowDialog(this);
         return bytes;
     }
 
@@ -496,9 +507,9 @@ public partial class MainWindow : Window
     /// Runs slow work with the window disabled. A small progress window appears only if the work lasts more than a moment, so short
     /// operations show nothing.
     /// </summary>
-    private async Task<T> RunBusyAsync<T>(string message, Func<Task<T>> work)
+    private async Task<T> RunBusyAsync<T>(Msg message, Func<Task<T>> work)
     {
-        if (Vm is { } vm) vm.SyncStatus = message;
+        if (Vm is { } vm) vm.SetStatus(message);
         IsEnabled = false;
         BusyWindow? busy = null;
         try
@@ -506,7 +517,7 @@ public partial class MainWindow : Window
             var task = work();
             if (await Task.WhenAny(task, Task.Delay(300)) != task)
             {
-                busy = new BusyWindow(message);
+                busy = new BusyWindow(message.Text);
                 busy.Show(this);
             }
 
@@ -527,17 +538,17 @@ public partial class MainWindow : Window
     private async Task ImportIntoAsync(string calendarId, string calendarName, byte[] bytes)
     {
         if (Vm is not { } vm) return;
-        var parsed = await RunBusyAsync("Lettura del file .ics…", () => Task.Run(() => IcsParser.AnalyzeFile(bytes, calendarId)));
+        var parsed = await RunBusyAsync(Msg.Of("busy.reading"), () => Task.Run(() => IcsParser.AnalyzeFile(bytes, calendarId)));
         var total = parsed.Events.Count(e => e.SeriesMasterId is null);
         if (total == 0)
         {
-            vm.SyncStatus = parsed.Report.Fatal is not null && parsed.Warnings.Count > 0 ? parsed.Warnings[0] : "Nessun evento trovato nel file .ics.";
+            vm.SetStatus(parsed.Report.Fatal is not null && parsed.Messages.Count > 0 ? parsed.Messages[0] : Msg.Of("status.no_events"));
             return;
         }
 
         var existing = vm.FindExisting(calendarId, parsed.Events).Count;
         var notice = GoogleSyncService.IsGoogleCalendar(calendarId) && total > ManyEventsForGoogle
-            ? $"Il calendario è su Google: i {total} eventi verranno inviati subito, a gruppi, e servirà {SyncProgressWindow.FormatRemaining(SyncProgressWindow.EstimateRemaining(0, total, TimeSpan.Zero))} (potrai interromperli)."
+            ? L.T("import.google_notice", total, SyncProgressWindow.FormatRemaining(SyncProgressWindow.EstimateRemaining(0, total, TimeSpan.Zero)))
             : null;
         var mode = ImportDuplicates.Skip;
         if (existing > 0 || parsed.Warnings.Count > 0 || notice is not null)
@@ -546,10 +557,11 @@ public partial class MainWindow : Window
             mode = chosen;
         }
 
-        var (imported, skipped) = await RunBusyAsync($"Importazione di {total} eventi in corso…", () => vm.ImportEventsAsync(calendarId, parsed.Events, mode));
-        vm.SyncStatus = $"Importati {imported} eventi nel calendario \"{calendarName}\"" +
-            (skipped > 0 ? $", {skipped} già presenti saltati" : "") +
-            (parsed.Warnings.Count > 0 ? ". Avvisi: " + string.Join(" ", parsed.Warnings) : ".");
+        var (imported, skipped) = await RunBusyAsync(Msg.Count("busy.importing", total), () => vm.ImportEventsAsync(calendarId, parsed.Events, mode));
+        vm.SetStatus(Msg.Join(
+            Msg.Count("status.imported", imported, calendarName),
+            skipped > 0 ? Msg.Count("status.imported_skipped", skipped) : Msg.Literal(""),
+            parsed.Messages.Count > 0 ? Msg.Of("status.imported_warnings", Msg.JoinWith(" ", parsed.Messages)) : Msg.Literal(".")));
     }
 
     private async void OnImportIntoCalendar(object? sender, RoutedEventArgs e)
@@ -561,7 +573,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            if (Vm is { } vm) vm.SyncStatus = "Errore di importazione: " + ex.Message;
+            if (Vm is { } vm) vm.SetStatus("error.import", ex.Message);
         }
     }
 
@@ -574,18 +586,18 @@ public partial class MainWindow : Window
             var preview = IcsParser.AnalyzeFile(bytes, "preview");
             if (preview.Report.Fatal is not null)
             {
-                await new WarningWindow("Importa .ics", preview.Warnings.FirstOrDefault() ?? "Il file non si può importare.").ShowDialog(this);
+                await new WarningWindow(L.T("import.title"), preview.Warnings.FirstOrDefault() ?? L.T("import.cannot")).ShowDialog(this);
                 return;
             }
 
-            var proposed = preview.Report.CalendarName ?? "Importato";
-            var name = await new PromptWindow("Importa .ics", "Nome del nuovo calendario locale:", proposed).ShowDialog<string?>(this);
+            var proposed = preview.Report.CalendarName ?? L.T("import.default_name");
+            var name = await new PromptWindow(L.T("import.title"), L.T("calendar.name_prompt"), proposed).ShowDialog<string?>(this);
             if (name is null) return;
             await ImportIntoAsync(vm.CreateLocalCalendar(name), name, bytes);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            vm.SyncStatus = "Errore di importazione: " + ex.Message;
+            vm.SetStatus("error.import", ex.Message);
         }
     }
 
@@ -597,13 +609,13 @@ public partial class MainWindow : Window
     // TODO: create a new calendar in this account (on Google: issue #16).
     private void OnNewCalendarInAccount(object? sender, RoutedEventArgs e)
     {
-        if (Vm is { } vm) vm.SyncStatus = "Nuovo calendario in un account: funzione non ancora disponibile.";
+        if (Vm is { } vm) vm.SetStatus("status.new_calendar_unavailable");
     }
 
     private async void OnNewLocalCalendar(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm) return;
-        var name = await new PromptWindow("Nuovo calendario", "Nome del nuovo calendario locale:").ShowDialog<string?>(this);
+        var name = await new PromptWindow(L.T("calendar.new_title"), L.T("calendar.name_prompt")).ShowDialog<string?>(this);
         if (name is not null) vm.CreateLocalCalendar(name);
     }
 
@@ -615,10 +627,10 @@ public partial class MainWindow : Window
         if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
-            Title = "Esporta calendario",
+            Title = L.T("file.export_calendar_title"),
             SuggestedFileName = SafeFileName(cal.Name) + ".ics",
             DefaultExtension = "ics",
-            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("iCalendar") { Patterns = ["*.ics"] }],
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics"] }],
         });
         if (file is null) return;
         try
@@ -628,11 +640,11 @@ public partial class MainWindow : Window
             stream.SetLength(0);
             await using var writer = new System.IO.StreamWriter(stream, new System.Text.UTF8Encoding(false));
             await writer.WriteAsync(IcsWriter.Write(events));
-            vm.SyncStatus = $"Esportati {events.Count(x => x.SeriesMasterId is null)} eventi del calendario \"{cal.Name}\".";
+            vm.SetStatus(Msg.Count("status.exported", events.Count(x => x.SeriesMasterId is null), cal.Name));
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            vm.SyncStatus = "Errore di esportazione: " + ex.Message;
+            vm.SetStatus("error.export", ex.Message);
         }
     }
 
@@ -641,11 +653,11 @@ public partial class MainWindow : Window
         if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
         if (Services.GoogleSyncService.IsGoogleCalendar(cal.Id))
         {
-            vm.SyncStatus = "I calendari Google si rimuovono scollegando l'account dalle impostazioni.";
+            vm.SetStatus("status.google_calendars_hint");
             return;
         }
 
-        if (await new ConfirmWindow("Eliminare il calendario?", $"Il calendario \"{cal.Name}\" e tutti i suoi eventi verranno eliminati da questo PC. L'operazione non è annullabile.", "Elimina").ShowDialog<bool>(this))
+        if (await new ConfirmWindow(L.T("calendar.delete_title"), L.T("calendar.delete_text", cal.Name), L.T("calendar.delete_button")).ShowDialog<bool>(this))
             vm.DeleteLocalCalendar(cal.Id);
     }
 
@@ -674,6 +686,7 @@ public partial class MainWindow : Window
         result.DefaultView = vm.Settings.DefaultView;
         _store.Save(result);
         vm.Settings = result;
+        L.Apply(result.Language);
         ApplyTheme(result);
         ConfigureGoogle();
         ApplySyncInterval();

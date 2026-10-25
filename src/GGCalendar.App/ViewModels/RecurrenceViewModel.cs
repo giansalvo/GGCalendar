@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GGCalendar.Core.Recurrence;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -19,12 +20,12 @@ public sealed partial class WeekdayToggle(DayOfWeek day, string label, bool isCh
 /// <summary>State of the "Ricorrenza personalizzata" dialog.</summary>
 public sealed partial class RecurrenceViewModel : ViewModelBase
 {
-    public static IReadOnlyList<FrequencyOption> Frequencies { get; } =
+    public static IReadOnlyList<FrequencyOption> Frequencies =>
     [
-        new(RecurrenceFrequency.Daily, "giorno"),
-        new(RecurrenceFrequency.Weekly, "settimana"),
-        new(RecurrenceFrequency.Monthly, "mese"),
-        new(RecurrenceFrequency.Yearly, "anno"),
+        new(RecurrenceFrequency.Daily, L.T("recurrence.unit_day")),
+        new(RecurrenceFrequency.Weekly, L.T("recurrence.unit_week")),
+        new(RecurrenceFrequency.Monthly, L.T("recurrence.unit_month")),
+        new(RecurrenceFrequency.Yearly, L.T("recurrence.unit_year")),
     ];
 
     public RecurrenceViewModel(RecurrenceRule? rule, DateTime startDay)
@@ -33,9 +34,8 @@ public sealed partial class RecurrenceViewModel : ViewModelBase
         Interval = rule.Interval;
         Frequency = Frequencies.First(f => f.Frequency == rule.Frequency);
         var selected = rule.Days.Count > 0 ? rule.Days : [startDay.DayOfWeek];
-        string[] labels = ["L", "M", "M", "G", "V", "S", "D"];
         DayOfWeek[] days = [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday];
-        for (var i = 0; i < 7; i++) Days.Add(new WeekdayToggle(days[i], labels[i], selected.Contains(days[i])));
+        for (var i = 0; i < 7; i++) Days.Add(new WeekdayToggle(days[i], L.Culture.DateTimeFormat.GetAbbreviatedDayName(days[i])[..1].ToUpper(L.Culture), selected.Contains(days[i])));
 
         UntilDate = rule.Until ?? startDay.AddMonths(3);
         Count = rule.Count ?? 2;

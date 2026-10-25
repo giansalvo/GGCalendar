@@ -5,48 +5,58 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using GGCalendar.App.Localization;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
 /// <summary>
 /// Shown while many changes are sent to Google: how far it is, how long it will take, and two buttons to stop (one keeps what is not
 /// sent yet in the queue, the other throws it away). It does not block the main window (the sending can last long); closing it does not
-/// stop the sending, the buttons do.
+/// stop the sending, the buttons do. Its texts are shown again when the language changes.
 /// </summary>
 public sealed class SyncProgressWindow : Window
 {
     /// <summary>What is assumed before there is a measure: the speed of the batch requests on the test account (about 12 events a second), a little less to be safe.</summary>
     public const double DefaultEventsPerSecond = 10;
 
+    private enum Mode { Sending, Stopping, Discarding }
+
     private readonly TextBlock _text = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _estimate = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
     private readonly ProgressBar _bar = new() { Minimum = 0, Maximum = 1 };
-    private readonly Button _stop = new() { Content = "Interrompi" };
-    private readonly Button _discard = new() { Content = "Interrompi e scarta la coda" };
+    private readonly Button _stop = new() { Name = "SyncStopButton" };
+    private readonly Button _discard = new() { Name = "SyncDiscardButton" };
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private int? _firstDone;
     private TimeSpan _firstAt;
+    private Mode _mode = Mode.Sending;
+    private int _done;
+    private int _total = 1;
+    private TimeSpan _remaining;
 
     /// <param name="stop">Stop sending; what is not sent yet stays in the queue.</param>
     /// <param name="discard">Stop sending and throw away what is not sent yet. Asks for confirmation first: returns whether it went ahead.</param>
     public SyncProgressWindow(Action stop, Func<Task<bool>> discard)
     {
-        Title = "Invio a Google";
         Width = 460;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Avalonia.Automation.AutomationProperties.SetAutomationId(_stop, "Sync.Stop");
+        Avalonia.Automation.AutomationProperties.SetAutomationId(_discard, "Sync.Discard");
         _stop.Click += (_, _) =>
         {
-            Stopping("Interruzione dell'invio...");
+            Stopping(Mode.Stopping);
             stop();
         };
         _discard.Click += async (_, _) =>
         {
             if (!await discard()) return;
-            Stopping("Interruzione dell'invio e scarto della coda...");
+            Stopping(Mode.Discarding);
         };
+        var help = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.7 };
         Content = new StackPanel
         {
             Margin = new Thickness(24),
@@ -56,26 +66,45 @@ public sealed class SyncProgressWindow : Window
                 _text,
                 _bar,
                 _estimate,
-                new TextBlock
-                {
-                    Text = "\"Interrompi\" lascia in coda le modifiche non ancora inviate: partiranno alla prossima sincronizzazione. " +
-                           "\"Interrompi e scarta la coda\" elimina gli eventi non ancora inviati anche da questo PC.",
-                    TextWrapping = TextWrapping.Wrap,
-                    Opacity = 0.7,
-                },
+                help,
                 new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { _discard, _stop } },
             },
         };
-        Update(0, 1);
+        this.Live(w => w.Title = L.T("sync.title"));
+        help.Live(h => h.Text = L.T("sync.help"));
+        _text.Live(_ => Render());
+        Render();
     }
 
-    private void Stopping(string message)
+    private void Stopping(Mode mode)
     {
+        _mode = mode;
         _stop.IsEnabled = false;
         _discard.IsEnabled = false;
-        _stop.Content = "Interruzione...";
-        _text.Text = message;
-        _estimate.Text = "";
+        Render();
+    }
+
+    /// <summary>Sets the texts of the window for what it is doing now, in the language shown now.</summary>
+    private void Render()
+    {
+        _discard.Content = L.T("sync.discard_button");
+        _stop.Content = L.T(_mode == Mode.Sending ? "sync.stop_button" : "sync.stopping_button");
+        switch (_mode)
+        {
+            case Mode.Stopping:
+                _text.Text = L.T("sync.stopping");
+                _estimate.Text = "";
+                break;
+            case Mode.Discarding:
+                _text.Text = L.T("sync.stopping_discard");
+                _estimate.Text = "";
+                break;
+            default:
+                _bar.Value = _total <= 0 ? 0 : (double)_done / _total;
+                _text.Text = L.T("sync.progress", _done, _total);
+                _estimate.Text = L.T("sync.estimate", FormatRemaining(_remaining));
+                break;
+        }
     }
 
     public bool StopRequested => !_stop.IsEnabled;
@@ -83,12 +112,13 @@ public sealed class SyncProgressWindow : Window
     public void Update(int done, int total)
     {
         if (StopRequested) return;
-        _bar.Value = total <= 0 ? 0 : (double)done / total;
-        _text.Text = $"Invio a Google: {done} di {total} eventi.";
+        _done = done;
+        _total = total;
         _firstDone ??= done;
         _firstAt = _firstAt == default && done == _firstDone ? _clock.Elapsed : _firstAt;
         var measured = _clock.Elapsed - _firstAt;
-        _estimate.Text = "Tempo stimato per inviare tutti gli eventi: " + FormatRemaining(EstimateRemaining(done - _firstDone.Value, total - done, measured));
+        _remaining = EstimateRemaining(done - _firstDone.Value, total - done, measured);
+        Render();
     }
 
     /// <summary>
@@ -103,9 +133,9 @@ public sealed class SyncProgressWindow : Window
 
     public static string FormatRemaining(TimeSpan time)
     {
-        if (time < TimeSpan.FromSeconds(60)) return "meno di un minuto";
+        if (time < TimeSpan.FromSeconds(60)) return L.T("time.less_than_a_minute");
         var minutes = (int)Math.Round(time.TotalMinutes);
-        if (minutes < 60) return $"circa {minutes} minuti";
-        return minutes % 60 == 0 ? $"circa {minutes / 60} h" : $"circa {minutes / 60} h {minutes % 60} min";
+        if (minutes < 60) return L.T("time.about_minutes", minutes);
+        return minutes % 60 == 0 ? L.T("time.about_hours", minutes / 60) : L.T("time.about_hours_minutes", minutes / 60, minutes % 60);
     }
 }

@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -22,14 +23,7 @@ public partial class SettingsWindow : Window
     private async void OnResyncAll(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SettingsViewModel vm) return;
-        const string message =
-            "GGCalendar scaricherà di nuovo tutti gli eventi di tutti i calendari Google collegati.\n\n" +
-            "• Può richiedere del tempo (anche minuti con molti eventi) e usa la connessione internet.\n" +
-            "• Gli eventi locali verranno riallineati a Google: le modifiche già inviate ma modificate altrove vengono sovrascritte con la versione di Google.\n" +
-            "• Gli eventi che non esistono più su Google verranno rimossi da GGCalendar.\n" +
-            "• Le modifiche locali non ancora inviate vengono inviate prima e non vanno perse; se sei offline restano in coda.\n" +
-            "• La risincronizzazione parte alla chiusura delle impostazioni.";
-        var ok = await new ConfirmWindow("Risincronizzare tutto?", message, "Risincronizza").ShowDialog<bool>(this);
+        var ok = await new ConfirmWindow(L.T("settings.resync_title"), L.T("settings.resync_confirm"), L.T("settings.resync_button")).ShowDialog<bool>(this);
         if (ok) vm.ResyncAll();
     }
 
@@ -38,9 +32,9 @@ public partial class SettingsWindow : Window
         if (DataContext is not SettingsViewModel vm) return;
         var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Scegli un suono di notifica",
+            Title = L.T("common.choose_sound_title"),
             AllowMultiple = false,
-            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("File audio") { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("common.audio_files")) { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {

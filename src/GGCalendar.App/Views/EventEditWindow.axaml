@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
         x:Class="GGCalendar.App.Views.EventEditWindow"
@@ -47,15 +47,15 @@
     <DockPanel Margin="24,16,24,16">
         <!-- Header: title, save, cancel, delete, export -->
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,0,0,12">
-            <TextBox Name="TitleBox" Text="{Binding Title}" PlaceholderText="Aggiungi titolo" FontSize="22" Margin="0,0,16,0" />
-            <Button Grid.Column="1" Content="Salva" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnSave"
-                    ToolTip.Tip="Salva le modifiche" />
-            <Button Grid.Column="2" Content="Annulla" CornerRadius="18" Padding="22,8" Margin="8,0,8,0" IsCancel="True" Click="OnCancel"
-                    ToolTip.Tip="Chiudi senza salvare le modifiche" />
-            <Button Grid.Column="3" Classes="iconbtn" Click="OnDelete" IsVisible="{Binding !IsNew}" ToolTip.Tip="Elimina evento">
+            <TextBox Name="TitleBox" Text="{Binding Title}" PlaceholderText="{loc:T edit.add_title}" FontSize="22" Margin="0,0,16,0" />
+            <Button AutomationProperties.AutomationId="Edit.Save" Grid.Column="1" Content="{loc:T common.save}" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnSave"
+                    ToolTip.Tip="{loc:T edit.save_tip}" />
+            <Button AutomationProperties.AutomationId="Edit.Cancel" Grid.Column="2" Content="{loc:T common.cancel}" CornerRadius="18" Padding="22,8" Margin="8,0,8,0" IsCancel="True" Click="OnCancel"
+                    ToolTip.Tip="{loc:T edit.cancel_tip}" />
+            <Button AutomationProperties.AutomationId="Edit.Delete" Grid.Column="3" Classes="iconbtn" Click="OnDelete" IsVisible="{Binding !IsNew}" ToolTip.Tip="{loc:T edit.delete_event}">
                 <TextBlock Text="&#xE74D;" />
             </Button>
-            <Button Grid.Column="4" Classes="iconbtn" Click="OnExport" ToolTip.Tip="Esporta come file .ics">
+            <Button AutomationProperties.AutomationId="Edit.Export" Grid.Column="4" Classes="iconbtn" Click="OnExport" ToolTip.Tip="{loc:T edit.export_ics}">
                 <TextBlock Text="&#xE896;" />
             </Button>
         </Grid>
@@ -75,7 +75,7 @@
                 <CalendarDatePicker SelectedDate="{Binding EndDate}" FirstDayOfWeek="Monday" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="16">
-                <CheckBox Content="Tutto il giorno" IsChecked="{Binding IsAllDay}" />
+                <CheckBox Content="{loc:T edit.all_day}" IsChecked="{Binding IsAllDay}" />
                 <ComboBox ItemsSource="{Binding RecurrenceOptions}" SelectedItem="{Binding Recurrence}" MinWidth="240" DisplayMemberBinding="{ReflectionBinding Label}" />
                 <TextBlock Text="{Binding TimeZoneText}" Classes="hint" VerticalAlignment="Center" />
             </StackPanel>
@@ -88,16 +88,16 @@
                     <!-- Meet -->
                     <StackPanel Orientation="Horizontal" Spacing="0">
                         <TextBlock Classes="icon" Text="📹" />
-                        <CheckBox IsChecked="{Binding AddMeet}" Content="Aggiungi videoconferenza di Google Meet" />
+                        <CheckBox IsChecked="{Binding AddMeet}" Content="{loc:T edit.add_meet}" />
                     </StackPanel>
                     <StackPanel Margin="28,-8,0,0" IsVisible="{Binding AddMeet}" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasMeetLink}">
                             <HyperlinkButton Content="{Binding MeetLink}" Click="OnOpenMeet" Padding="0" VerticalAlignment="Center"
-                                             ToolTip.Tip="Partecipa alla riunione nel browser" />
-                            <Button Content="Copia" Click="OnCopyMeet" />
+                                             ToolTip.Tip="{loc:T edit.join_meet}" />
+                            <Button Content="{loc:T common.copy}" Click="OnCopyMeet" />
                         </StackPanel>
                         <TextBlock Classes="hint" IsVisible="{Binding !HasMeetLink}"
-                                   Text="Il link Meet viene generato da Google quando l'evento è salvato in un calendario Google." />
+                                   Text="{loc:T edit.meet_note}" />
                     </StackPanel>
 
                     <!-- Location -->
@@ -105,7 +105,7 @@
                          so long hints never wrap and fixed-width boxes get cut off in a narrow window. -->
                     <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="📍" />
-                        <TextBox Grid.Column="1" Text="{Binding Location}" PlaceholderText="Aggiungi posizione" MaxWidth="480" HorizontalAlignment="Stretch" />
+                        <TextBox Grid.Column="1" Text="{Binding Location}" PlaceholderText="{loc:T edit.add_location}" MaxWidth="480" HorizontalAlignment="Stretch" />
                     </Grid>
 
                     <!-- Reminders -->
@@ -133,17 +133,17 @@
                                                         <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
                                                     </ComboBox.ItemTemplate>
                                                 </ComboBox>
-                                                <Button Content="▶" Click="OnPreviewSound" ToolTip.Tip="Ascolta" />
-                                                <Button Content="📂" Click="OnBrowseSound" ToolTip.Tip="Scegli un file audio (mp3, wav…)" />
+                                                <Button Content="▶" Click="OnPreviewSound" ToolTip.Tip="{loc:T common.listen}" />
+                                                <Button Content="📂" Click="OnBrowseSound" ToolTip.Tip="{loc:T common.choose_audio}" />
                                             </StackPanel>
-                                            <Button Content="✕" Background="Transparent" Click="OnRemoveReminder" ToolTip.Tip="Rimuovi" />
+                                            <Button Content="✕" Background="Transparent" Click="OnRemoveReminder" ToolTip.Tip="{loc:T common.remove}" />
                                         </WrapPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Content="Aggiungi notifica" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
+                            <Button Content="{loc:T edit.add_notification}" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
                             <TextBlock Classes="hint" MaxWidth="640" HorizontalAlignment="Left"
-                                       Text="Le notifiche email sono inviate da Google Calendar; notifiche e sveglie vengono mostrate in basso a destra da GGCalendar mentre è in esecuzione. La sveglia suona finché non viene spenta, al massimo per 2 minuti, e si sincronizza con Google: la ritrovi anche su GGCalendar Mobile." />
+                                       Text="{loc:T edit.notifications_note}" />
                         </StackPanel>
                     </Grid>
 
@@ -183,7 +183,7 @@
                     <!-- Description -->
                     <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="≡" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <TextBox Grid.Column="1" Text="{Binding Description}" PlaceholderText="Aggiungi descrizione" AcceptsReturn="True" TextWrapping="Wrap"
+                        <TextBox Grid.Column="1" Text="{Binding Description}" PlaceholderText="{loc:T edit.add_description}" AcceptsReturn="True" TextWrapping="Wrap"
                                  MaxWidth="640" HorizontalAlignment="Stretch" MinHeight="150" />
                     </Grid>
                 </StackPanel>
@@ -194,9 +194,9 @@
             <!-- Guests -->
             <ScrollViewer Grid.Column="2">
                 <StackPanel Spacing="12">
-                    <TextBlock Classes="section" Text="Invitati" FontSize="15" />
+                    <TextBlock Classes="section" Text="{loc:T edit.guests}" FontSize="15" />
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Text="{Binding NewAttendee}" PlaceholderText="Aggiungi invitati (email)" KeyDown="OnAttendeeKeyDown" />
+                        <TextBox Text="{Binding NewAttendee}" PlaceholderText="{loc:T edit.add_guests}" KeyDown="OnAttendeeKeyDown" />
                         <Button Grid.Column="1" Content="＋" Margin="6,0,0,0" Command="{Binding AddAttendeeCommand}" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Attendees}">
@@ -204,7 +204,7 @@
                             <DataTemplate x:DataType="vm:AttendeeViewModel">
                                 <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
                                     <TextBlock Text="{Binding Email}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <CheckBox Grid.Column="1" Content="Facoltativo" IsChecked="{Binding IsOptional}" FontSize="12" />
+                                    <CheckBox Grid.Column="1" Content="{loc:T edit.optional}" IsChecked="{Binding IsOptional}" FontSize="12" />
                                     <Button Grid.Column="2" Content="✕" Background="Transparent" Click="OnRemoveAttendee" />
                                 </Grid>
                             </DataTemplate>
@@ -212,14 +212,14 @@
                     </ItemsControl>
 
                     <StackPanel Spacing="4" IsVisible="{Binding HasAttendees}">
-                        <CheckBox Content="Invia email di invito al salvataggio" IsChecked="{Binding SendInvites}" />
-                        <TextBlock Classes="hint" Text="Gli inviti vengono spediti da Google Calendar quando l'evento è in un calendario Google." />
+                        <CheckBox Content="{loc:T edit.send_invites}" IsChecked="{Binding SendInvites}" />
+                        <TextBlock Classes="hint" Text="{loc:T edit.invites_note}" />
                     </StackPanel>
 
-                    <TextBlock Classes="section" Text="Autorizzazioni per gli invitati" Margin="0,10,0,0" />
-                    <CheckBox Content="Modificare l'evento" IsChecked="{Binding GuestsCanModify}" />
-                    <CheckBox Content="Invitare altre persone" IsChecked="{Binding GuestsCanInvite}" />
-                    <CheckBox Content="Vedere l'elenco invitati" IsChecked="{Binding GuestsCanSeeList}" />
+                    <TextBlock Classes="section" Text="{loc:T edit.guest_permissions}" Margin="0,10,0,0" />
+                    <CheckBox Content="{loc:T guests.modify}" IsChecked="{Binding GuestsCanModify}" />
+                    <CheckBox Content="{loc:T guests.invite}" IsChecked="{Binding GuestsCanInvite}" />
+                    <CheckBox Content="{loc:T guests.see_list}" IsChecked="{Binding GuestsCanSeeList}" />
                 </StackPanel>
             </ScrollViewer>
         </Grid>

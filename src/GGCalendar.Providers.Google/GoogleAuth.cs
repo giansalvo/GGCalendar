@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.Providers.Google;
 
@@ -63,19 +64,19 @@ public static class GoogleAuth
             code = query["state"] == state ? query["code"] : null;
             var error = query["error"];
             var html = code is not null
-                ? "<html><body style='font-family:Segoe UI;text-align:center;margin-top:80px'><h2>Account collegato</h2><p>Puoi chiudere questa scheda e tornare a GGCalendar.</p></body></html>"
-                : $"<html><body style='font-family:Segoe UI;text-align:center;margin-top:80px'><h2>Accesso non riuscito</h2><p>{WebUtility.HtmlEncode(error ?? "risposta non valida")}</p></body></html>";
+                ? "<html><body style='font-family:Segoe UI;text-align:center;margin-top:80px'><h2>" + L.T("auth.page_ok_title") + "</h2><p>" + L.T("auth.page_ok_text") + "</p></body></html>"
+                : $"<html><body style='font-family:Segoe UI;text-align:center;margin-top:80px'><h2>{L.T("auth.page_error_title")}</h2><p>{WebUtility.HtmlEncode(error ?? L.T("auth.invalid_answer"))}</p></body></html>";
             var bytes = Encoding.UTF8.GetBytes(html);
             ctx.Response.ContentType = "text/html; charset=utf-8";
             ctx.Response.ContentLength64 = bytes.Length;
             await ctx.Response.OutputStream.WriteAsync(bytes, ct);
             ctx.Response.Close();
-            if (code is null) throw new GoogleAuthException("Accesso rifiutato o annullato" + (error is null ? "." : $" ({error})."));
+            if (code is null) throw new GoogleAuthException(error is null ? L.T("auth.refused") : L.T("auth.refused_with", error));
         }
         catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException)
         {
             ct.ThrowIfCancellationRequested();
-            throw new GoogleAuthException("Accesso interrotto.");
+            throw new GoogleAuthException(L.T("auth.interrupted"));
         }
 
         var tokens = await PostTokenAsync(http, new Dictionary<string, string>
@@ -119,7 +120,7 @@ public static class GoogleAuth
         using var response = await http.PostAsync(TokenEndpoint, new FormUrlEncodedContent(form), ct);
         var body = await response.Content.ReadFromJsonAsync<TokenResponse>(ct);
         if (!response.IsSuccessStatusCode || body?.AccessToken is null)
-            throw new GoogleAuthException($"Google ha rifiutato le credenziali: {body?.ErrorDescription ?? body?.Error ?? response.ReasonPhrase}");
+            throw new GoogleAuthException(L.T("auth.credentials_refused", body?.ErrorDescription ?? body?.Error ?? response.ReasonPhrase));
         return new GoogleTokens(body.AccessToken, body.RefreshToken, DateTimeOffset.UtcNow.AddSeconds(body.ExpiresIn - 60));
     }
 

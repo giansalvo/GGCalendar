@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Controls;
 
@@ -145,8 +146,8 @@ public sealed class AllDayStrip : Control
             context.DrawRectangle(new SolidColorBrush(Color.Parse(hex)), null, rect, 5, 5);
             using (context.PushClip(rect.Deflate(new Thickness(6, 0))))
             {
-                var text = new FormattedText(string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title,
-                    CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                var text = new FormattedText(string.IsNullOrEmpty(ev.Title) ? L.T("common.untitled") : ev.Title,
+                    L.Culture, FlowDirection.LeftToRight,
                     new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
                 context.DrawText(text, new Point(rect.X + 6, rect.Y + (RowHeight - text.Height) / 2));
             }

@@ -1,11 +1,16 @@
 using GGCalendar.Core.Models;
 
+using GGCalendar.Core.Localization;
+
 namespace GGCalendar.Core.Ics;
 
 public sealed record IcsImport(IReadOnlyList<CalendarEvent> Events, IReadOnlyList<string> Warnings)
 {
     /// <summary>What was found besides the events: issues with codes and counts.</summary>
     public IcsReport Report { get; init; } = IcsReport.Empty;
+
+    /// <summary>The warnings as messages (key and numbers), to show them again in another language.</summary>
+    public IReadOnlyList<Msg> Messages => IcsMessages.Messages(Report);
 }
 
 /// <summary>Reads the VEVENTs of an RFC 5545 .ics file. Times are converted to the local time zone of the PC.</summary>

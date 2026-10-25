@@ -1,67 +1,56 @@
+using GGCalendar.Core.Localization;
+
 namespace GGCalendar.Core.Ics;
 
 /// <summary>The sentences the user reads after an import: one for each kind of thing the file had that the app could not take as it was.</summary>
 public static class IcsMessages
 {
-    public static IReadOnlyList<string> Describe(IcsReport report)
-    {
-        var messages = new List<string>();
-        if (report.Fatal == IcsIssueCode.NotACalendar) return ["Il file non è un calendario .ics: non ha nessun evento da importare."];
-        if (report.Fatal == IcsIssueCode.TooLarge) return ["Il file supera il limite di 10 MB e non è stato letto."];
+    /// <summary>The sentences as text, in the language shown now.</summary>
+    public static IReadOnlyList<string> Describe(IcsReport report) => Messages(report).Select(m => m.Text).ToList();
 
-        if (string.Equals(report.Method, "CANCEL", StringComparison.Ordinal))
-            messages.Add("Il file annulla degli eventi (METHOD:CANCEL): nessun evento è stato importato.");
-        if (report.CancelledEvents > 0) messages.Add($"{report.CancelledEvents} eventi annullati nel file non sono stati importati.");
-        if (report.CancelledOccurrences > 0) messages.Add($"{report.CancelledOccurrences} occorrenze annullate di una serie sono state escluse dalla serie.");
-        if (report.OrphanOccurrences > 0)
-            messages.Add($"{report.OrphanOccurrences} modifiche di una serie che non è nel file sono state importate come eventi singoli.");
+    /// <summary>The sentences as messages (key and numbers): they can be shown again when the language changes.</summary>
+    public static IReadOnlyList<Msg> Messages(IcsReport report)
+    {
+        var messages = new List<Msg>();
+        if (report.Fatal == IcsIssueCode.NotACalendar) return [Msg.Of("ics.not_a_calendar")];
+        if (report.Fatal == IcsIssueCode.TooLarge) return [Msg.Of("ics.too_large", IcsSources.MaxBytes / (1024 * 1024))];
+
+        if (string.Equals(report.Method, "CANCEL", StringComparison.Ordinal)) messages.Add(Msg.Of("ics.method_cancel"));
+        if (report.CancelledEvents > 0) messages.Add(Msg.Count("ics.cancelled_events", report.CancelledEvents));
+        if (report.CancelledOccurrences > 0) messages.Add(Msg.Count("ics.cancelled_occurrences", report.CancelledOccurrences));
+        if (report.OrphanOccurrences > 0) messages.Add(Msg.Count("ics.orphan_occurrences", report.OrphanOccurrences));
         if (report.IgnoredComponents.Count > 0)
-            messages.Add("Parti del file che non sono eventi e sono state ignorate: " + string.Join(", ", report.IgnoredComponents.Select(kv => $"{Name(kv.Key)} ({kv.Value})")) + ".");
+            messages.Add(Msg.Of("ics.ignored_components", Msg.Join(Separated(report.IgnoredComponents.Select(kv => Msg.Join(Component(kv.Key), Msg.Literal($" ({kv.Value})")))))));
 
         foreach (var issue in report.Issues)
         {
-            if (Describe(issue) is { } text) messages.Add(text);
+            if (Describe(issue) is { } message) messages.Add(message);
         }
 
         return messages;
     }
 
-    private static string Name(string component) => component switch
-    {
-        "VTODO" => "attività",
-        "VJOURNAL" => "note di diario",
-        "VFREEBUSY" => "disponibilità",
-        _ => component,
-    };
+    private static Msg[] Separated(IEnumerable<Msg> items) =>
+        items.SelectMany((m, i) => i == 0 ? new[] { m } : new[] { Msg.Literal(", "), m }).ToArray();
 
-    private static string? Describe(IcsIssue issue)
+    private static Msg Component(string component) => component is "VTODO" or "VJOURNAL" or "VFREEBUSY"
+        ? Msg.Of("ics.component." + component)
+        : Msg.Literal(component);
+
+    private static Msg? Describe(IcsIssue issue)
     {
         var n = issue.Count;
+        var key = "ics.issue." + issue.Code;
         return issue.Code switch
         {
-            IcsIssueCode.Truncated => "Il file è incompleto (termina prima della fine del calendario): sono stati letti gli eventi completi.",
-            IcsIssueCode.MalformedLine => $"{n} righe del file non sono valide e sono state saltate.",
-            IcsIssueCode.LineTooLong => $"{n} righe troppo lunghe (oltre 64 KB) sono state saltate.",
-            IcsIssueCode.TooManyComponents => "Il file ha troppi elementi (oltre 100000): la lettura si è fermata.",
-            IcsIssueCode.TooDeep => $"{n} blocchi annidati troppo in profondità sono stati saltati.",
-            IcsIssueCode.MismatchedEnd => "Alcuni blocchi del file non sono chiusi correttamente.",
-            IcsIssueCode.MissingStart => $"{n} eventi senza data di inizio sono stati saltati.",
-            IcsIssueCode.InvalidDate => $"{n} date non valide: gli eventi corrispondenti sono stati saltati o le date ignorate.",
-            IcsIssueCode.EndBeforeStart => $"{n} eventi finivano prima di iniziare: la fine è stata corretta.",
-            IcsIssueCode.UnknownTimeZone => $"Fuso orario sconosciuto ({issue.Sample}): gli orari corrispondenti sono letti con l'ora di questo PC.",
-            IcsIssueCode.InvalidRule => $"{n} eventi con una ripetizione non supportata: l'evento è importato senza ripetizione.",
-            IcsIssueCode.RdateIgnored => $"{n} eventi con date aggiuntive (RDATE): le date aggiuntive vengono ignorate.",
-            IcsIssueCode.ThisAndFuture => $"{n} modifiche \"questa e le successive\" sono importate come modifica della sola occorrenza.",
-            IcsIssueCode.AbsoluteAlarm => $"{n} promemoria a data fissa non sono stati importati.",
-            IcsIssueCode.InvalidAlarm => $"{n} promemoria non validi non sono stati importati.",
-            IcsIssueCode.AlarmAfterStart => $"{n} promemoria dopo l'inizio dell'evento non sono stati importati.",
-            IcsIssueCode.AlarmTooEarly => $"{n} promemoria con più di 28 giorni di anticipo non sono stati importati.",
-            IcsIssueCode.TooManyAlarms => $"{n} promemoria oltre il quinto non sono stati importati.",
-            IcsIssueCode.FieldTruncated => $"{n} testi troppo lunghi sono stati accorciati.",
-            IcsIssueCode.MissingUid => $"{n} eventi senza identificativo (UID): ne è stato assegnato uno.",
-            IcsIssueCode.DuplicateUid => $"{n} eventi ripetuti con lo stesso identificativo: è stato letto uno solo.",
-            IcsIssueCode.AttachIgnored => "Alcuni eventi hanno allegati: gli allegati vengono ignorati.",
-            IcsIssueCode.CategoriesIgnored => "Alcuni eventi hanno categorie: le categorie vengono ignorate.",
+            IcsIssueCode.Truncated or IcsIssueCode.TooManyComponents or IcsIssueCode.MismatchedEnd
+                or IcsIssueCode.AttachIgnored or IcsIssueCode.CategoriesIgnored => Msg.Of(key),
+            IcsIssueCode.UnknownTimeZone => Msg.Of(key, n, issue.Sample),
+            IcsIssueCode.MalformedLine or IcsIssueCode.LineTooLong or IcsIssueCode.TooDeep or IcsIssueCode.MissingStart
+                or IcsIssueCode.InvalidDate or IcsIssueCode.EndBeforeStart or IcsIssueCode.InvalidRule or IcsIssueCode.RdateIgnored
+                or IcsIssueCode.ThisAndFuture or IcsIssueCode.AbsoluteAlarm or IcsIssueCode.InvalidAlarm or IcsIssueCode.AlarmAfterStart
+                or IcsIssueCode.AlarmTooEarly or IcsIssueCode.TooManyAlarms or IcsIssueCode.FieldTruncated or IcsIssueCode.MissingUid
+                or IcsIssueCode.DuplicateUid => Msg.Count(key, n),
             _ => null,
         };
     }

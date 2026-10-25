@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Data;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.ViewModels;
 
@@ -17,7 +18,10 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public string Id { get; } = info.Id;
     /// <summary>The account's own calendar (on Google its id is the account email): shown first, as "Il mio calendario" like the Android app.</summary>
     public bool IsPrimary { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase);
-    public string Name { get; } = info.Id.EndsWith("|" + info.AccountName, StringComparison.OrdinalIgnoreCase) ? "Il mio calendario" : info.Name;
+    public string Name => IsPrimary ? L.T("main.my_calendar") : info.Name;
+
+    /// <summary>The language changed: the name of the account's own calendar is shown again.</summary>
+    public void LanguageChanged() => OnPropertyChanged(nameof(Name));
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
 
@@ -43,7 +47,10 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     /// <summary>First letter of the account, drawn in the round avatar.</summary>
     public string Initial => AccountName.Length > 0 ? char.ToUpperInvariant(AccountName[0]).ToString() : "?";
 
-    public string Kind => Calendars.Any(c => !c.IsLocal) ? "Google" : "Su questo PC";
+    public string Kind => Calendars.Any(c => !c.IsLocal) ? L.T("main.kind_google") : L.T("main.kind_local");
+
+    /// <summary>The language changed: the kind of account is shown again.</summary>
+    public void LanguageChanged() => OnPropertyChanged(nameof(Kind));
 
     /// <summary>False when the user folded the calendars of this account away (the arrow beside its name).</summary>
     [ObservableProperty]
@@ -66,7 +73,7 @@ public enum ImportDuplicates { Skip, Replace, Copy }
 
 public sealed partial class MainViewModel : ViewModelBase
 {
-    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("it-IT");
+    private static CultureInfo Culture => L.Culture;
     private readonly List<CalendarEvent> _allEvents;
     private readonly List<CalendarItemViewModel> _calendars = [];
 
@@ -79,6 +86,17 @@ public sealed partial class MainViewModel : ViewModelBase
         Settings = new AppSettings();
         Reload();
         SelectedDate = DateTime.Today;
+        L.Changed += OnLanguageChanged;
+    }
+
+    /// <summary>Shows again, in the new language, everything the view model composes: titles, day names, names of calendars, the status message.</summary>
+    private void OnLanguageChanged()
+    {
+        foreach (var calendar in _calendars) calendar.LanguageChanged();
+        foreach (var account in Accounts) account.LanguageChanged();
+        OnPropertyChanged(nameof(ViewModeName));
+        OnPropertyChanged(nameof(SyncStatus));
+        Refresh();
     }
 
     // Bumped by every local change, so a background reload can tell that what it read is already stale.
@@ -165,9 +183,9 @@ public sealed partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsTimeGrid), nameof(IsMonth), nameof(IsYear), nameof(IsAgenda), nameof(ViewModeName))]
     public partial int ViewModeIndex { get; set; } = 1;
 
-    public static IReadOnlyList<string> ViewModeNames { get; } = ["Giorno", "Settimana", "Mese", "Anno", "Programma", "6 giorni"];
+    private static readonly string[] ViewModeKeys = ["main.view_day", "main.view_week", "main.view_month", "main.view_year", "main.view_agenda", "main.view_6days"];
 
-    public string ViewModeName => ViewModeNames[ViewModeIndex];
+    public string ViewModeName => L.T(ViewModeKeys[ViewModeIndex]);
     public bool IsTimeGrid => ViewModeIndex is 0 or 1 or 5;
     public bool IsMonth => ViewModeIndex == 2;
     public bool IsYear => ViewModeIndex == 3;
@@ -250,13 +268,24 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Raised after a local change was queued for Google, so the host can sync soon.</summary>
     public event Action? ChangeQueued;
 
-    [ObservableProperty]
-    public partial string SyncStatus { get; set; } = "";
+    /// <summary>The message in the status bar, kept as key and arguments so that it can be shown again in another language (and checked by tests).</summary>
+    public Msg? Status { get; private set; }
 
-    [ObservableProperty]
-    public partial bool SyncIsError { get; set; }
+    /// <summary>The status message as text in the language shown now.</summary>
+    public string SyncStatus => Status?.Text ?? "";
 
-    partial void OnSyncStatusChanged(string value) => SyncIsError = value.StartsWith("Errore", StringComparison.Ordinal);
+    /// <summary>An error message: its key starts with "error.".</summary>
+    public bool SyncIsError => Status is { } m && m.Key.StartsWith("error.", StringComparison.Ordinal);
+
+    public void SetStatus(Msg? message)
+    {
+        Status = message;
+        OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(SyncStatus));
+        OnPropertyChanged(nameof(SyncIsError));
+    }
+
+    public void SetStatus(string key, params object?[] args) => SetStatus(Msg.Of(key, args));
 
     [ObservableProperty]
     public partial bool IsSyncing { get; set; }
@@ -720,8 +749,8 @@ public sealed partial class MainViewModel : ViewModelBase
             var items = VisibleEvents.Where(e => e.Start < d.AddDays(1) && e.End > d)
                 .OrderBy(e => !e.IsAllDay).ThenBy(e => e.Start)
                 .Select(e => new AgendaItem(e,
-                    e.IsAllDay ? "Tutto il giorno" : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
-                    string.IsNullOrWhiteSpace(e.Title) ? "(Senza titolo)" : e.Title,
+                    e.IsAllDay ? L.T("common.all_day") : $"{e.Start.ToString(fmt, Culture)} – {e.End.ToString(fmt, Culture)}",
+                    string.IsNullOrWhiteSpace(e.Title) ? L.T("common.untitled") : e.Title,
                     e.ColorHex ?? (CalendarColors.TryGetValue(e.CalendarId, out var c) ? c : "#1A73E8")))
                 .ToList();
             if (items.Count > 0)

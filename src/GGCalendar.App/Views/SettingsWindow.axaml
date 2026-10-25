@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
         x:Class="GGCalendar.App.Views.SettingsWindow"
@@ -6,7 +6,7 @@
         Icon="/Assets/GGCalendar.ico"
         Width="560" Height="780" CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Title="Impostazioni">
+        Title="{loc:T main.settings}">
 
     <Window.Styles>
         <Style Selector="TextBlock.section">
@@ -19,72 +19,81 @@
     <DockPanel Margin="24,16">
         <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
             <TextBlock Text="{Binding Error}" Foreground="#D93025" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <Button Grid.Column="1" Content="Annulla" Margin="0,0,8,0" Click="OnCancel" />
-            <Button Grid.Column="2" Content="Salva" Classes="accent" IsDefault="True" Click="OnSave" />
+            <Button AutomationProperties.AutomationId="Settings.Cancel" Grid.Column="1" Content="{loc:T common.cancel}" Margin="0,0,8,0" Click="OnCancel" />
+            <Button AutomationProperties.AutomationId="Settings.Save" Grid.Column="2" Content="{loc:T common.save}" Classes="accent" IsDefault="True" Click="OnSave" />
         </Grid>
 
         <ScrollViewer>
             <StackPanel Spacing="10" Margin="0,0,12,0">
-                <TextBlock Classes="section" Text="Calendario" Margin="0" />
+                <TextBlock Classes="section" Text="{loc:T settings.language_section}" Margin="0" />
+                <Grid ColumnDefinitions="220,*">
+                    <TextBlock Text="{loc:T settings.language_label}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.SelectedLanguage" Grid.Column="1" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" MinWidth="200">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LanguageOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+                <TextBlock Classes="section" Text="{loc:T settings.calendar}" />
                 <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
-                    <TextBlock Text="Inizio giornata" VerticalAlignment="Center" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayStartHour}" MinWidth="100" />
-                    <TextBlock Grid.Row="1" Text="Fine giornata" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayEndHour}" MinWidth="100" />
-                    <TextBlock Grid.Row="2" Text="La settimana inizia di" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Weekdays}" SelectedItem="{Binding FirstDayOfWeek}" MinWidth="160">
+                    <TextBlock Text="{loc:T settings.day_start}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.DayStartHour" Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayStartHour}" MinWidth="100" />
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.day_end}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.DayEndHour" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Hours}" SelectedItem="{Binding DayEndHour}" MinWidth="100" />
+                    <TextBlock Grid.Row="2" Text="{loc:T settings.week_starts}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.FirstDayOfWeek" Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Weekdays}" SelectedItem="{Binding FirstDayOfWeek}" MinWidth="160">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:WeekdayOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBlock Grid.Row="3" Text="Durata predefinita (minuti)" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="3" Text="{loc:T settings.default_duration}" VerticalAlignment="Center" />
                     <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding DefaultEventMinutes}" Minimum="5" Maximum="1440" Increment="15" FormatString="0" HorizontalAlignment="Left" Width="140" />
                 </Grid>
-                <CheckBox Content="Mostra solo la fascia oraria della giornata" IsChecked="{Binding HideOutsideHours}" />
-                <CheckBox Content="Mostra i numeri di settimana" IsChecked="{Binding ShowWeekNumbers}" />
-                <CheckBox Content="Orologio a 24 ore" IsChecked="{Binding Use24HourClock}" />
-                <CheckBox Content="Riduci la luminosità degli eventi passati" IsChecked="{Binding DimPastEvents}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.HideOutsideHours" Content="{loc:T settings.hide_outside_hours}" IsChecked="{Binding HideOutsideHours}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.ShowWeekNumbers" Content="{loc:T settings.week_numbers}" IsChecked="{Binding ShowWeekNumbers}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.Use24HourClock" Content="{loc:T settings.clock_24h}" IsChecked="{Binding Use24HourClock}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.DimPastEvents" Content="{loc:T settings.dim_past}" IsChecked="{Binding DimPastEvents}" />
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="Tema" VerticalAlignment="Center" Width="220" />
-                    <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="160">
-                        <ComboBoxItem>Come il sistema</ComboBoxItem>
-                        <ComboBoxItem>Chiaro</ComboBoxItem>
-                        <ComboBoxItem>Scuro</ComboBoxItem>
+                    <TextBlock Text="{loc:T settings.theme}" VerticalAlignment="Center" Width="220" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.ThemeIndex" SelectedIndex="{Binding ThemeIndex}" MinWidth="160">
+                        <ComboBoxItem Content="{loc:T settings.theme_system}" />
+                        <ComboBoxItem Content="{loc:T settings.theme_light}" />
+                        <ComboBoxItem Content="{loc:T settings.theme_dark}" />
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="Scatto del trascinamento (minuti)" VerticalAlignment="Center" Width="220" />
-                    <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding SnapMinutes}" MinWidth="100" />
+                    <TextBlock Text="{loc:T settings.snap}" VerticalAlignment="Center" Width="220" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.SnapMinutes" ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding SnapMinutes}" MinWidth="100" />
                 </StackPanel>
 
-                <TextBlock Classes="section" Text="Nuovi eventi: autorizzazioni degli invitati" />
-                <CheckBox Content="Modificare l'evento" IsChecked="{Binding DefaultGuestsCanModify}" />
-                <CheckBox Content="Invitare altre persone" IsChecked="{Binding DefaultGuestsCanInvite}" />
-                <CheckBox Content="Vedere l'elenco invitati" IsChecked="{Binding DefaultGuestsCanSeeList}" />
+                <TextBlock Classes="section" Text="{loc:T settings.new_event_guest_permissions}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanModify" Content="{loc:T guests.modify}" IsChecked="{Binding DefaultGuestsCanModify}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanInvite" Content="{loc:T guests.invite}" IsChecked="{Binding DefaultGuestsCanInvite}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanSeeList" Content="{loc:T guests.see_list}" IsChecked="{Binding DefaultGuestsCanSeeList}" />
 
-                <TextBlock Classes="section" Text="Fusi orari" />
+                <TextBlock Classes="section" Text="{loc:T settings.time_zones}" />
                 <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="8">
-                    <TextBlock Text="Principale" VerticalAlignment="Center" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding TimeZones}" SelectedItem="{Binding PrimaryTimeZone}" HorizontalAlignment="Stretch">
+                    <TextBlock Text="{loc:T settings.primary}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.PrimaryTimeZone" Grid.Column="1" ItemsSource="{Binding TimeZones}" SelectedItem="{Binding PrimaryTimeZone}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBlock Grid.Row="1" Text="Secondario" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding SecondaryTimeZones}" SelectedItem="{Binding SecondaryTimeZone}" HorizontalAlignment="Stretch">
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.secondary}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.SecondaryTimeZone" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding SecondaryTimeZones}" SelectedItem="{Binding SecondaryTimeZone}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TimeZoneOption"><TextBlock Text="{Binding Name}" /></DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </Grid>
 
-                <TextBlock Classes="section" Text="Account Google" />
+                <TextBlock Classes="section" Text="{loc:T settings.google_accounts}" />
                 <ItemsControl ItemsSource="{Binding GoogleAccounts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="x:String">
                             <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                                 <TextBlock Text="{Binding}" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Content="Scollega" Padding="10,3"
+                                <Button Grid.Column="1" Content="{loc:T settings.disconnect}" Padding="10,3"
                                         Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveGoogleAccountCommand}"
                                         CommandParameter="{Binding}" />
                             </Grid>
@@ -92,50 +101,50 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="＋  Aggiungi account Google" Command="{Binding AddGoogleAccountCommand}" IsEnabled="{Binding !IsSigningIn}" />
-                    <Button Content="Annulla" Command="{Binding CancelSignInCommand}" IsVisible="{Binding IsSigningIn}" />
-                    <Button Content="Risincronizza tutto" Click="OnResyncAll" IsEnabled="{Binding !IsSigningIn}"
-                            ToolTip.Tip="Scarica di nuovo tutti gli eventi da Google" />
+                    <Button Content="{loc:T settings.add_account}" Command="{Binding AddGoogleAccountCommand}" IsEnabled="{Binding !IsSigningIn}" />
+                    <Button Content="{loc:T common.cancel}" Command="{Binding CancelSignInCommand}" IsVisible="{Binding IsSigningIn}" />
+                    <Button Content="{loc:T settings.resync_all}" Click="OnResyncAll" IsEnabled="{Binding !IsSigningIn}"
+                            ToolTip.Tip="{loc:T settings.resync_tip}" />
                 </StackPanel>
                 <TextBlock Text="{Binding GoogleStatus}" TextWrapping="Wrap" Opacity="0.75" />
                 <Grid ColumnDefinitions="140,*">
-                    <TextBlock Text="Sincronizza" VerticalAlignment="Center" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding SyncIntervalLabels}" SelectedIndex="{Binding SyncIntervalIndex}" HorizontalAlignment="Stretch" />
+                    <TextBlock Text="{loc:T settings.sync}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.SyncIntervalIndex" Grid.Column="1" ItemsSource="{Binding SyncIntervalLabels}" SelectedIndex="{Binding SyncIntervalIndex}" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Expander Header="Avanzate: credenziali OAuth personalizzate">
+                <Expander Header="{loc:T settings.oauth_advanced}">
                     <StackPanel Spacing="8" Margin="0,8,0,0">
                         <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
-                                   Text="Lascia vuoto per usare le credenziali incluse in GGCalendar." />
-                        <TextBox PlaceholderText="Client ID" Text="{Binding GoogleClientId}" />
-                        <TextBox PlaceholderText="Client secret" Text="{Binding GoogleClientSecret}" PasswordChar="●" />
+                                   Text="{loc:T settings.oauth_hint}" />
+                        <TextBox PlaceholderText="{loc:T settings.client_id}" Text="{Binding GoogleClientId}" />
+                        <TextBox PlaceholderText="{loc:T settings.client_secret}" Text="{Binding GoogleClientSecret}" PasswordChar="●" />
                     </StackPanel>
                 </Expander>
 
-                <TextBlock Classes="section" Text="Notifiche" />
-                <CheckBox Content="Mostra le notifiche con suono mentre GGCalendar è aperto" IsChecked="{Binding NotificationsEnabled}" />
+                <TextBlock Classes="section" Text="{loc:T settings.notifications}" />
+                <CheckBox AutomationProperties.AutomationId="Settings.NotificationsEnabled" Content="{loc:T settings.notifications_enabled}" IsChecked="{Binding NotificationsEnabled}" />
                 <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
-                    <TextBlock Text="Suono predefinito" VerticalAlignment="Center" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding Sounds}" SelectedItem="{Binding DefaultSound}" HorizontalAlignment="Stretch">
+                    <TextBlock Text="{loc:T settings.default_sound}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.DefaultSound" Grid.Column="1" ItemsSource="{Binding Sounds}" SelectedItem="{Binding DefaultSound}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Grid.Column="2" Content="▶" Margin="6,0,0,0" Command="{Binding PreviewDefaultSoundCommand}" ToolTip.Tip="Ascolta" />
-                    <Button Grid.Column="3" Content="📂" Margin="4,0,0,0" Click="OnBrowseSound" ToolTip.Tip="Scegli un file audio (mp3, wav…)" />
-                    <TextBlock Grid.Row="1" Text="Volume" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Content="▶" Margin="6,0,0,0" Command="{Binding PreviewDefaultSoundCommand}" ToolTip.Tip="{loc:T common.listen}" />
+                    <Button Grid.Column="3" Content="📂" Margin="4,0,0,0" Click="OnBrowseSound" ToolTip.Tip="{loc:T common.choose_audio}" />
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
                     <Slider Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
                 </Grid>
 
                 <!-- Ollama (local model) section hidden: not used by any feature yet and not needed for the Microsoft Store version.
-                <TextBlock Classes="section" Text="Ollama (modello locale)" />
+                <TextBlock Classes="section" Text="{loc:T settings.ollama}" />
                 <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
-                    <TextBlock Text="Indirizzo" VerticalAlignment="Center" />
+                    <TextBlock Text="{loc:T settings.ollama_url}" VerticalAlignment="Center" />
                     <TextBox Grid.Column="1" Text="{Binding OllamaUrl}" />
-                    <Button Grid.Column="2" Content="Aggiorna modelli" Margin="8,0,0,0" Command="{Binding RefreshModelsCommand}" />
-                    <TextBlock Grid.Row="1" Text="Modello" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaModel}" HorizontalAlignment="Stretch" />
-                    <TextBlock Grid.Row="2" Text="Modello di riserva" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaFallbackModel}" HorizontalAlignment="Stretch" />
+                    <Button Grid.Column="2" Content="{loc:T settings.ollama_refresh}" Margin="8,0,0,0" Command="{Binding RefreshModelsCommand}" />
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.ollama_model}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.OllamaModel" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaModel}" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Row="2" Text="{loc:T settings.ollama_fallback}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.OllamaFallbackModel" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Models}" SelectedItem="{Binding OllamaFallbackModel}" HorizontalAlignment="Stretch" />
                 </Grid>
                 <TextBlock Text="{Binding OllamaStatus}" Opacity="0.7" TextWrapping="Wrap" />
                 -->

@@ -78,7 +78,7 @@ public class EventColorUiTests
         dialog.FindControl<TextBox>("TitleBox")!.Text = "Prova colore";
         var colors = dialog.GetVisualDescendants().OfType<ComboBox>().First(c => c.ItemsSource is IReadOnlyList<ColorOption>);
         colors.SelectedItem = editor.ColorOptions.First(c => string.Equals(c.Hex, PickedHex, StringComparison.OrdinalIgnoreCase));
-        Click(FindButton(dialog, "Salva"));
+        Click(FindButton(dialog, "Edit.Save"));
 
         var result = await WaitForAsync(() => closed.IsCompleted ? closed.Result : null, "la chiusura dell'editor");
         Assert.Equal("Prova colore", result.Event!.Title);

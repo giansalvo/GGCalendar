@@ -9,12 +9,13 @@ using System.Threading.Tasks;
 using GGCalendar.Core.Models;
 using GGCalendar.Data;
 using GGCalendar.Providers.Google;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Services;
 
 /// <param name="Pending">Changes still waiting to be sent to Google (a long queue, or Google asked to slow down).</param>
 /// <param name="RetryAt">When the sending of the changes still waiting should be tried again, if Google asked to slow down.</param>
-public sealed record SyncResult(int Pulled, int Pushed, IReadOnlyList<string> Errors, IReadOnlyList<string> Conflicts, bool Changed,
+public sealed record SyncResult(int Pulled, int Pushed, IReadOnlyList<Msg> Errors, IReadOnlyList<Msg> Conflicts, bool Changed,
     int Pending = 0, DateTimeOffset? RetryAt = null, bool Cancelled = false);
 
 /// <summary>
@@ -52,9 +53,9 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     /// <summary>Opens the browser, signs in and stores the account. Returns its email.</summary>
     public async Task<string> AddAccountAsync(CancellationToken ct)
     {
-        if (!_config.IsConfigured) throw new GoogleAuthException("Credenziali Google non configurate (Impostazioni → Account Google → Avanzate).");
+        if (!_config.IsConfigured) throw new GoogleAuthException(L.T("auth.not_configured"));
         var tokens = await GoogleAuth.SignInAsync(http, _config.ClientId, _config.ClientSecret, ct);
-        if (tokens.RefreshToken is null) throw new GoogleAuthException("Google non ha restituito il token di accesso persistente. Riprova.");
+        if (tokens.RefreshToken is null) throw new GoogleAuthException(L.T("auth.no_refresh_token"));
         var email = await new GoogleCalendarClient(http, _config, tokens.RefreshToken).GetAccountEmailAsync(ct);
         accounts.AddOrReplace(email, tokens.RefreshToken);
         return email;
@@ -89,8 +90,8 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     /// <param name="onProgress">Called while changes are sent to Google with (sent so far, waiting at the start of the sending).</param>
     public async Task<SyncResult> SyncAllAsync(CancellationToken ct, Action<int, int>? onProgress = null)
     {
-        var errors = new List<string>();
-        var conflicts = new List<string>();
+        var errors = new List<Msg>();
+        var conflicts = new List<Msg>();
         int pulled = 0, pushed = 0;
         var changed = false;
         var cancelled = false;
@@ -117,7 +118,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             }
             catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException or TaskCanceledException)
             {
-                errors.Add($"{account.Email}: {ex.Message}");
+                errors.Add(Msg.Of("sync.account_error", account.Email, ex.Message));
             }
         }
 
@@ -264,7 +265,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     private sealed record BatchOutcome(int Done, bool Temporary, TimeSpan? RetryAfter);
 
     /// <summary>Sends the creations with one request and records what each call answered. The ones Google did not accept for now stay in the queue.</summary>
-    private async Task<BatchOutcome> PushBatchAsync(GoogleCalendarClient client, string email, List<BatchEntry> group, List<string> errors, CancellationToken ct)
+    private async Task<BatchOutcome> PushBatchAsync(GoogleCalendarClient client, string email, List<BatchEntry> group, List<Msg> errors, CancellationToken ct)
     {
         var remoteCal = RemoteCalendarId(group[0].Item.CalendarId);
         var answers = await client.InsertBatchAsync(remoteCal, group.Select(g => g.Snapshot).ToList(), ct);
@@ -303,7 +304,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             {
                 // A refusal for good must not block the rest of the queue.
                 store.Complete(item.Seq);
-                errors.Add($"{email}: modifica non accettata da Google ({answer.Status}): {snapshot.Title}");
+                errors.Add(Msg.Of("sync.rejected", email, answer.Status, snapshot.Title));
                 continue;
             }
 
@@ -320,7 +321,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     }
 
     private async Task<int> PushAsync(GoogleCalendarClient client, string email, IReadOnlyList<GoogleCalendarEntry> calendars,
-        List<string> errors, List<string> conflicts, CancellationToken ct, Action<int, int>? onProgress = null)
+        List<Msg> errors, List<Msg> conflicts, CancellationToken ct, Action<int, int>? onProgress = null)
     {
         var done = 0;
         var conflicted = new HashSet<string>();
@@ -481,7 +482,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             {
                 // A permanent rejection must not block the rest of the queue.
                 store.Complete(item.Seq);
-                errors.Add($"{email}: modifica non accettata da Google ({(int)ex.Status}): {ex.Message}");
+                errors.Add(Msg.Of("sync.rejected", email, (int)ex.Status, ex.Message));
             }
         }
 
@@ -511,7 +512,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     /// (<paramref name="remote"/>, null if deleted there) is applied and the local edit is kept as a separate "(conflitto)"
     /// event in the same calendar, so neither is lost. Returns the message for the user.
     /// </summary>
-    private string ResolveConflict(OutboxItem item, string remoteId, CalendarEvent? remote, string? etag)
+    private Msg ResolveConflict(OutboxItem item, string remoteId, CalendarEvent? remote, string? etag)
     {
         // The last queued snapshot carries every local edit made since the last sync.
         var local = store.GetPending().Where(p => p.EventId == item.EventId && p.Operation != OutboxOperation.Delete)
@@ -521,13 +522,13 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         if (remote is null) store.DeleteSeries(item.EventId);
         else store.UpsertEvent(remote with { Reminders = KeepLocalReminderOptions(remote, local.Reminders) }, remoteId, etag);
 
-        var title = string.IsNullOrWhiteSpace(local.Title) ? "(Senza titolo)" : local.Title;
-        if (local.IsCancelled) return $"\"{title}\" è stato modificato anche su Google: tenuta la versione di Google.";
+        var title = string.IsNullOrWhiteSpace(local.Title) ? L.T("common.untitled") : local.Title;
+        if (local.IsCancelled) return Msg.Of("sync.conflict_cancelled", title);
 
         var copy = local with
         {
             Id = Guid.NewGuid().ToString("N"),
-            Title = title + " (conflitto)",
+            Title = title + L.T("sync.conflict_suffix"),
             Attendees = [],
             SendInvites = false,
             AddMeet = false,
@@ -539,6 +540,6 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         };
         store.UpsertEvent(copy);
         store.Enqueue(copy.Id, copy.CalendarId, OutboxOperation.Create, copy);
-        return $"\"{title}\" è stato modificato sia qui sia su Google: tenuta la versione di Google, la tua è salvata come \"{copy.Title}\".";
+        return Msg.Of("sync.conflict_both", title, copy.Title);
     }
 }

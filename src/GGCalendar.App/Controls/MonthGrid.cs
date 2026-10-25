@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Controls;
 
@@ -118,7 +119,7 @@ public sealed class MonthGrid : Control
         var fg = dark ? Brushes.White : Brushes.Black;
         var muted = new SolidColorBrush(Color.Parse(dark ? "#80868B" : "#70757A"));
         var outside = new SolidColorBrush(dark ? Color.Parse("#14FFFFFF") : Color.Parse("#0A000000"));
-        var culture = CultureInfo.GetCultureInfo("it-IT");
+        var culture = L.Culture;
         var cw = CellWidth;
         var ch = CellHeight;
         var typeface = new Typeface(FontFamily.Default);
@@ -161,7 +162,7 @@ public sealed class MonthGrid : Control
                     _hits.Add((rect, ev));
                     var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var cc) ? cc : "#1A73E8");
                     var color = Color.Parse(hex);
-                    var title = string.IsNullOrEmpty(ev.Title) ? "(Senza titolo)" : ev.Title;
+                    var title = string.IsNullOrEmpty(ev.Title) ? L.T("common.untitled") : ev.Title;
                     using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
                     if (ev.IsAllDay)
                     {
@@ -188,7 +189,7 @@ public sealed class MonthGrid : Control
     {
         using (context.PushClip(rect.Deflate(new Thickness(0, 0, 4, 0))))
         {
-            var t = new FormattedText(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, typeface, size, brush);
+            var t = new FormattedText(s, L.Culture, FlowDirection.LeftToRight, typeface, size, brush);
             context.DrawText(t, new Point(rect.X + padLeft, rect.Y + (rect.Height - t.Height) / 2));
         }
     }

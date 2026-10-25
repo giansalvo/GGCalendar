@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="GGCalendar.App.Views.SeriesScopeWindow"
         Icon="/Assets/GGCalendar.ico"
@@ -6,12 +6,12 @@
         WindowStartupLocation="CenterOwner">
     <StackPanel Margin="24" Spacing="12">
         <TextBlock Name="Heading" FontSize="18" FontWeight="SemiBold" />
-        <RadioButton Name="ThisOne" GroupName="scope" IsChecked="True" Content="Solo questo evento" />
-        <RadioButton Name="ThisAndFollowing" GroupName="scope" Content="Questo e gli eventi successivi" />
-        <RadioButton Name="AllEvents" GroupName="scope" Content="Tutti gli eventi" />
+        <RadioButton Name="ThisOne" GroupName="scope" IsChecked="True" Content="{loc:T scope.this_event}" />
+        <RadioButton Name="ThisAndFollowing" GroupName="scope" Content="{loc:T scope.this_and_following}" />
+        <RadioButton Name="AllEvents" GroupName="scope" Content="{loc:T scope.all_events}" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-            <Button Content="Annulla" Click="OnCancel" />
-            <Button Content="OK" Classes="accent" Click="OnOk" IsDefault="True" />
+            <Button AutomationProperties.AutomationId="Dialog.Cancel" Content="{loc:T common.cancel}" Click="OnCancel" />
+            <Button AutomationProperties.AutomationId="Dialog.Ok" Content="{loc:T common.ok}" Classes="accent" Click="OnOk" IsDefault="True" />
         </StackPanel>
     </StackPanel>
 </Window>

@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
 
@@ -12,13 +13,14 @@ public sealed class AboutWindow : Window
 {
     public AboutWindow()
     {
-        Title = "Informazioni su GGCalendar";
+        Title = L.T("about.title");
         Width = 440;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        var close = new Button { Content = "Chiudi", Classes = { "accent" }, IsDefault = true, IsCancel = true };
+        var close = new Button { Content = L.T("common.close"), Classes = { "accent" }, IsDefault = true, IsCancel = true };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(close, "About.Close");
         close.Click += (_, _) => Close();
 
         Content = new StackPanel
@@ -37,7 +39,7 @@ public sealed class AboutWindow : Window
                 new TextBlock { Text = "GGCalendar", FontSize = 22, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
                 new SelectableTextBlock
                 {
-                    Text = $"Versione: {AppInfo.Version}\nAutore: {AppInfo.Author}\nData di build: {AppInfo.BuildDate}",
+                    Text = L.T("about.details", AppInfo.Version, AppInfo.Author, AppInfo.BuildDate),
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                 },
