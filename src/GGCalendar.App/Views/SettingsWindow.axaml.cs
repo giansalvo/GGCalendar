@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
@@ -18,6 +19,14 @@ public partial class SettingsWindow : Window
     {
         if ((DataContext as SettingsViewModel)?.TryBuild() is { } settings)
             Close(settings);
+    }
+
+    /// <summary>"Scollega": the person is told what goes away from this PC and confirms (the same question as in the menu of the account).</summary>
+    private async void OnDisconnectAccount(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel vm || (sender as Control)?.Tag is not string email) return;
+        var ok = await new ConfirmWindow(AccountDisconnect.Title, AccountDisconnect.Text(email, vm.DescribeAccount(email)), AccountDisconnect.Button).ShowDialog<bool>(this);
+        if (ok) await vm.RemoveGoogleAccountCommand.ExecuteAsync(email);
     }
 
     private async void OnResyncAll(object? sender, RoutedEventArgs e)

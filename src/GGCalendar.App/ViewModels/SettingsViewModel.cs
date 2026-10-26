@@ -173,6 +173,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void CancelSignIn() => _signIn?.Cancel();
 
+    /// <summary>What disconnecting the account takes away from this PC (shown before the person confirms).</summary>
+    public GoogleSyncService.AccountDisconnectInfo DescribeAccount(string email) => _google?.DescribeAccount(email) ?? new(0, 0, 0);
+
     [RelayCommand]
     private async Task RemoveGoogleAccount(string? email)
     {

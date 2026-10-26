@@ -31,6 +31,7 @@
 - Suche nach einem Text in Titel, Beschreibung, Ort und Gästen, in einem oder mehreren Kalendern, mit Datum und auszuschließenden Wörtern
 - Kalender in Google-Konten erstellen und löschen (nur eigene, nie den Hauptkalender)
 - Name und Farbe von Kalendern ändern: den Namen für lokale und eigene Google-Kalender, die Farbe für alle (8 Schnellfarben und die 24 von Google)
+- Ein Google-Konto per Rechtsklick auf seinen Namen (oder in den Einstellungen) trennen: Eine Rückfrage sagt, was von diesem PC entfernt wird (Kalender, Termine, noch nicht gesendete Änderungen); der Zugriff wird bei Google widerrufen, und was Sie bei Google haben, ändert sich nicht
 - Lokale Kalender, Import und Export von `.ics`-Dateien
 - Helles und dunkles Design
 - Oberfläche in Italienisch, Englisch, Deutsch, Spanisch und Französisch: Die Sprache wird in den *Einstellungen* gewählt (Standard: die Sprache von Windows) und ändert sich sofort

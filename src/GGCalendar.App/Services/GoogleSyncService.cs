@@ -37,8 +37,8 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         IsGoogleCalendar(localId) && string.Equals(AccountOf(localId), RemoteCalendarId(localId), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One thing at a time touches the calendars of the accounts: a sync, the creation or the deletion of a calendar. A sync that starts while
-    /// another runs is skipped; a creation or a deletion waits its turn.
+    /// One thing at a time touches the calendars of the accounts: a sync, the creation or the deletion of a calendar, the disconnection of an
+    /// account. A sync that starts while another runs is skipped; the others wait their turn.
     /// </summary>
     public SemaphoreSlim Gate { get; } = new(1, 1);
 
@@ -71,18 +71,39 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         return email;
     }
 
+    /// <summary>What disconnecting an account takes away from this PC: its calendars, their events (series count once) and the changes not yet sent to Google.</summary>
+    public sealed record AccountDisconnectInfo(int Calendars, int Events, int PendingChanges);
+
+    /// <summary>What <see cref="RemoveAccountAsync"/> would take away from this PC (shown before the person confirms).</summary>
+    public AccountDisconnectInfo DescribeAccount(string email)
+    {
+        var ids = store.GetCalendars().Where(c => IsGoogleCalendar(c.Id) && AccountOf(c.Id) == email).Select(c => c.Id).ToHashSet();
+        var events = store.GetAllEvents().Count(e => ids.Contains(e.CalendarId) && e.SeriesMasterId is null && !e.IsCancelled);
+        var pending = store.GetPending().Count(p => ids.Contains(p.CalendarId));
+        return new AccountDisconnectInfo(ids.Count, events, pending);
+    }
+
     /// <summary>
     /// Revokes the app's access on Google, then forgets the account and its calendars on this PC (even if Google could
-    /// not be reached). Returns whether the access was revoked.
+    /// not be reached). Returns whether the access was revoked. It waits for a sync that is running (see <see cref="Gate"/>):
+    /// the calendars cannot go away while their changes are being sent.
     /// </summary>
     public async Task<bool> RemoveAccountAsync(string email, CancellationToken ct)
     {
-        var account = accounts.Load().FirstOrDefault(a => a.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
-        var revoked = account is not null && await GoogleAuth.RevokeAsync(http, GoogleAccountStore.Unprotect(account.ProtectedRefreshToken), ct);
-        accounts.Remove(email);
-        foreach (var c in store.GetCalendars().Where(c => IsGoogleCalendar(c.Id) && AccountOf(c.Id) == email))
-            store.DeleteCalendar(c.Id);
-        return revoked;
+        await Gate.WaitAsync(ct);
+        try
+        {
+            var account = accounts.Load().FirstOrDefault(a => a.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            var revoked = account is not null && await GoogleAuth.RevokeAsync(http, GoogleAccountStore.Unprotect(account.ProtectedRefreshToken), ct);
+            accounts.Remove(email);
+            foreach (var c in store.GetCalendars().Where(c => IsGoogleCalendar(c.Id) && AccountOf(c.Id) == email))
+                store.DeleteCalendar(c.Id);
+            return revoked;
+        }
+        finally
+        {
+            Gate.Release();
+        }
     }
 
     /// <summary>

@@ -93,8 +93,7 @@
                             <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                                 <TextBlock Text="{Binding}" VerticalAlignment="Center" />
                                 <Button Grid.Column="1" Content="{loc:T settings.disconnect}" Padding="10,3"
-                                        Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveGoogleAccountCommand}"
-                                        CommandParameter="{Binding}" />
+                                        AutomationProperties.AutomationId="Settings.Disconnect" Tag="{Binding}" Click="OnDisconnectAccount" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

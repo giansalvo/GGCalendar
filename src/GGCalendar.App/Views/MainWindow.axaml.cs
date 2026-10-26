@@ -864,6 +864,23 @@ public partial class MainWindow : Window
         else OnNewLocalCalendar(sender, e);
     }
 
+    /// <summary>
+    /// The menu of a Google account: disconnect it. The person is told what goes away from this PC and confirms; then the access is revoked on
+    /// Google (best effort) and the account and its calendars are forgotten here. Same question as in the settings.
+    /// </summary>
+    private async void OnDisconnectAccount(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || AccountOf(sender) is not { IsGoogle: true } group) return;
+        var email = group.AccountName;
+        var info = _google.DescribeAccount(email);
+        if (!await new ConfirmWindow(AccountDisconnect.Title, AccountDisconnect.Text(email, info), AccountDisconnect.Button).ShowDialog<bool>(this)) return;
+
+        // A sync that is running ends first: the calendars cannot go away while their changes are being sent.
+        var revoked = await RunBusyAsync(Msg.Of("busy.account_disconnecting", email), () => _google.RemoveAccountAsync(email, CancellationToken.None));
+        await vm.ReloadAsync();
+        vm.SetStatus(revoked ? "settings.disconnected_revoked" : "settings.disconnected_not_revoked", email);
+    }
+
     /// <summary>"Create" menu: a calendar on one of the Google accounts (the window asks which one when there are several).</summary>
     private async void OnNewGoogleCalendar(object? sender, RoutedEventArgs e) => await CreateGoogleCalendarAsync(null);
 

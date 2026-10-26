@@ -69,6 +69,12 @@ public sealed class FakeGoogle : HttpMessageHandler
     /// <summary>Every request fails as if there were no network (an exception, no answer).</summary>
     public bool Offline { get; set; }
 
+    /// <summary>The tokens revoked through the revoke address of Google (when an account is disconnected).</summary>
+    public List<string> RevokedTokens { get; } = [];
+
+    /// <summary>What Google answers to a revoke (400 = the token was already invalid, which counts as revoked; 500 = it could not be done).</summary>
+    public HttpStatusCode RevokeStatus { get; set; } = HttpStatusCode.OK;
+
     /// <summary>The bodies received to create calendars (POST calendars), in order.</summary>
     public List<string> CreatedBodies { get; } = [];
 
@@ -212,6 +218,12 @@ public sealed class FakeGoogle : HttpMessageHandler
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add($"{request.Method} {url.AbsolutePath}{url.Query}");
         if (Offline) throw new HttpRequestException("Nessuna connessione.");
+
+        if (url.Host == "oauth2.googleapis.com" && url.AbsolutePath == "/revoke")
+        {
+            RevokedTokens.Add(Uri.UnescapeDataString((body ?? "").Replace("token=", "")));
+            return Reply(RevokeStatus, "{}");
+        }
 
         if (url.Host == "oauth2.googleapis.com") return Reply(HttpStatusCode.OK, """{"access_token":"at","expires_in":3600}""");
         if (url.AbsolutePath == "/batch/calendar/v3") return await BatchAsync(request, body!, cancellationToken);

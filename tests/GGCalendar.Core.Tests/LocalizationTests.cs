@@ -120,7 +120,7 @@ public class LocalizationTests
         // A text equal to the Italian one is only right when it is the same in English too (a name such as "Google", "OK"),
         // or when the two languages really use the same word (Spanish "Uva", "Calendario", "Evento"...: listed here).
         string[] sameWord = language == "es"
-            ? ["color.grape", "color.lavender", "color.sage", "file.default_event_name", "main.create_event", "settings.calendar", "settings.theme", "sub.preview_events.one"]
+            ? ["color.grape", "color.lavender", "color.sage", "file.default_event_name", "main.create_event", "settings.calendar", "settings.theme", "sub.preview_events.one", "account.disconnect_calendars.one", "account.disconnect_events.one"]
             : [];
         var copied = texts.Where(t => italian[t.Key] == t.Value && english[t.Key] != t.Value && !sameWord.Contains(t.Key)).Select(t => t.Key).OrderBy(k => k).ToList();
         Assert.Empty(copied);
