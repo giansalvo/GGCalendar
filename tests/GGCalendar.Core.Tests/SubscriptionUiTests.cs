@@ -213,9 +213,9 @@ public class SubscriptionUiTests
     private static async Task<List<string>> MenuOfAsync(MainWindow window, CalendarItemViewModel calendar)
     {
         // The list is drawn again after a reload: the line of the calendar may not be there yet.
-        var holder = await WaitForAsync(() => window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext == calendar && b.ContextMenu is not null), "la riga del calendario");
+        var holder = await WaitForAsync(() => window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext is CalendarItemViewModel c && c.Id == calendar.Id && b.ContextMenu is not null), "la riga del calendario"); // by id: a reload makes new items
         // The menu takes its data context from the control it opens on; headless, that does not always happen before the first read.
-        holder.ContextMenu!.DataContext = calendar;
+        holder.ContextMenu!.DataContext = holder.DataContext;
         holder.ContextMenu.Open(holder);
         List<string> Read() => holder.ContextMenu.Items.OfType<MenuItem>().Where(i => i.IsVisible)
             .Select(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) is { Length: > 0 } id ? id : i.Header?.ToString() ?? "").ToList();
@@ -246,7 +246,7 @@ public class SubscriptionUiTests
         var subscribed = Vm(window).Calendars.First(c => c.IsSubscription);
         var menu = await MenuOfAsync(window, subscribed);
         Assert.Equal(["Menu.SubRefresh", "Menu.SubEdit", "Menu.SubShowUrl", "Menu.SubRemove"], menu);
-        var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext == subscribed && b.ContextMenu is not null);
+        var holder = await WaitForAsync(() => window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext is CalendarItemViewModel c && c.Id == subscribed.Id && b.ContextMenu is not null), "la riga");
         Assert.Equal(L.T("main.edit_calendar"), holder.ContextMenu!.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubEdit").Header); // T210: the same words as for the other calendars
 
         var local = Vm(window).Calendars.First(c => c.IsLocal);
