@@ -31,6 +31,7 @@
 - Recherche d'un texte dans le titre, la description, le lieu et les invités, dans un ou plusieurs agendas, avec des dates et des mots à exclure
 - Création et suppression d'agendas sur les comptes Google (seulement ceux dont vous êtes propriétaire, jamais l'agenda principal)
 - Modification du nom et de la couleur des agendas : le nom pour les agendas locaux et les vôtres sur Google, la couleur pour tous (8 couleurs rapides et les 24 de Google)
+- Déconnecter un compte Google par un clic droit sur son nom (ou depuis les paramètres) : une question indique ce qui est retiré de cet ordinateur (agendas, événements, modifications non encore envoyées) ; l'accès est révoqué sur Google et ce que vous avez sur Google ne change pas
 - Agendas locaux, importation et exportation de fichiers `.ics`
 - Thème clair et sombre
 - Interface en italien, anglais, allemand, espagnol et français : la langue se choisit dans les *Paramètres* (par défaut, celle de Windows) et change immédiatement

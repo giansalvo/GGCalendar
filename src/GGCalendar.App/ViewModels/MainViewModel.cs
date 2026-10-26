@@ -91,6 +91,9 @@ public sealed partial class AccountGroup(string accountName, IReadOnlyList<Calen
     /// <summary>What is shown as the name of the account: its address, or "Local" for the calendars of this PC.</summary>
     public string DisplayName => IsSubscriptions ? L.T("main.public_calendars") : Calendars.All(c => c.IsLocal) ? L.T("main.local_account") : AccountName;
 
+    /// <summary>A Google account (not the calendars of this PC, not the public ones): the only group that can be disconnected.</summary>
+    public bool IsGoogle => Calendars.Any(c => c.IsGoogle);
+
     /// <summary>The group of the public calendars (read-only, by address).</summary>
     public bool IsSubscriptions => Calendars.Count > 0 && Calendars.All(c => c.IsSubscription);
 

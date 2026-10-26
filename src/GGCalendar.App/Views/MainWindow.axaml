@@ -250,6 +250,8 @@
                                             <ContextMenu>
                                                 <MenuItem AutomationProperties.AutomationId="Menu.NewCalendarInAccount" Header="{loc:T menu.new_calendar_here}" Click="OnNewCalendarInAccount" IsVisible="{Binding !IsSubscriptions}" />
                                                 <MenuItem AutomationProperties.AutomationId="Menu.AddPublicCalendar" Header="{loc:T main.create_public_calendar}" Click="OnNewPublicCalendar" IsVisible="{Binding IsSubscriptions}" />
+                                                <Separator IsVisible="{Binding IsGoogle}" />
+                                                <MenuItem AutomationProperties.AutomationId="Menu.DisconnectAccount" Header="{loc:T menu.disconnect_account}" Click="OnDisconnectAccount" IsVisible="{Binding IsGoogle}" />
                                             </ContextMenu>
                                         </Grid.ContextMenu>
                                         <Border Width="32" Height="32" CornerRadius="16" Background="#A8C7FA" VerticalAlignment="Center">

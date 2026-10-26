@@ -31,6 +31,7 @@
 - Ricerca di un testo in titolo, descrizione, posizione e invitati, su uno o più calendari, con date e parole da escludere
 - Creazione ed eliminazione dei calendari sugli account Google (solo quelli di cui sei proprietario, non il principale)
 - Modifica di nome e colore dei calendari: il nome per quelli locali e per i tuoi su Google, il colore per tutti (8 colori veloci e i 24 di Google)
+- Scollegare un account Google dal tasto destro sul suo nome (o dalle impostazioni): una domanda dice cosa viene tolto da questo PC (calendari, eventi, modifiche non ancora inviate); l'accesso viene revocato su Google e quello che hai su Google non cambia
 - Calendari locali, importazione ed esportazione di file `.ics`
 - Tema chiaro e scuro
 - Interfaccia in italiano, inglese, tedesco, spagnolo e francese: la lingua si sceglie in *Impostazioni* (di default quella di Windows) e cambia subito
