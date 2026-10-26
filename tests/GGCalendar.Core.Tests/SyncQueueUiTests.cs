@@ -357,6 +357,78 @@ public class SyncQueueUiTests
         });
     }
 
+    // ---- T256: the list on show is older than the queue ----
+
+    /// <summary>What a sync does while the list is on show: the queued changes of the events are gone from the queue (sent), the events stay.</summary>
+    private static void Sent(params string[] titles)
+    {
+        var store = new CalendarStore();
+        foreach (var row in store.GetPending().Where(p => titles.Any(t => CalendarStore.ReadSnapshot(p)?.Title == t))) store.Complete(row.Seq);
+    }
+
+    [Fact]
+    [Trait("TestCase", "T256")]
+    public Task T256_IfAnEventIsSentWhileTheListIsOnShowTheQuestionAndTheListTellWhatIsReallyWaiting()
+    {
+        var fake = new FakeGoogle();
+        return InFakeGoogleAppAsync(fake, async window =>
+        {
+            await SyncNowAsync(window);
+            var vm = Vm(window);
+            fake.Offline = true;
+            NewEvent(window, "Uno");
+            NewEvent(window, "Due", 6);
+            NewEvent(window, "Tre", 7);
+            var queue = await OpenQueueAsync(window);
+            Assert.Equal(3, InWindow(queue, "Queue.Row").Count);
+
+            Sent("Uno", "Due"); // a sync sent two of them while the list stayed as it was
+            Assert.Equal(3, InWindow(queue, "Queue.Row").Count); // the list on show is older than the queue
+
+            Click((Button)InWindow(queue, "Queue.CancelGroup").Single());
+            var confirm = await AskedAsync(queue);
+
+            Assert.Contains(L.N("queue.confirm_group", 1, vm.Calendars.First(c => c.Id == FakeGoogle.LocalCalendarId).Name), Texts(confirm)); // one event is waiting, not three
+            Assert.Equal(1, InWindow(queue, "Queue.Row").Count); // and the list says the same
+            await AnswerAsync(queue, confirm, true);
+            await WaitForAsync(() => InWindow(queue, "Queue.Row").Count == 0 && queue.IsEnabled ? queue : null, "l'annullamento");
+
+            Assert.DoesNotContain(vm.AllEvents, e => e.Title == "Tre"); // what was waiting is cancelled
+            Assert.Contains(vm.AllEvents, e => e.Title == "Uno"); // what was sent stays
+            Assert.Contains(vm.AllEvents, e => e.Title == "Due");
+            await CloseQueueAsync(window, queue);
+        });
+    }
+
+    [Fact]
+    [Trait("TestCase", "T256")]
+    public Task T256_CancelAllWhenEverythingWasSentMeanwhileSaysThereIsNothingToCancelAndChangesNothing()
+    {
+        var fake = new FakeGoogle();
+        return InFakeGoogleAppAsync(fake, async window =>
+        {
+            await SyncNowAsync(window);
+            var vm = Vm(window);
+            fake.Offline = true;
+            NewEvent(window, "Uno");
+            NewEvent(window, "Due", 6);
+            var queue = await OpenQueueAsync(window);
+            Sent("Uno", "Due");
+
+            Click((Button)InWindow(queue, "Queue.CancelAll").Single());
+            var warning = await WaitForAsync(() => queue.OwnedWindows.OfType<WarningWindow>().FirstOrDefault(), "l'avviso");
+
+            Assert.Contains(L.T("queue.cancel_none"), Texts(warning));
+            Assert.Empty(queue.OwnedWindows.OfType<ConfirmWindow>()); // no question about cancelling nothing
+            Assert.Empty(InWindow(queue, "Queue.Row")); // the list is drawn again as it is
+            Assert.Contains(vm.AllEvents, e => e.Title == "Uno");
+            Assert.Contains(vm.AllEvents, e => e.Title == "Due");
+            warning.Close();
+            await WaitForAsync(() => queue.OwnedWindows.Count == 0 ? queue : null, "la chiusura dell'avviso");
+            await CloseQueueAsync(window, queue);
+        });
+    }
+
     // ---- T250: the five languages ----
 
     [Theory]
