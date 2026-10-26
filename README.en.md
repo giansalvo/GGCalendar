@@ -27,6 +27,7 @@
 - Reminders with notification, sound alarm (until you switch it off, 2 minutes at most) and snooze, kept also after a restart
 - Two-way sync with one or more Google Calendar accounts, with conflict handling; alarms travel with the event on Google and are shared with [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) for Android
 - Guests, Google Meet links, email reminders (sent by Google)
+- Search a text in the title, description, location and guests, in one or more calendars, with dates and words to leave out
 - Local calendars, import and export of `.ics` files
 - Light and dark theme
 - Interface in Italian, English, German, Spanish and French: the language is chosen in *Settings* (default: the language of Windows) and changes at once

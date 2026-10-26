@@ -27,6 +27,7 @@
 - Rappels avec notification, alarme sonore (jusqu'à ce que vous l'arrêtiez, 2 minutes au maximum) et report, conservés aussi après un redémarrage
 - Synchronisation dans les deux sens avec un ou plusieurs comptes Google Agenda, avec gestion des conflits ; les alarmes voyagent avec l'événement sur Google et sont partagées avec [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) pour Android
 - Invités, liens Google Meet, rappels par e-mail (envoyés par Google)
+- Recherche d'un texte dans le titre, la description, le lieu et les invités, dans un ou plusieurs agendas, avec des dates et des mots à exclure
 - Agendas locaux, importation et exportation de fichiers `.ics`
 - Thème clair et sombre
 - Interface en italien, anglais, allemand, espagnol et français : la langue se choisit dans les *Paramètres* (par défaut, celle de Windows) et change immédiatement

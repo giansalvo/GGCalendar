@@ -74,6 +74,12 @@ public partial class MainWindow : Window
                 vm.Settings = _store.Load();
                 ApplyTheme(vm.Settings);
                 vm.ViewModeIndex = Math.Clamp(vm.Settings.DefaultView, 0, 5);
+                vm.Search.ApplySettings(vm.Settings);
+                vm.Search.ScopeChanged += () =>
+                {
+                    vm.Search.WriteSettings(vm.Settings);
+                    _store.Save(vm.Settings);
+                };
                 vm.PropertyChanged += (_, a) =>
                 {
                     if (a.PropertyName is not (nameof(MainViewModel.ViewModeIndex) or nameof(MainViewModel.ShowWeekends))) return;
@@ -423,8 +429,76 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- Search (issue #8) ----------
+
+    private void OpenSearch()
+    {
+        if (Vm is not { } vm) return;
+        vm.Search.IsOpen = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => { SearchBox.Focus(); SearchBox.SelectAll(); }, Avalonia.Threading.DispatcherPriority.Input);
+    }
+
+    private void OnToggleSearch(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm) return;
+        if (vm.Search.IsOpen) vm.Search.Close();
+        else OpenSearch();
+    }
+
+    private void OnCloseSearch(object? sender, RoutedEventArgs e) => Vm?.Search.Close();
+
+    private void OnToggleAdvancedSearch(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm) vm.Search.IsAdvanced = !vm.Search.IsAdvanced;
+    }
+
+    private void OnSearchBoxKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key != Avalonia.Input.Key.Enter) return;
+        Vm?.Search.Submit();
+        e.Handled = true;
+    }
+
+    /// <summary>A click on a result shows the card of the event beside the line, like a click on an event in the views.</summary>
+    private void OnSearchRowTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: SearchRow row } line) ShowDetails(row.Event, line, null);
+    }
+
+    private async void OnSearchRowDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: SearchRow row }) await EditAsync(row.Event, isNew: false);
+    }
+
+    private void OnCancelAdvancedSearch(object? sender, RoutedEventArgs e) => Vm?.Search.CancelAdvanced();
+
+    private void OnRunSearch(object? sender, RoutedEventArgs e) => Vm?.Search.Submit();
+
+    private void OnSearchScope(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is { } vm && sender is Button { Tag: string t } && int.TryParse(t, out var scope)) vm.Search.ChooseScope(scope);
+        Vm?.Search.Run();
+        SearchScopeButton.Flyout?.Hide(); // a preset is a final choice
+    }
+
+    /// <summary>"Fatto" in the list of calendars: closes it keeping the ticks.</summary>
+    private void OnSearchScopeDone(object? sender, RoutedEventArgs e)
+    {
+        Vm?.Search.Run();
+        SearchScopeButton.Flyout?.Hide();
+    }
+
+    private void OnSearchFieldKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key != Avalonia.Input.Key.Enter) return;
+        Vm?.Search.Submit();
+        e.Handled = true;
+    }
+
     private void OnShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
     {
+        if (Vm is { } v && e.Key == Avalonia.Input.Key.F && e.KeyModifiers == Avalonia.Input.KeyModifiers.Control) { OpenSearch(); e.Handled = true; return; }
+        if (Vm is { } v2 && e.Key == Avalonia.Input.Key.Escape && v2.Search.IsOpen) { v2.Search.Close(); e.Handled = true; return; }
         if (Vm is not { } vm || e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Source is TextBox) return;
         var mode = e.Key switch
         {
@@ -806,6 +880,8 @@ public partial class MainWindow : Window
         }
         result.ShowWeekends = vm.Settings.ShowWeekends;
         result.DefaultView = vm.Settings.DefaultView;
+        result.SearchScope = vm.Settings.SearchScope;
+        result.SearchCalendarIds = vm.Settings.SearchCalendarIds;
         _store.Save(result);
         vm.Settings = result;
         L.Apply(result.Language);

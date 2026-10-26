@@ -15,6 +15,20 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
+    <Window.Resources>
+        <!-- A solid background for what covers the view (the results) or floats over it (the detailed panel of the search). -->
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="SearchSurfaceBrush">#FFFFFF</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="SearchSurfaceBrush">#202020</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Window.Styles>
         <Style Selector="Button.nav">
             <Setter Property="Background" Value="Transparent" />
@@ -37,6 +51,9 @@
         <Style Selector="Button.calitem:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#22888888" />
         </Style>
+        <Style Selector="Border.searchrow:pointerover">
+            <Setter Property="Background" Value="#14888888" />
+        </Style>
         <Style Selector="TextBlock.muted">
             <Setter Property="Opacity" Value="0.65" />
         </Style>
@@ -57,25 +74,111 @@
             <SelectableTextBlock Text="{Binding SyncStatus}" FontSize="12" TextWrapping="Wrap" MaxHeight="72"
                                  Classes.error="{Binding SyncIsError}" Classes.muted="{Binding !SyncIsError}" />
         </Border>
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,10">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,24,0" VerticalAlignment="Center" />
-                <Button AutomationProperties.AutomationId="Main.Today" Content="{loc:T main.today}" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
-                <Button Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
-                <Button Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
-                <TextBlock Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" VerticalAlignment="Center" />
-                <Border CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Settings.ShowWeekNumbers}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,10">
+            <!-- The title of the view is the one that gives way when the window is narrow: it is cut with dots, the buttons on the right stay. -->
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center" HorizontalAlignment="Left" ClipToBounds="True">
+                <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,16,0" VerticalAlignment="Center" />
+                <Button Grid.Column="1" AutomationProperties.AutomationId="Main.Today" Content="{loc:T main.today}" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
+                <Button Grid.Column="2" Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
+                <Button Grid.Column="3" Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
+                <TextBlock Grid.Column="4" Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" MaxWidth="320" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Border Grid.Column="5" CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" IsVisible="{Binding Settings.ShowWeekNumbers}">
                     <TextBlock FontSize="12" Text="{Binding WeekLabel}" />
                 </Border>
-            </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+            </Grid>
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Horizontal" Spacing="8">
+                <!-- Search (issue #8): the box appears here when the lens is pressed; the arrow opens the detailed panel as a popup over the rest of the window. -->
+        <Border Name="SearchBar" IsVisible="{Binding Search.IsOpen}" Width="440" Padding="12,2" CornerRadius="20" VerticalAlignment="Center" Background="{DynamicResource SearchSurfaceBrush}"
+                BorderThickness="1" BorderBrush="#33808080">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Margin="4,0" />
+                <TextBox Grid.Column="1" Name="SearchBox" AutomationProperties.AutomationId="Search.Box" Text="{Binding Search.Text}"
+                         Watermark="{loc:T search.box_hint}" ToolTip.Tip="{loc:T search.syntax_tip}" BorderThickness="0" Background="Transparent" KeyDown="OnSearchBoxKeyDown" />
+                <TextBlock Grid.Column="2" Text="{Binding Search.Summary}" Classes="muted" VerticalAlignment="Center" AutomationProperties.AutomationId="Search.Summary" />
+                <Button Grid.Column="3" Classes="nav" Padding="0" Click="OnToggleAdvancedSearch" AutomationProperties.AutomationId="Search.Advanced" ToolTip.Tip="{loc:T search.advanced_tip}">
+                    <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <Button Grid.Column="4" Classes="nav" Padding="0" Click="OnCloseSearch" AutomationProperties.AutomationId="Search.Close" ToolTip.Tip="{loc:T search.close_tip}">
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <Popup Name="SearchPanel" IsOpen="{Binding Search.IsAdvanced}" PlacementTarget="{Binding #SearchBar}" Placement="BottomEdgeAlignedRight" IsLightDismissEnabled="False"
+                       Width="760" VerticalOffset="6">
+                    <Border Background="{DynamicResource SearchSurfaceBrush}" BorderThickness="1" BorderBrush="#33808080" CornerRadius="24"
+                            Padding="24,20,24,16" BoxShadow="0 8 28 0 #50000000">
+                        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8"
+                              KeyDown="OnSearchFieldKeyDown" MaxWidth="760" HorizontalAlignment="Left">
+                            <TextBlock Text="{loc:T search.scope_label}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Name="SearchScopeButton" AutomationProperties.AutomationId="Search.Scope" HorizontalAlignment="Left" MinWidth="240" Padding="12,6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{Binding Search.ScopeLabel}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="&#x25BE;" Margin="12,0,0,0" Opacity="0.7" VerticalAlignment="Center" />
+                                </Grid>
+                                <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="2">
+                                            <Button Classes="calitem" Padding="8,6" Tag="0" Click="OnSearchScope" AutomationProperties.AutomationId="Search.ScopeActive">
+                                                <Grid ColumnDefinitions="24,*"><TextBlock Text="&#x2713;" IsVisible="{Binding Search.ActiveTick}" /><TextBlock Grid.Column="1" Text="{loc:T search.scope_active}" /></Grid>
+                                            </Button>
+                                            <Button Classes="calitem" Padding="8,6" Tag="1" Click="OnSearchScope" AutomationProperties.AutomationId="Search.ScopeAll">
+                                                <Grid ColumnDefinitions="24,*"><TextBlock Text="&#x2713;" IsVisible="{Binding Search.AllTick}" /><TextBlock Grid.Column="1" Text="{loc:T search.scope_all}" /></Grid>
+                                            </Button>
+                                            <Separator Margin="0,4" />
+                                            <!-- Many calendars: the list scrolls and "Fatto" stays in view below it. -->
+                                            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="Search.CalendarList">
+                                            <ItemsControl ItemsSource="{Binding Search.Calendars}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:SearchCalendarOption">
+                                                        <CheckBox IsChecked="{Binding IsSelected}" Margin="8,0" AutomationProperties.AutomationId="Search.CalendarOption">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Ellipse Width="12" Height="12" Fill="{Binding ColorHex}" VerticalAlignment="Center" />
+                                                                <!-- A long name is cut with dots, so the list never gets wider than the popup. -->
+                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" MaxWidth="200" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                                                            </StackPanel>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            </ScrollViewer>
+                                            <Separator Margin="0,4" />
+                                            <Button Content="{loc:T search.done}" Classes="accent" HorizontalAlignment="Right" Margin="0,2,8,4" Click="OnSearchScopeDone" AutomationProperties.AutomationId="Search.ScopeDone" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                            <TextBlock Grid.Row="1" Text="{loc:T search.what}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Search.WhatText}" Watermark="{loc:T search.what_hint}" AutomationProperties.AutomationId="Search.What" />
+                            <TextBlock Grid.Row="2" Text="{loc:T search.who}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Search.WhoText}" Watermark="{loc:T search.who_hint}" AutomationProperties.AutomationId="Search.Who" />
+                            <TextBlock Grid.Row="3" Text="{loc:T search.where}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Search.WhereText}" Watermark="{loc:T search.where_hint}" AutomationProperties.AutomationId="Search.Where" />
+                            <TextBlock Grid.Row="4" Text="{loc:T search.not}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Search.NotText}" Watermark="{loc:T search.not_hint}" AutomationProperties.AutomationId="Search.Not" />
+                            <TextBlock Grid.Row="5" Text="{loc:T search.date}" VerticalAlignment="Center" />
+                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <CalendarDatePicker SelectedDate="{Binding Search.FromDate}" Watermark="{loc:T search.from_hint}" AutomationProperties.AutomationId="Search.From" />
+                                <TextBlock Text="&#x2013;" VerticalAlignment="Center" />
+                                <CalendarDatePicker SelectedDate="{Binding Search.ToDate}" Watermark="{loc:T search.to_hint}" AutomationProperties.AutomationId="Search.To" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                <Button Content="{loc:T common.cancel}" Click="OnCancelAdvancedSearch" AutomationProperties.AutomationId="Search.CancelAdvanced" />
+                                <Button Content="{loc:T search.run}" Classes="accent" Click="OnRunSearch" AutomationProperties.AutomationId="Search.Run" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+                <Button AutomationProperties.AutomationId="Main.Search" Classes="nav" Padding="0" Click="OnToggleSearch" ToolTip.Tip="{loc:T search.tip}">
+                    <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
                 <Button AutomationProperties.AutomationId="Main.SyncNow" Classes="nav" Padding="0" Click="OnSyncNow" IsEnabled="{Binding !IsSyncing}" ToolTip.Tip="{loc:T main.sync_now}">
                     <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
-                <Button CornerRadius="18" Padding="18,6" MinWidth="140">
+                <Button AutomationProperties.AutomationId="Main.ViewMode" CornerRadius="18" Padding="18,6">
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                        <TextBlock Text="{Binding ViewModeName}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ViewModeName}" VerticalAlignment="Center" MinWidth="90" />
                         <TextBlock Text="&#x25BE;" VerticalAlignment="Center" Opacity="0.7" />
                     </StackPanel>
                     <Button.Flyout>
@@ -281,6 +384,65 @@
                               DefaultMinutes="{Binding Settings.DefaultEventMinutes}" />
             </ScrollViewer>
         </DockPanel>
+
+
+        <!-- Results of the search: they cover the view while the search is open. Like Google Calendar: the day on the left, a line per event, a rule between days. -->
+        <Border IsVisible="{Binding Search.ShowResults}" Background="{DynamicResource SearchSurfaceBrush}">
+            <Panel>
+                <ScrollViewer>
+                    <StackPanel Margin="24,0,24,24" MaxWidth="1000">
+                        <ItemsControl ItemsSource="{Binding Search.Groups}" AutomationProperties.AutomationId="Search.Results">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SearchGroup">
+                                    <Border BorderThickness="0,0,0,1" BorderBrush="#33808080" Padding="0,10">
+                                        <Grid ColumnDefinitions="180,*">
+                                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" Margin="8,2,0,0">
+                                                <Border Width="36" Height="36" CornerRadius="18" Classes.today="{Binding IsToday}">
+                                                    <Border.Styles>
+                                                        <Style Selector="Border.today"><Setter Property="Background" Value="#1A73E8" /></Style>
+                                                        <Style Selector="Border.today TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+                                                    </Border.Styles>
+                                                    <TextBlock Text="{Binding DayNumber}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Text="{Binding MonthWeekday}" Classes="muted" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Rows}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:SearchRow">
+                                                        <Border Classes="searchrow" AutomationProperties.AutomationId="Search.Row" Padding="10,6" CornerRadius="16" Opacity="{Binding RowOpacity}" Background="Transparent"
+                                                                Tapped="OnSearchRowTapped" DoubleTapped="OnSearchRowDoubleTapped">
+                                                            <Grid ColumnDefinitions="Auto,150,*,Auto">
+                                                                <Ellipse Width="12" Height="12" Fill="{Binding ColorHex}" VerticalAlignment="Top" Margin="0,5,12,0" />
+                                                                <StackPanel Grid.Column="1" Margin="0,1,8,0">
+                                                                    <TextBlock Text="{Binding Time}" />
+                                                                    <TextBlock Text="{Binding SecondTime}" IsVisible="{Binding HasSecondTime}" Classes="muted" FontSize="11" />
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="2" Spacing="1">
+                                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Text="{Binding Snippet}" IsVisible="{Binding HasSnippet}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="3" Margin="12,0,0,0" HorizontalAlignment="Right">
+                                                                    <TextBlock Text="{Binding Tags}" Classes="muted" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                                                                    <TextBlock Text="{Binding CalendarName}" Classes="muted" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Search.TruncatedNote}" IsVisible="{Binding Search.IsTruncated}" Classes="muted" Margin="8,12" AutomationProperties.AutomationId="Search.Truncated" />
+                    </StackPanel>
+                </ScrollViewer>
+                <TextBlock IsVisible="{Binding Search.ShowMessage}" Text="{Binding Search.Message}" Classes="muted" TextWrapping="Wrap" MaxWidth="480" TextAlignment="Center"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.AutomationId="Search.Message" />
+            </Panel>
+        </Border>
 
         <!-- Event details shown on a single click, beside the clicked event (content set in code). A click outside closes it
              and still reaches the calendar, so clicking another event opens that one directly. -->

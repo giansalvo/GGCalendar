@@ -27,6 +27,7 @@
 - Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 2 Minuten) und Schlummerfunktion, auch nach einem Neustart erhalten
 - Synchronisierung in beide Richtungen mit einem oder mehreren Google-Kalender-Konten, mit Konfliktbehandlung; Wecker reisen mit dem Termin über Google und werden mit [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) für Android geteilt
 - Gäste, Google-Meet-Links, Erinnerungen per E-Mail (von Google gesendet)
+- Suche nach einem Text in Titel, Beschreibung, Ort und Gästen, in einem oder mehreren Kalendern, mit Datum und auszuschließenden Wörtern
 - Lokale Kalender, Import und Export von `.ics`-Dateien
 - Helles und dunkles Design
 - Oberfläche in Italienisch, Englisch, Deutsch, Spanisch und Französisch: Die Sprache wird in den *Einstellungen* gewählt (Standard: die Sprache von Windows) und ändert sich sofort
