@@ -48,7 +48,7 @@ public sealed class SyncQueueWindow : Window
 
         AutomationProperties.SetAutomationId(_cancelAll, "Queue.CancelAll");
         AutomationProperties.SetAutomationId(_retry, "Queue.Retry");
-        _cancelAll.Click += async (_, _) => await AskAsync(_google.GetQueue(), null);
+        _cancelAll.Click += async (_, _) => await AskAsync([], null, all: true);
         _retry.Click += async (_, _) =>
         {
             IsEnabled = false;
@@ -102,16 +102,28 @@ public sealed class SyncQueueWindow : Window
 
     private bool _closed;
     private bool _refreshing;
+    private bool _again;
 
     /// <summary>Draws the queue again: it changed (a sync sent something, the person cancelled) or the time in the queue has to follow the clock.</summary>
     public async void Refresh()
     {
-        if (_closed || _refreshing) return;
+        if (_closed) return;
+        if (_refreshing)
+        {
+            _again = true; // asked while another drawing is going on: it is done again, so that the list is never left older than the last request
+            return;
+        }
+
         _refreshing = true;
         try
         {
-            var queue = await Task.Run(_google.GetQueue); // thousands of events: read off the thread of the window
-            if (!_closed) Build(queue);
+            do
+            {
+                _again = false;
+                var queue = await Task.Run(_google.GetQueue); // thousands of events: read off the thread of the window
+                if (!_closed) Build(queue);
+            }
+            while (_again && !_closed);
         }
         finally
         {
@@ -268,9 +280,23 @@ public sealed class SyncQueueWindow : Window
             : (L.T("queue.confirm_title_group", calendarName), $"{L.N("queue.confirm_group", items.Count, calendarName)}\n\n{Explain(items)}\n\n{loss}");
     }
 
-    private async Task AskAsync(IReadOnlyList<QueuedEvent> items, string? calendarName)
+    /// <param name="shown">The events of the line, calendar or button that was pressed, as they were on show.</param>
+    /// <param name="all">All the events in the queue.</param>
+    private async Task AskAsync(IReadOnlyList<QueuedEvent> shown, string? calendarName, bool all = false)
     {
-        if (items.Count == 0) return;
+        // The list on show may be older than the queue (a sync can have sent some of the events meanwhile): the question is about what is
+        // really waiting now, and the list is drawn again so that it says the same.
+        var fresh = await Task.Run(_google.GetQueue);
+        if (_closed) return;
+        Build(fresh);
+        var wanted = shown.Select(q => q.EventId).ToHashSet();
+        var items = all ? fresh : fresh.Where(q => wanted.Contains(q.EventId)).ToList();
+        if (items.Count == 0)
+        {
+            await new WarningWindow(L.T("queue.title"), L.T("queue.cancel_none")).ShowDialog(this); // they were sent meanwhile
+            return;
+        }
+
         var (title, text) = Question(items, calendarName);
         if (!await new ConfirmWindow(title, text, L.T("queue.confirm_button")).ShowDialog<bool>(this)) return;
         IsEnabled = false; // it waits for a sync that is running
