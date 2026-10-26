@@ -185,14 +185,7 @@ public sealed class EventDetailsCard : Border
     /// <summary>"30 minuti prima", "Sveglia 1 ora prima", "Email 2 giorni prima", "All'inizio".</summary>
     internal static string Reminder(EventReminder r)
     {
-        var when = r.Minutes switch
-        {
-            0 => L.T("reminder.at_start"),
-            var m when m % 10080 == 0 => L.N("reminder.before_weeks", m / 10080),
-            var m when m % 1440 == 0 => L.N("reminder.before_days", m / 1440),
-            var m when m % 60 == 0 => L.N("reminder.before_hours", m / 60),
-            var m => L.N("reminder.before_minutes", m),
-        };
+        var when = BeforeStart(r.Minutes);
         return r.Method switch
         {
             ReminderMethod.Alarm => L.T("reminder.with_alarm", when),
@@ -200,6 +193,16 @@ public sealed class EventDetailsCard : Border
             _ => Capitalize(when),
         };
     }
+
+    /// <summary>"all'inizio", "30 minuti prima", "1 ora prima", "2 giorni prima": when a reminder rings, relative to the start.</summary>
+    internal static string BeforeStart(int minutes) => minutes switch
+    {
+        0 => L.T("reminder.at_start"),
+        var m when m % 10080 == 0 => L.N("reminder.before_weeks", m / 10080),
+        var m when m % 1440 == 0 => L.N("reminder.before_days", m / 1440),
+        var m when m % 60 == 0 => L.N("reminder.before_hours", m / 60),
+        var m => L.N("reminder.before_minutes", m),
+    };
 
     private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0], Culture) + s[1..];
 }

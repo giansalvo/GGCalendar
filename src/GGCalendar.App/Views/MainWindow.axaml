@@ -172,6 +172,20 @@
                     <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
+                <!-- MOCKUP of the pending alarms (issue #18): grey and not clickable when there are none. -->
+                <Button Name="AlarmsButton" AutomationProperties.AutomationId="Main.Alarms" Classes="nav" Padding="0" ToolTip.ShowOnDisabled="True">
+                    <Grid>
+                        <TextBlock Name="AlarmsGlyph" Text="&#xE7ED;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border Name="AlarmsBadge" MinWidth="15" Height="15" CornerRadius="8" Padding="3,0" Background="#1A73E8"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0">
+                            <TextBlock Name="AlarmsBadgeText" FontSize="10" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight" />
+                    </Button.Flyout>
+                </Button>
                 <Button AutomationProperties.AutomationId="Main.SyncNow" Classes="nav" Padding="0" Click="OnSyncNow" IsEnabled="{Binding !IsSyncing}" ToolTip.Tip="{loc:T main.sync_now}">
                     <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />

@@ -25,6 +25,7 @@
 - Übersichtskarte beim Klick auf einen Termin (bearbeiten, löschen, E-Mail an die Gäste, exportieren, an Meet teilnehmen); Doppelklick zum Bearbeiten
 - Wiederkehrende Termine, mit Bearbeiten oder Löschen eines einzelnen Termins, der folgenden oder der ganzen Serie
 - Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 2 Minuten) und Schlummerfunktion, auch nach einem Neustart erhalten
+- Liste der Wecker (Symbol neben der Lupe): die gerade klingelnden und die in den nächsten 60 Tagen anstehenden, mit der verbleibenden Zeit; Sie können sie ausschalten, abbrechen (nur auf diesem Computer) oder den Termin öffnen. Wecker klingeln einzeln nacheinander und nur bei geöffnetem GGCalendar; Erinnerungen ausgeblendeter Kalender klingeln nicht (verschobene Wecker schon)
 - Synchronisierung in beide Richtungen mit einem oder mehreren Google-Kalender-Konten, mit Konfliktbehandlung; Wecker reisen mit dem Termin über Google und werden mit [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) für Android geteilt
 - Gäste, Google-Meet-Links, Erinnerungen per E-Mail (von Google gesendet)
 - Suche nach einem Text in Titel, Beschreibung, Ort und Gästen, in einem oder mehreren Kalendern, mit Datum und auszuschließenden Wörtern

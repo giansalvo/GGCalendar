@@ -177,6 +177,12 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Raised when events or calendars change (not on navigation), e.g. to refresh cached reminders.</summary>
     public event Action? EventsChanged;
 
+    /// <summary>Raised when a calendar is shown or hidden (the reminders of hidden calendars do not ring).</summary>
+    public event Action? CalendarVisibilityChanged;
+
+    /// <summary>Whether the calendar is shown (a calendar that is not known counts as shown).</summary>
+    public bool IsCalendarVisible(string calendarId) => _calendars.FirstOrDefault(c => c.Id == calendarId)?.IsVisible ?? true;
+
     private void Changed()
     {
         _changeCount++;
@@ -230,6 +236,7 @@ public sealed partial class MainViewModel : ViewModelBase
                     _store.SetCalendarVisible(info.Id, item!.IsVisible);
                     _changeCount++;
                     Refresh();
+                    CalendarVisibilityChanged?.Invoke();
                 }, subscriptions.GetValueOrDefault(info.Id));
                 return item;
             }).ToList();
