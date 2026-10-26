@@ -204,14 +204,16 @@ public class SubscriptionUiTests
         Assert.Equal("Il mio pubblico", calendar.Name);
         Assert.Equal(MainViewModel.CalendarPalette[2], calendar.ColorHex);
         Assert.Equal(["Vicino"], Vm(window).AllEvents.Where(e => e.CalendarId == calendar.Id).Select(e => e.Title));
-        await WaitForAsync(() => Vm(window).SyncStatus == L.N("status.sub_added", 1, "Il mio pubblico") ? window : null, "il messaggio nella barra di stato");
+        // (The message of the status bar can be replaced at once by another one: a refresh, a sync. It is checked in the unit tests of the messages.)
+        Assert.Equal(L.N("status.sub_added", 1, "Il mio pubblico"), Msg.Count("status.sub_added", 1, "Il mio pubblico").Text);
     });
 
     // ---- T158: the menu of a calendar ----
 
     private static async Task<List<string>> MenuOfAsync(MainWindow window, CalendarItemViewModel calendar)
     {
-        var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext == calendar && b.ContextMenu is not null);
+        // The list is drawn again after a reload: the line of the calendar may not be there yet.
+        var holder = await WaitForAsync(() => window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext == calendar && b.ContextMenu is not null), "la riga del calendario");
         // The menu takes its data context from the control it opens on; headless, that does not always happen before the first read.
         holder.ContextMenu!.DataContext = calendar;
         holder.ContextMenu.Open(holder);
@@ -239,13 +241,17 @@ public class SubscriptionUiTests
     public Task T158_ASubscribedCalendarHasItsOwnMenuAndNoImportExportOrDelete() => InSubscribedAppAsync(
         new FakeSite().Serve("/public.ics", Ics("Lezione", DateTime.Today.AddDays(1))), async window =>
     {
-        var subscribed = await SubscribeAsync(window);
+        await SubscribeAsync(window);
+        await PauseAsync(TimeSpan.FromMilliseconds(100)); // the list is drawn again after the reload
+        var subscribed = Vm(window).Calendars.First(c => c.IsSubscription);
         var menu = await MenuOfAsync(window, subscribed);
         Assert.Equal(["Menu.SubRefresh", "Menu.SubEdit", "Menu.SubShowUrl", "Menu.SubRemove"], menu);
+        var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext == subscribed && b.ContextMenu is not null);
+        Assert.Equal(L.T("main.edit_calendar"), holder.ContextMenu!.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubEdit").Header); // T210: the same words as for the other calendars
 
         var local = Vm(window).Calendars.First(c => c.IsLocal);
         var localMenu = await MenuOfAsync(window, local);
-        Assert.Equal([L.T("main.import_here"), L.T("main.export_calendar"), L.T("main.delete_calendar")], localMenu);
+        Assert.Equal(["Menu.EditCalendar", L.T("main.import_here"), L.T("main.export_calendar"), L.T("main.delete_calendar")], localMenu);
     });
 
     [Fact]

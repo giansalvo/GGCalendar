@@ -21,10 +21,10 @@ namespace GGCalendar.Core.Tests;
 [Collection(CollectionName)]
 public class GoogleCalendarUiTests
 {
-    private static string Local(string remote) => FakeGoogle.Account + "|" + remote;
+    internal static string Local(string remote) => FakeGoogle.Account + "|" + remote;
 
     /// <summary>Runs the app with the Google service on <paramref name="fake"/> (account me@example.com); the calendars of that account are removed when it ends.</summary>
-    private static Task InFakeGoogleAppAsync(FakeGoogle fake, Func<MainWindow, Task> test) => HeadlessApp.RunAsync(async () =>
+    internal static Task InFakeGoogleAppAsync(FakeGoogle fake, Func<MainWindow, Task> test) => HeadlessApp.RunAsync(async () =>
     {
         var settingsFile = new SettingsStore().FilePath;
         var original = File.Exists(settingsFile) ? File.ReadAllBytes(settingsFile) : null;
@@ -55,23 +55,27 @@ public class GoogleCalendarUiTests
         }
     });
 
-    private static async Task SyncNowAsync(MainWindow window)
+    /// <summary>Presses "Sync now" and waits for that sync to end well (with the fake the sync can be over before the button returns: the helper of the driver would then complain).</summary>
+    internal static async Task SyncNowAsync(MainWindow window)
     {
+        var vm = Vm(window);
         await WaitForQuietAsync(window);
-        await SyncAsync(window);
+        var before = vm.Status;
+        Click(FindButton(window, "Main.SyncNow"));
+        await WaitForAsync(() => !vm.IsSyncing && !ReferenceEquals(vm.Status, before) && vm.Status?.Is("status.synced") == true ? vm : null, "la sincronizzazione", SyncTimeout);
     }
 
-    private static MenuItem Item(ContextMenu menu, string automationId) =>
+    internal static MenuItem Item(ContextMenu menu, string automationId) =>
         menu.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == automationId);
 
-    private static void ClickItem(MenuItem item)
+    internal static void ClickItem(MenuItem item)
     {
         item.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
         Dispatcher.UIThread.RunJobs();
     }
 
     /// <summary>The menu of the calendar, opened.</summary>
-    private static ContextMenu OpenCalendarMenu(MainWindow window, CalendarItemViewModel calendar)
+    internal static ContextMenu OpenCalendarMenu(MainWindow window, CalendarItemViewModel calendar)
     {
         var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext == calendar && b.ContextMenu is not null);
         holder.ContextMenu!.DataContext = calendar; // the menu takes it from the control it opens on; headless, not always before the first read
@@ -80,7 +84,7 @@ public class GoogleCalendarUiTests
         return holder.ContextMenu;
     }
 
-    private static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
+    internal static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
     {
         var header = window.GetVisualDescendants().OfType<Grid>().First(g => g.DataContext == group && g.ContextMenu is not null);
         header.ContextMenu!.DataContext = group;
@@ -89,7 +93,7 @@ public class GoogleCalendarUiTests
         return header.ContextMenu;
     }
 
-    private static CalendarItemViewModel Calendar(MainWindow window, string localId) => Vm(window).Calendars.First(c => c.Id == localId);
+    internal static CalendarItemViewModel Calendar(MainWindow window, string localId) => Vm(window).Calendars.First(c => c.Id == localId);
 
     // ---- T182: from the menu of the account ----
 

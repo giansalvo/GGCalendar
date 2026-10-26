@@ -29,6 +29,7 @@
 - Guests, Google Meet links, email reminders (sent by Google)
 - Search a text in the title, description, location and guests, in one or more calendars, with dates and words to leave out
 - Create and delete calendars on Google accounts (only those you own, never the primary one)
+- Edit the name and colour of calendars: the name for local calendars and your own on Google, the colour for all of them (8 quick colours and the 24 of Google)
 - Local calendars, import and export of `.ics` files
 - Light and dark theme
 - Interface in Italian, English, German, Spanish and French: the language is chosen in *Settings* (default: the language of Windows) and changes at once

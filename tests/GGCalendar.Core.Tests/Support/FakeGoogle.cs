@@ -32,8 +32,11 @@ public sealed class FakeGoogle : HttpMessageHandler
     {
         public string Id { get; } = id;
         public string Summary { get; set; } = summary;
+
+        /// <summary>The name only the person sees (summaryOverride): when there is one, the list shows it and not the real name.</summary>
+        public string? PersonalName { get; set; }
         public string Color { get; set; } = color;
-        public string Role { get; } = role;
+        public string Role { get; set; } = role;
         public bool Primary { get; } = primary;
         public Dictionary<string, Stored> Events { get; } = events;
     }
@@ -71,6 +74,9 @@ public sealed class FakeGoogle : HttpMessageHandler
 
     /// <summary>The colours set on calendars (PATCH calendarList): the id, the query and the body.</summary>
     public List<(string Id, string Query, string Body)> ColorPatches { get; } = [];
+
+    /// <summary>The renames received (PATCH calendars): the id and the new name.</summary>
+    public List<(string Id, string Summary)> Renames { get; } = [];
 
     /// <summary>The ids of the calendars deleted so far.</summary>
     public List<string> DeletedCalendars { get; } = [];
@@ -110,6 +116,14 @@ public sealed class FakeGoogle : HttpMessageHandler
             _events = saved;
         }
     }
+
+    /// <summary>The name that the person alone sees on a calendar (it hides the real one in the list).</summary>
+    public void SetPersonalName(string calendarId, string? name) => _calendars.First(c => c.Id == calendarId).PersonalName = name;
+
+    /// <summary>The calendar is not the person's any more (another device gave it away): the role becomes writer.</summary>
+    public void RemoveOwnership(string calendarId) => _calendars.First(c => c.Id == calendarId).Role = "writer";
+
+    public string? PersonalNameOf(string calendarId) => _calendars.FirstOrDefault(c => c.Id == calendarId)?.PersonalName;
 
     public int EventsIn(string calendarId) => _calendars.First(c => c.Id == calendarId).Events.Count(e => !e.Value.Deleted);
 
@@ -210,6 +224,7 @@ public sealed class FakeGoogle : HttpMessageHandler
             {
                 var item = new JsonObject { ["id"] = c.Id, ["summary"] = c.Summary, ["backgroundColor"] = c.Color, ["accessRole"] = c.Role, ["defaultReminders"] = new JsonArray() };
                 if (c.Primary) item["primary"] = true;
+                if (c.PersonalName is not null) item["summaryOverride"] = c.PersonalName;
                 items.Add(item);
             }
 
@@ -235,7 +250,28 @@ public sealed class FakeGoogle : HttpMessageHandler
             if (target is null) return Reply(HttpStatusCode.NotFound, "{}");
             ColorPatches.Add((target.Id, url.Query, body!));
             if (!url.Query.Contains("colorRgbFormat=true")) return Reply(HttpStatusCode.BadRequest, ErrorBody(HttpStatusCode.BadRequest, "invalid"));
-            if (JsonNode.Parse(body!)!["backgroundColor"]?.GetValue<string>() is { } color) target.Color = color;
+            var patch = JsonNode.Parse(body!)!.AsObject();
+            // As the real Google does with colours sent as RGB: any text colour but black and white is refused (found with the real Google: #1D1D1D gives 400).
+            if (patch["foregroundColor"]?.GetValue<string>() is { } text && !text.Equals("#000000", StringComparison.OrdinalIgnoreCase) && !text.Equals("#FFFFFF", StringComparison.OrdinalIgnoreCase))
+                return Reply(HttpStatusCode.BadRequest, ErrorBody(HttpStatusCode.BadRequest, "invalid"));
+            if (patch["backgroundColor"]?.GetValue<string>() is { } color) target.Color = color;
+            if (patch.ContainsKey("summaryOverride")) target.PersonalName = patch["summaryOverride"]?.GetValue<string>(); // a null removes it
+            return Reply(HttpStatusCode.OK, "{}");
+        }
+
+        if (parts is ["calendars", _] && request.Method == HttpMethod.Patch)
+        {
+            if (RefuseWrite() is { } refused) return refused;
+            var target = _calendars.FirstOrDefault(c => c.Id == Uri.UnescapeDataString(parts[1]));
+            if (target is null) return Reply(HttpStatusCode.NotFound, "{}");
+            if (target.Role != "owner") return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "forbidden"));
+            var name = JsonNode.Parse(body!)!["summary"]?.GetValue<string>();
+            if (name is not null)
+            {
+                target.Summary = name;
+                Renames.Add((target.Id, name));
+            }
+
             return Reply(HttpStatusCode.OK, "{}");
         }
 

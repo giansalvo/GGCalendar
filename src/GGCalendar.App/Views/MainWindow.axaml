@@ -205,7 +205,8 @@
             </StackPanel>
         </Grid>
 
-        <Border DockPanel.Dock="Left" Width="260" Padding="12,0">
+        <!-- The list of the accounts and calendars is wide enough for most names; a longer one is cut with dots and the tooltip shows it whole. -->
+        <Border DockPanel.Dock="Left" Width="340" Padding="12,0">
             <DockPanel>
                 <!-- A single button: it opens the menu where the thing to create is chosen. -->
                 <Button AutomationProperties.AutomationId="Main.Create" Name="CreateButton" DockPanel.Dock="Top" Content="{loc:T main.create}" Padding="16,6" CornerRadius="18" Margin="0,4,0,16">
@@ -241,7 +242,7 @@
                                             <TextBlock Text="{Binding Initial}" Foreground="#0B2A52" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayName}" />
                                             <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11" />
                                         </StackPanel>
                                         <Button Grid.Column="2" Classes="nav" Width="28" Height="28" Padding="0" VerticalAlignment="Center" Click="OnToggleAccount"
@@ -256,10 +257,12 @@
                                                     <Border.ContextMenu>
                                                         <!-- No ResizeY: near the bottom of the screen the menu must open upwards or slide, not shrink and scroll. -->
                                                         <ContextMenu PlacementConstraintAdjustment="FlipX,FlipY,SlideX,SlideY">
+                                                            <MenuItem AutomationProperties.AutomationId="Menu.EditCalendar" Header="{loc:T main.edit_calendar}" Click="OnEditCalendar" IsVisible="{Binding !IsSubscription}" />
+                                                            <Separator IsVisible="{Binding !IsSubscription}" />
                                                             <MenuItem Header="{loc:T main.import_here}" Click="OnImportIntoCalendar" IsVisible="{Binding !IsSubscription}" />
                                                             <MenuItem Header="{loc:T main.export_calendar}" Click="OnExportCalendar" IsVisible="{Binding !IsSubscription}" />
                                                             <MenuItem AutomationProperties.AutomationId="Menu.SubRefresh" Header="{loc:T sub.refresh_now}" Click="OnRefreshSubscription" IsVisible="{Binding IsSubscription}" />
-                                                            <MenuItem AutomationProperties.AutomationId="Menu.SubEdit" Header="{loc:T sub.edit}" Click="OnEditSubscription" IsVisible="{Binding IsSubscription}" />
+                                                            <MenuItem AutomationProperties.AutomationId="Menu.SubEdit" Header="{loc:T main.edit_calendar}" Click="OnEditSubscription" IsVisible="{Binding IsSubscription}" />
                                                             <MenuItem AutomationProperties.AutomationId="Menu.SubShowUrl" Header="{loc:T sub.show_url}" Click="OnShowSubscriptionUrl" IsVisible="{Binding IsSubscription}" />
                                                             <Separator IsVisible="{Binding IsSubscription}" />
                                                             <MenuItem AutomationProperties.AutomationId="Menu.SubRemove" Header="{loc:T sub.remove}" Click="OnRemoveSubscription" IsVisible="{Binding IsSubscription}" />
@@ -279,7 +282,7 @@
                                                                 <TextBlock Text="&#x2713;" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                             </Border>
                                                         </Border>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
                                                         <!-- The last refresh of a public calendar failed: the reason is in the tooltip. -->
                                                         <TextBlock Grid.Column="2" Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#E37400" FontSize="14"
                                                                    VerticalAlignment="Center" Margin="6,0,2,0" IsVisible="{Binding HasProblem}" ToolTip.Tip="{Binding ProblemText}" />

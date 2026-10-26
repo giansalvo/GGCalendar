@@ -30,6 +30,8 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(ProblemText));
         OnPropertyChanged(nameof(DeleteHint));
+        OnPropertyChanged(nameof(RenameHint));
+        OnPropertyChanged(nameof(RenameNote));
     }
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
@@ -50,6 +52,17 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
 
     /// <summary>Only a calendar of Google that the person owns and that is not the primary one can be deleted (the menu item is grey otherwise).</summary>
     public bool CanDeleteFromGoogle => IsGoogle && !IsPrimary && IsOwner == true;
+
+    /// <summary>
+    /// The name can be changed: a calendar of this PC, or one of Google that the person owns and that is not the primary one. The colour can always be changed.
+    /// </summary>
+    public bool CanRename => IsLocal || CanDeleteFromGoogle;
+
+    /// <summary>Why the name cannot be changed (shown under the name in the window), or empty.</summary>
+    public string RenameHint => IsLocal || CanDeleteFromGoogle ? "" : IsPrimary ? L.T("gcal.rename_hint_primary") : IsOwner == false ? L.T("gcal.rename_hint_not_owner") : L.T("gcal.rename_hint_unknown");
+
+    /// <summary>A calendar of Google with a name that can be changed: the new name is seen by everybody it is shared with.</summary>
+    public string RenameNote => CanDeleteFromGoogle ? L.T("gcal.rename_note_shared") : "";
 
     /// <summary>Why the item "delete" is grey (the tooltip), or empty when it can be used.</summary>
     public string DeleteHint => IsPrimary ? L.T("gcal.hint_primary") : IsOwner == false ? L.T("gcal.hint_not_owner") : IsOwner is null ? L.T("gcal.hint_unknown") : "";
@@ -511,7 +524,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public IReadOnlyList<CalendarEvent> EventsOf(string calendarId) => _allEvents.Where(e => e.CalendarId == calendarId).ToList();
 
-    public static readonly string[] CalendarPalette = ["#1A73E8", "#0B8043", "#E67C73", "#8E24AA", "#F6BF26", "#039BE5", "#D50000", "#616161"];
+    /// <summary>The 8 colours shown first when a calendar is made or changed (all of them are colours of Google: see <see cref="GGCalendar.Core.Models.CalendarColors"/>).</summary>
+    public static readonly string[] CalendarPalette = [.. GGCalendar.Core.Models.CalendarColors.Quick];
 
     /// <summary>Creates a calendar that lives only on this PC (not synced).</summary>
     public string CreateLocalCalendar(string name)
@@ -521,6 +535,16 @@ public sealed partial class MainViewModel : ViewModelBase
         _store.UpsertCalendar(new CalendarInfo(id, LocalAccountName, name, color));
         Reload();
         return id;
+    }
+
+    /// <summary>Changes the name and the colour of a calendar of this PC.</summary>
+    public void UpdateLocalCalendar(string calendarId, string name, string colorHex)
+    {
+        if (IsRemote(calendarId) || IsReadOnly(calendarId) || string.IsNullOrWhiteSpace(name)) return;
+        var info = _store.GetCalendars().FirstOrDefault(c => c.Id == calendarId);
+        if (info is null) return;
+        _store.UpsertCalendar(info with { Name = name.Trim(), ColorHex = colorHex });
+        Reload();
     }
 
     public void DeleteLocalCalendar(string calendarId)

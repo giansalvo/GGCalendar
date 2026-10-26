@@ -153,6 +153,26 @@ public sealed class TestGoogle : IDisposable
             ["end"] = new JsonObject { ["dateTime"] = utcStart.AddHours(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) },
         });
 
+    /// <summary>The colours Google offers for calendars (colors.get, "calendar"): id, background, foreground, in the order of the ids.</summary>
+    public async Task<List<(string Id, string Background, string Foreground)>> GetCalendarColorsAsync()
+    {
+        var answer = await SendAsync(HttpMethod.Get, Calendars + "/colors");
+        return answer.GetProperty("calendar").EnumerateObject()
+            .Select(c => (c.Name, c.Value.GetProperty("background").GetString()!, c.Value.GetProperty("foreground").GetString()!))
+            .OrderBy(c => int.Parse(c.Name)).ToList();
+    }
+
+    /// <summary>The entry of a calendar in the list of the account (calendarList.get): name, personal name, colour, role.</summary>
+    public Task<JsonElement> GetCalendarEntryAsync(string calendarId) => SendAsync(HttpMethod.Get, $"{Calendars}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}");
+
+    /// <summary>The calendar itself (calendars.get).</summary>
+    public Task<JsonElement> GetCalendarAsync(string calendarId) => SendAsync(HttpMethod.Get, $"{Calendars}/calendars/{Uri.EscapeDataString(calendarId)}");
+
+    /// <summary>Sets the colour of a calendar in the list of the account (to put a colour back after a test).</summary>
+    public Task<JsonElement> SetCalendarColorAsync(string calendarId, string background, string foreground) =>
+        SendAsync(HttpMethod.Patch, $"{Calendars}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}?colorRgbFormat=true",
+            new JsonObject { ["backgroundColor"] = background, ["foregroundColor"] = foreground });
+
     /// <summary>Deletes the calendars of the test account that the tests made (owned, with the test prefix in the name). Returns how many.</summary>
     public async Task<int> DeleteLeftoverCalendarsAsync()
     {

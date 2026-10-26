@@ -49,6 +49,8 @@ public class GoogleCalendarRealTests
         Assert.NotNull(remoteId);
         Assert.Equal(TestAccount + "|" + remoteId, created.Id);
         Assert.Equal(true, created.IsOwner);
+        var entry = await google.GetCalendarEntryAsync(remoteId!);
+        Assert.Equal(created.ColorHex, entry.GetProperty("backgroundColor").GetString()!.ToUpperInvariant()); // the colour asked for is the one Google has
         Assert.True(created.CanDeleteFromGoogle);
 
         // An event made on Google reaches the app; one made in the app reaches Google.
