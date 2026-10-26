@@ -9,7 +9,7 @@ using GGCalendar.Core.Localization;
 
 namespace GGCalendar.Providers.Google;
 
-public sealed record GoogleCalendarEntry(string Id, string Name, string ColorHex, bool IsPrimary, bool CanWrite, IReadOnlyList<EventReminder> DefaultReminders);
+public sealed record GoogleCalendarEntry(string Id, string Name, string ColorHex, bool IsPrimary, bool CanWrite, IReadOnlyList<EventReminder> DefaultReminders, bool IsOwner = false);
 
 public sealed record GoogleSyncPage(IReadOnlyList<JsonElement> Items, string? NextSyncToken);
 
@@ -125,13 +125,53 @@ public sealed class GoogleCalendarClient
                     c.TryGetProperty("backgroundColor", out var bc) ? bc.GetString()! : "#1A73E8",
                     c.TryGetProperty("primary", out var p) && p.GetBoolean(),
                     role is "owner" or "writer",
-                    GoogleEventMapper.ParseDefaultReminders(c)));
+                    GoogleEventMapper.ParseDefaultReminders(c),
+                    role == "owner"));
             }
 
             page = r.TryGetProperty("nextPageToken", out var np) ? np.GetString() : null;
         }
         while (page is not null);
         return list;
+    }
+
+    /// <summary>Creates a secondary calendar of the account (calendars.insert); returns its id. The colour is set apart: see <see cref="SetCalendarColorAsync"/>.</summary>
+    public async Task<string> CreateCalendarAsync(string name, string timeZone, CancellationToken ct)
+    {
+        var body = new JsonObject { ["summary"] = name, ["timeZone"] = timeZone };
+        var created = await SendAsync(HttpMethod.Post, $"{Base}/calendars", body, ct);
+        return created.GetProperty("id").GetString()!;
+    }
+
+    /// <summary>Sets the colour of a calendar in the list of the account (calendars.insert cannot): background as given, text black or white to be readable.</summary>
+    public async Task SetCalendarColorAsync(string calendarId, string colorHex, CancellationToken ct)
+    {
+        var body = new JsonObject { ["backgroundColor"] = colorHex, ["foregroundColor"] = ForegroundFor(colorHex) };
+        await SendAsync(new HttpMethod("PATCH"), $"{Base}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}?colorRgbFormat=true", body, ct);
+    }
+
+    private static string ForegroundFor(string colorHex)
+    {
+        var hex = colorHex.TrimStart('#');
+        if (hex.Length != 6 || !int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var rgb)) return "#000000";
+        var luminance = 0.299 * ((rgb >> 16) & 255) + 0.587 * ((rgb >> 8) & 255) + 0.114 * (rgb & 255);
+        return luminance < 140 ? "#FFFFFF" : "#000000";
+    }
+
+    /// <summary>
+    /// Deletes a secondary calendar with all its events (calendars.delete): one request whatever the number of events, and for everybody it is
+    /// shared with. Guests of its events are not told. Already gone (404, 410) is not an error.
+    /// </summary>
+    public async Task DeleteCalendarAsync(string calendarId, CancellationToken ct)
+    {
+        try
+        {
+            await SendAsync(HttpMethod.Delete, $"{Base}/calendars/{Uri.EscapeDataString(calendarId)}", null, ct);
+        }
+        catch (GoogleApiException ex) when (ex.Status is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            // Already deleted remotely.
+        }
     }
 
     /// <summary>

@@ -32,6 +32,16 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
 
     private static string AccountOf(string localId) => localId[..localId.IndexOf('|')];
 
+    /// <summary>The primary calendar of an account has the email of the account as its id on Google: it cannot be deleted.</summary>
+    public static bool IsPrimaryCalendar(string localId) =>
+        IsGoogleCalendar(localId) && string.Equals(AccountOf(localId), RemoteCalendarId(localId), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// One thing at a time touches the calendars of the accounts: a sync, the creation or the deletion of a calendar. A sync that starts while
+    /// another runs is skipped; a creation or a deletion waits its turn.
+    /// </summary>
+    public SemaphoreSlim Gate { get; } = new(1, 1);
+
     private GoogleClientConfig _config = GoogleClientConfig.Embedded;
 
     /// <summary>The pause between two writes to Google while many are waiting (a few changes are sent at once). Google refuses a burst.</summary>
@@ -88,6 +98,114 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     public IReadOnlyList<string> AccountEmails => accounts.Load().Select(a => a.Email).ToList();
 
     /// <param name="onProgress">Called while changes are sent to Google with (sent so far, waiting at the start of the sending).</param>
+    // ---------- Creating and deleting calendars (online only: nothing is queued) ----------
+
+    /// <summary>The longest name the app sends for a calendar.</summary>
+    public const int MaxCalendarName = 255;
+
+    private static string TimeZoneForGoogle()
+    {
+        var id = TimeZoneInfo.Local.Id;
+        if (id.Contains('/')) return id; // already an IANA name
+        return TimeZoneInfo.TryConvertWindowsIdToIanaId(id, out var iana) ? iana : "UTC";
+    }
+
+    private GoogleCalendarClient ClientOf(string email)
+    {
+        var account = accounts.Load().FirstOrDefault(a => a.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+            ?? throw new GoogleCalendarException(GoogleCalendarProblem.NoAccount);
+        return new GoogleCalendarClient(http, _config, GoogleAccountStore.Unprotect(account.ProtectedRefreshToken));
+    }
+
+    private static GoogleCalendarException Explain(Exception ex) => ex switch
+    {
+        GoogleCalendarException known => known,
+        GoogleApiException { IsTemporary: true, Status: HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden } => new GoogleCalendarException(GoogleCalendarProblem.RateLimited, ex),
+        GoogleApiException { IsTemporary: true } => new GoogleCalendarException(GoogleCalendarProblem.Server, ex),
+        GoogleApiException { Status: HttpStatusCode.Unauthorized } => new GoogleCalendarException(GoogleCalendarProblem.AuthExpired, ex),
+        GoogleApiException { Status: HttpStatusCode.Forbidden } => new GoogleCalendarException(GoogleCalendarProblem.NotAllowed, ex),
+        GoogleAuthException => new GoogleCalendarException(GoogleCalendarProblem.AuthExpired, ex),
+        HttpRequestException or TaskCanceledException => new GoogleCalendarException(GoogleCalendarProblem.NoNetwork, ex),
+        _ => new GoogleCalendarException(GoogleCalendarProblem.Other, ex),
+    };
+
+    /// <summary>
+    /// Creates a calendar on Google for the account and adds it here (owned by the person). Goes to Google at once: without a network, or when
+    /// Google refuses, nothing is created and <see cref="GoogleCalendarException"/> tells why. The events of the new calendar come with the next sync.
+    /// </summary>
+    public async Task<CalendarInfo> CreateCalendarAsync(string email, string name, string colorHex, CancellationToken ct)
+    {
+        name = name.Trim();
+        if (name.Length == 0) throw new GoogleCalendarException(GoogleCalendarProblem.EmptyName);
+        if (name.Length > MaxCalendarName) name = name[..MaxCalendarName];
+
+        await Gate.WaitAsync(ct);
+        try
+        {
+            var client = ClientOf(email);
+            string remoteId;
+            try
+            {
+                remoteId = await client.CreateCalendarAsync(name, TimeZoneForGoogle(), ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+            {
+                throw Explain(ex);
+            }
+
+            try
+            {
+                await client.SetCalendarColorAsync(remoteId, colorHex, ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+            {
+                // The calendar exists: it is kept with the colour asked for here, and the next sync takes whatever colour Google has.
+            }
+
+            var info = new CalendarInfo(LocalCalendarId(email, remoteId), email, name, colorHex, IsOwner: true);
+            store.UpsertCalendar(info);
+            return info;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Deletes a calendar of the person on Google, with all its events (one request, for everybody it is shared with; the guests are not told), and
+    /// then here, together with the changes still waiting for it. Only a calendar the person owns that is not the primary one: anything else is
+    /// refused without asking Google. Without a network, or when Google refuses, nothing is deleted.
+    /// </summary>
+    public async Task DeleteCalendarAsync(string localId, CancellationToken ct)
+    {
+        if (!IsGoogleCalendar(localId)) throw new GoogleCalendarException(GoogleCalendarProblem.Other);
+        if (IsPrimaryCalendar(localId)) throw new GoogleCalendarException(GoogleCalendarProblem.Primary);
+
+        await Gate.WaitAsync(ct);
+        try
+        {
+            var info = store.GetCalendars().FirstOrDefault(c => c.Id == localId);
+            if (info is null) return; // already gone
+            if (info.IsOwner != true) throw new GoogleCalendarException(GoogleCalendarProblem.NotOwner);
+
+            try
+            {
+                await ClientOf(AccountOf(localId)).DeleteCalendarAsync(RemoteCalendarId(localId), ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+            {
+                throw Explain(ex);
+            }
+
+            store.DeleteCalendar(localId);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task<SyncResult> SyncAllAsync(CancellationToken ct, Action<int, int>? onProgress = null)
     {
         var errors = new List<Msg>();
@@ -140,15 +258,15 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             if (existing.TryGetValue(localId, out var known))
             {
                 // Keep the user's visibility choice; names/colors follow Google.
-                if (known.Name != cal.Name || known.ColorHex != cal.ColorHex)
+                if (known.Name != cal.Name || known.ColorHex != cal.ColorHex || known.IsOwner != cal.IsOwner)
                 {
-                    store.UpsertCalendar(known with { Name = cal.Name, ColorHex = cal.ColorHex });
+                    store.UpsertCalendar(known with { Name = cal.Name, ColorHex = cal.ColorHex, IsOwner = cal.IsOwner });
                     changed = true;
                 }
             }
             else
             {
-                store.UpsertCalendar(new CalendarInfo(localId, email, cal.Name, cal.ColorHex));
+                store.UpsertCalendar(new CalendarInfo(localId, email, cal.Name, cal.ColorHex, IsOwner: cal.IsOwner));
                 changed = true;
             }
 

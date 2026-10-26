@@ -21,7 +21,7 @@ public sealed record OutboxItem(long Seq, string EventId, string CalendarId, Out
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
 {
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 6;
 
     private static readonly JsonSerializerOptions Json = new() { Converters = { new JsonStringEnumConverter() } };
 
@@ -126,6 +126,12 @@ public sealed class CalendarStore
                 if (Convert.ToInt64(columns.ExecuteScalar()) == 0) Run(c, "ALTER TABLE outbox ADD COLUMN base TEXT");
             }
 
+            // v6: calendars.is_owner (whether the person owns a Google calendar; null until the next sync tells it).
+            using (var columns = Command(c, "SELECT COUNT(*) FROM pragma_table_info('calendars') WHERE name = 'is_owner'", []))
+            {
+                if (Convert.ToInt64(columns.ExecuteScalar()) == 0) Run(c, "ALTER TABLE calendars ADD COLUMN is_owner INTEGER");
+            }
+
             Run(c, $"PRAGMA user_version = {SchemaVersion}");
             Run(c, "PRAGMA journal_mode = WAL");
         }
@@ -148,18 +154,19 @@ public sealed class CalendarStore
 
     public IReadOnlyList<CalendarInfo> GetCalendars() => WithConnection(c =>
     {
-        using var cmd = Command(c, "SELECT id, account_name, name, color, is_visible FROM calendars ORDER BY account_name, sort_order, name", []);
+        using var cmd = Command(c, "SELECT id, account_name, name, color, is_visible, is_owner FROM calendars ORDER BY account_name, sort_order, name", []);
         using var r = cmd.ExecuteReader();
         var list = new List<CalendarInfo>();
-        while (r.Read()) list.Add(new CalendarInfo(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetInt32(4) != 0));
+        while (r.Read()) list.Add(new CalendarInfo(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetInt32(4) != 0, r.IsDBNull(5) ? null : r.GetInt32(5) != 0));
         return list;
     });
 
     public void UpsertCalendar(CalendarInfo calendar) => WithConnection(c => Run(c, """
-        INSERT INTO calendars (id, account_name, name, color, is_visible) VALUES ($id, $account, $name, $color, $visible)
-        ON CONFLICT(id) DO UPDATE SET account_name = $account, name = $name, color = $color, is_visible = $visible
+        INSERT INTO calendars (id, account_name, name, color, is_visible, is_owner) VALUES ($id, $account, $name, $color, $visible, $owner)
+        ON CONFLICT(id) DO UPDATE SET account_name = $account, name = $name, color = $color, is_visible = $visible, is_owner = COALESCE($owner, is_owner)
         """,
-        ("$id", calendar.Id), ("$account", calendar.AccountName), ("$name", calendar.Name), ("$color", calendar.ColorHex), ("$visible", calendar.IsVisible ? 1 : 0)));
+        ("$id", calendar.Id), ("$account", calendar.AccountName), ("$name", calendar.Name), ("$color", calendar.ColorHex), ("$visible", calendar.IsVisible ? 1 : 0),
+        ("$owner", calendar.IsOwner is { } owner ? (owner ? 1 : 0) : null)));
 
     public void SetCalendarVisible(string calendarId, bool visible) =>
         WithConnection(c => Run(c, "UPDATE calendars SET is_visible = $v WHERE id = $id", ("$v", visible ? 1 : 0), ("$id", calendarId)));

@@ -168,6 +168,7 @@ public class LocalizationTests
 
         used.Remove("ics.component."); // the name of the component is added by the code
         used.Remove("subscription.error."); // the name of the problem is added by the code (checked in T164)
+        used.Remove("gcal.problem."); // the name of the problem is added by the code (checked in T194)
         Assert.Empty(used.Where(k => !italian.ContainsKey(k)).OrderBy(k => k));
         Assert.Empty(hardCoded);
     }
