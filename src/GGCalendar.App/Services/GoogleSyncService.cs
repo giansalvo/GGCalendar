@@ -116,6 +116,85 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
     /// <summary>Forgets the incremental sync position: the next sync downloads everything again.</summary>
     public void ResetSync() => store.ClearSyncTokens();
 
+    // ---------- The queue of the changes waiting for Google (issue #19) ----------
+
+    /// <summary>How many events have changes waiting to be sent to Google (the number shown in the status bar).</summary>
+    public int CountQueuedEvents() => store.CountPendingEvents();
+
+    /// <summary>What waits to be sent, one entry per event.</summary>
+    public IReadOnlyList<QueuedEvent> GetQueue() => PendingQueue.Group(store.GetPending());
+
+    /// <summary>When Google, which asked to slow down, will be tried again (null when it did not).</summary>
+    public DateTimeOffset? NextRetry()
+    {
+        var now = Clock();
+        return _slowedDown.Values.Where(v => v.Until > now).Select(v => (DateTimeOffset?)v.Until).Min();
+    }
+
+    /// <summary>
+    /// What cancelling changes did: how many events were cancelled (only those still waiting count: some may have been sent meanwhile),
+    /// and whether some events come back from Google at the next sync (the calendar is downloaded again).
+    /// </summary>
+    public sealed record QueueCancelResult(int Cancelled, bool RestoreFromGoogle);
+
+    /// <summary>
+    /// Cancels the changes waiting for the events, so that this PC shows what Google has (issue #19): a new event goes away, an edited one
+    /// goes back to the version before the edit, a deleted one and a moved one come back from Google at the next sync (their calendar is
+    /// downloaded again). It waits for a sync that is running (see <see cref="Gate"/>).
+    /// </summary>
+    public async Task<QueueCancelResult> CancelQueuedAsync(IReadOnlyCollection<string> eventIds, CancellationToken ct)
+    {
+        await Gate.WaitAsync(ct);
+        try
+        {
+            // Thousands of events can wait (an import): the work is done off the thread of the window, so that it does not freeze.
+            return await Task.Run(() =>
+            {
+                var wanted = eventIds.ToHashSet();
+                var queued = GetQueue().Where(q => wanted.Contains(q.EventId)).ToList();
+                var created = new List<string>(); // events to remove from this PC with their changes
+                var outboxOnly = new List<string>(); // events that stay, with their changes removed
+                var download = new HashSet<string>(); // calendars that are downloaded again at the next sync
+                foreach (var q in queued)
+                {
+                    switch (q.Kind)
+                    {
+                        case QueueKind.New:
+                            created.Add(q.EventId);
+                            break;
+
+                        case QueueKind.Moved:
+                            created.Add(q.EventId); // the copy at the destination, and both queued changes
+                            download.Add(q.FromCalendarId!);
+                            break;
+
+                        case QueueKind.Deleted:
+                            outboxOnly.Add(q.EventId);
+                            download.Add(q.CalendarId);
+                            break;
+
+                        default:
+                            // The oldest change still waiting remembers the event as Google has it (what was sent before is in it).
+                            var before = q.Rows.Where(r => r.Operation == OutboxOperation.Update).Select(CalendarStore.ReadBase).FirstOrDefault(e => e is not null);
+                            if (before is not null) store.UpsertEvent(before);
+                            else download.Add(q.CalendarId); // changes queued by an older version: Google's version comes back with the next download
+                            outboxOnly.Add(q.EventId);
+                            break;
+                    }
+                }
+
+                store.DiscardCreatedEvents(created);
+                store.DiscardOutboxOf(outboxOnly);
+                foreach (var calendar in download) store.SetSyncToken(calendar, null);
+                return new QueueCancelResult(queued.Count, download.Count > 0);
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public IReadOnlyList<string> AccountEmails => accounts.Load().Select(a => a.Email).ToList();
 
     /// <param name="onProgress">Called while changes are sent to Google with (sent so far, waiting at the start of the sending).</param>
@@ -322,9 +401,17 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                 cancelled = true;
                 break;
             }
+            catch (GoogleApiException ex) when (ex.IsTemporary)
+            {
+                // A limit of requests (per minute, per day) or a problem on Google's side: nothing is lost, the sync is tried again later.
+                SlowDown(account.Email, ex.RetryAfter);
+                errors.Add(Msg.Of("sync.account_limited", account.Email));
+                changed = true; // part of the download (or the removal of calendars gone from Google) may have been stored: the window reads again
+            }
             catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException or TaskCanceledException)
             {
                 errors.Add(Msg.Of("sync.account_error", account.Email, ex.Message));
+                changed = true; // idem
             }
         }
 
@@ -339,6 +426,16 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         var existing = store.GetCalendars().ToDictionary(c => c.Id);
         var changed = false;
         var pulled = 0;
+
+        // Calendars removed or unsubscribed on Google go first: if Google refuses while the events are downloaded (a limit of requests,
+        // which a full download of a big account easily reaches), they must not stay on this PC until a download ends well.
+        var remoteIds = remote.Select(c => LocalCalendarId(email, c.Id)).ToHashSet();
+        foreach (var gone in existing.Keys.Where(id => IsGoogleCalendar(id) && AccountOf(id) == email && !remoteIds.Contains(id)).ToList())
+        {
+            store.DeleteCalendar(gone);
+            existing.Remove(gone);
+            changed = true;
+        }
 
         foreach (var cal in remote)
         {
@@ -361,14 +458,6 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             var (n, c) = await PullCalendarAsync(client, localId, cal, ct);
             pulled += n;
             changed |= c;
-        }
-
-        // Calendars removed or unsubscribed on Google.
-        var remoteIds = remote.Select(c => LocalCalendarId(email, c.Id)).ToHashSet();
-        foreach (var gone in existing.Keys.Where(id => IsGoogleCalendar(id) && AccountOf(id) == email && !remoteIds.Contains(id)))
-        {
-            store.DeleteCalendar(gone);
-            changed = true;
         }
 
         return (pulled, changed);

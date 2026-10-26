@@ -32,6 +32,7 @@
 - Create and delete calendars on Google accounts (only those you own, never the primary one)
 - Edit the name and colour of calendars: the name for local calendars and your own on Google, the colour for all of them (8 quick colours and the 24 of Google)
 - Disconnect a Google account with a right click on its name (or from the settings): a question tells what is removed from this PC (calendars, events, changes not yet sent); the access is revoked on Google and what you have on Google does not change
+- Status bar always visible with the sync indicator: a green dot when everything is sent to Google, an hourglass with the number of events when some are waiting. A click opens the list of the waiting changes, by calendar: you can retry at once or cancel them (the event goes back as it is on Google)
 - Local calendars, import and export of `.ics` files
 - Light and dark theme
 - Interface in Italian, English, German, Spanish and French: the language is chosen in *Settings* (default: the language of Windows) and changes at once

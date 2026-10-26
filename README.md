@@ -32,6 +32,7 @@
 - Creazione ed eliminazione dei calendari sugli account Google (solo quelli di cui sei proprietario, non il principale)
 - Modifica di nome e colore dei calendari: il nome per quelli locali e per i tuoi su Google, il colore per tutti (8 colori veloci e i 24 di Google)
 - Scollegare un account Google dal tasto destro sul suo nome (o dalle impostazioni): una domanda dice cosa viene tolto da questo PC (calendari, eventi, modifiche non ancora inviate); l'accesso viene revocato su Google e quello che hai su Google non cambia
+- Barra di stato sempre visibile con l'indicatore della sincronizzazione: un pallino verde quando tutto è inviato a Google, una clessidra con il numero di eventi quando ce ne sono in attesa. Un clic apre l'elenco delle modifiche in attesa, per calendario: puoi riprovare subito o annullarle (l'evento torna com'è su Google)
 - Calendari locali, importazione ed esportazione di file `.ics`
 - Tema chiaro e scuro
 - Interfaccia in italiano, inglese, tedesco, spagnolo e francese: la lingua si sceglie in *Impostazioni* (di default quella di Windows) e cambia subito

@@ -32,6 +32,7 @@
 - Crear y eliminar calendarios en las cuentas de Google (solo los tuyos, nunca el principal)
 - Cambiar el nombre y el color de los calendarios: el nombre en los locales y en los tuyos de Google, el color en todos (8 colores rápidos y los 24 de Google)
 - Desconectar una cuenta de Google con clic derecho en su nombre (o desde los ajustes): una pregunta dice qué se quita de este equipo (calendarios, eventos, cambios aún no enviados); el acceso se revoca en Google y lo que tienes en Google no cambia
+- Barra de estado siempre visible con el indicador de sincronización: un punto verde cuando todo está enviado a Google, un reloj de arena con el número de eventos cuando hay alguno pendiente. Un clic abre la lista de los cambios pendientes, por calendario: puedes reintentar ahora o cancelarlos (el evento vuelve a como está en Google)
 - Calendarios locales, importación y exportación de archivos `.ics`
 - Tema claro y oscuro
 - Interfaz en italiano, inglés, alemán, español y francés: el idioma se elige en *Ajustes* (por defecto, el de Windows) y cambia al instante
