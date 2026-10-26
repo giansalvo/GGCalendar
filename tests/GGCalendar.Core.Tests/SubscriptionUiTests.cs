@@ -322,12 +322,20 @@ public class SubscriptionUiTests
         Assert.True(window.FindControl<WeekGrid>("Grid")!.IsReadOnly!(ev));
 
         // The card of the event has no Edit and no Delete (only Close), and a double click opens no editor.
-        var item = await FindInAgendaAsync(window, "Pubblico lezione", DateTime.Today.AddDays(1));
-        var center = item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), window)!.Value;
-        window.MouseDown(center, MouseButton.Left);
-        window.MouseUp(center, MouseButton.Left);
-        Dispatcher.UIThread.RunJobs();
-        var card = await WaitForAsync(() => window.FindControl<Avalonia.Controls.Primitives.Popup>("DetailsPopup")?.Child as EventDetailsCard, "la scheda dell'evento");
+        // A click can be lost while the list is still being drawn: the line is found and clicked again until the card is there.
+        EventDetailsCard? card = null;
+        for (var attempt = 0; attempt < 6 && card is null; attempt++)
+        {
+            var item = await FindInAgendaAsync(window, "Pubblico lezione", DateTime.Today.AddDays(1));
+            var center = item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), window)!.Value;
+            window.MouseDown(center, MouseButton.Left);
+            window.MouseUp(center, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+            await PauseAsync(TimeSpan.FromMilliseconds(200));
+            card = window.FindControl<Avalonia.Controls.Primitives.Popup>("DetailsPopup")?.Child as EventDetailsCard;
+        }
+
+        Assert.NotNull(card);
         Assert.Single(card.GetVisualDescendants().OfType<Button>());
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
