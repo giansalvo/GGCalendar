@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -43,7 +44,7 @@ public partial class MainWindow : Window
         Subscriptions.Changed += () => { if (Vm is { } vm) _ = vm.ReloadAsync(); };
         Grid.IsReadOnly = MainViewModel.IsReadOnly;
         L.Changed += OnLanguageChanged;
-        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
+        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); StopAlarmSound(); _alarmsTimer?.Stop(); _alarms?.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -69,6 +70,8 @@ public partial class MainWindow : Window
         Month.EventClicked += (ev, rect) => ShowDetails(ev, Month, rect);
         Year.DayClicked += day => Vm?.ShowDay(day);
         KeyDown += OnShortcut;
+        _ringer.SoundRequested += StartAlarmSound;
+        _ringer.SoundStopRequested += StopAlarmSound;
         Opened += (_, _) =>
         {
             if (Vm is { } vm)
@@ -88,15 +91,116 @@ public partial class MainWindow : Window
                     vm.Settings.DefaultView = vm.ViewModeIndex;
                     _store.Save(vm.Settings);
                 };
-                _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now.AddDays(30), visibleOnly: false)) { Enabled = vm.Settings.NotificationsEnabled };
+                _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now + ReminderScheduler.Window, visibleOnly: false), isVisible: vm.IsCalendarVisible, now: ReminderClock) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
                 vm.EventsChanged += _scheduler.Invalidate;
+                vm.CalendarVisibilityChanged += _scheduler.VisibilityChanged;
+                SetUpAlarms(vm);
                 _scheduler.Start();
                 StartSync();
                 StartSubscriptionRefresh();
             }
             Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToDayStart, Avalonia.Threading.DispatcherPriority.Loaded);
         };
+    }
+
+    // ---------- Alarms: the ones ringing and the ones waiting (issue #18) ----------
+
+    private readonly AlarmRinger _ringer = new();
+
+    /// <summary>The clock of the reminders (null = the real one): the tests move it to make alarms ring without waiting.</summary>
+    public static Func<DateTime>? ReminderClock { get; set; }
+
+    /// <summary>The alarms that ring now (the tests look at them).</summary>
+    public AlarmRinger Ringer => _ringer;
+
+    /// <summary>The scheduler of the reminders, once the window is open.</summary>
+    public ReminderScheduler? Scheduler => _scheduler;
+
+    /// <summary>The list of the alarms, once the window is open.</summary>
+    public AlarmsViewModel? Alarms => _alarms;
+
+    /// <summary>The window of the alarms that the button opens, once the window is open.</summary>
+    public AlarmsPanel? AlarmsList => _alarmsPanel;
+    private readonly Dictionary<string, ReminderNotificationWindow> _alarmToasts = [];
+    private SoundService? _alarmPlayer;
+    private DispatcherTimer? _alarmLimit;
+    private DispatcherTimer? _alarmsTimer;
+    private AlarmsViewModel? _alarms;
+    private AlarmsPanel? _alarmsPanel;
+
+    private void SetUpAlarms(MainViewModel vm)
+    {
+        if (_scheduler is not { } scheduler) return;
+        _alarms = new AlarmsViewModel(scheduler, _ringer, vm, StopAlarm, StopAllAlarms);
+        _alarmsPanel = new AlarmsPanel(_alarms);
+        _alarmsPanel.EventRequested += ev =>
+        {
+            AlarmsButton.Flyout?.Hide();
+            ShowDetails(ev, AlarmsButton, null);
+        };
+        ((Flyout)AlarmsButton.Flyout!).Content = _alarmsPanel;
+        _alarms.Changed += UpdateAlarmsButton;
+        // The alarms that come into the 60 days ahead do not raise anything by themselves: the button follows the clock.
+        _alarmsTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _alarmsTimer.Tick += (_, _) => UpdateAlarmsButton();
+        _alarmsTimer.Start();
+        UpdateAlarmsButton();
+    }
+
+    /// <summary>The button of the alarms: grey and not pressable when there are none (or the notifications are off), red while one rings.</summary>
+    private void UpdateAlarmsButton()
+    {
+        if (_alarms is not { } alarms) return;
+        var count = alarms.Count;
+        var ringing = alarms.IsRinging;
+        var active = alarms.NotificationsEnabled && count > 0;
+        AlarmsButton.IsEnabled = active;
+        AlarmsGlyph.Opacity = active ? 1 : 0.4;
+        // Not ringing: the colour of the text again (a null brush set here would make the glyph invisible).
+        if (ringing) AlarmsGlyph.Foreground = Avalonia.Media.Brush.Parse("#D93025");
+        else AlarmsGlyph.ClearValue(TextBlock.ForegroundProperty);
+        AlarmsBadge.IsVisible = active;
+        AlarmsBadge.Background = Avalonia.Media.Brush.Parse(ringing ? "#D93025" : "#1A73E8");
+        AlarmsBadgeText.Text = count.ToString();
+        ToolTip.SetTip(AlarmsButton, L.T(!alarms.NotificationsEnabled ? "alarms.tip_off" : count == 0 ? "alarms.tip_none" : ringing ? "alarms.tip_ringing" : "alarms.tip"));
+    }
+
+    private void StartAlarmSound(RingingAlarm alarm)
+    {
+        StopAlarmSound();
+        _alarmPlayer = new SoundService();
+        _alarmPlayer.Play(alarm.Sound, Vm?.Settings.ReminderVolumePercent ?? 80, loop: true);
+        // An alarm rings until it is turned off, but at most AlarmMaxDuration; the notification stays on screen, and the next alarm in line starts.
+        var limit = new DispatcherTimer { Interval = AlarmMaxDuration };
+        limit.Tick += (_, _) =>
+        {
+            limit.Stop();
+            _ringer.Silence(alarm.Key);
+        };
+        _alarmLimit = limit;
+        limit.Start();
+    }
+
+    private void StopAlarmSound()
+    {
+        _alarmLimit?.Stop();
+        _alarmLimit = null;
+        _alarmPlayer?.Dispose();
+        _alarmPlayer = null;
+    }
+
+    /// <summary>Turns an alarm off: its notification closes, which is what removes it from the ringer.</summary>
+    private void StopAlarm(string key)
+    {
+        if (_alarmToasts.TryGetValue(key, out var toast)) toast.Close();
+        else _ringer.Remove(key);
+    }
+
+    private void StopAllAlarms()
+    {
+        foreach (var toast in _alarmToasts.Values.ToList()) toast.Close();
+        _ringer.RemoveAll();
     }
 
     // ---------- Refresh of the public calendars ----------
@@ -152,25 +256,33 @@ public partial class MainWindow : Window
             EventReminder.NoSound => isAlarm ? vm.Settings.DefaultReminderSound : null,
             var p => p,
         };
-        var player = new SoundService();
-        player.Play(sound, vm.Settings.ReminderVolumePercent, loop: isAlarm);
 
-        // An alarm rings until it is turned off, but at most AlarmMaxDuration; the notification stays on screen.
-        DispatcherTimer? alarmLimit = null;
-        if (isAlarm)
+        // A reminder plays its sound once; an alarm rings in a loop, one at a time (see AlarmRinger), until it is turned off.
+        SoundService? player = null;
+        if (!isAlarm)
         {
-            alarmLimit = new DispatcherTimer { Interval = AlarmMaxDuration };
-            alarmLimit.Tick += (_, _) => { alarmLimit.Stop(); player.Stop(); };
-            alarmLimit.Start();
+            player = new SoundService();
+            player.Play(sound, vm.Settings.ReminderVolumePercent, loop: false);
         }
 
         var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm);
         toast.Closed += (_, _) =>
         {
-            alarmLimit?.Stop();
-            player.Dispose();
+            player?.Dispose();
+            if (isAlarm)
+            {
+                _alarmToasts.Remove(due.Key);
+                _ringer.Remove(due.Key);
+            }
+
             if (toast.Result == ReminderAction.Snooze) _scheduler?.Snooze(due, TimeSpan.FromMinutes(5));
         };
+        if (isAlarm)
+        {
+            _alarmToasts[due.Key] = toast;
+            _ringer.Add(due, sound);
+        }
+
         toast.Show();
     }
 

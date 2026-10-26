@@ -25,6 +25,7 @@
 - Fiche récapitulative au clic sur un événement (modifier, supprimer, écrire aux invités, exporter, rejoindre Meet) ; double-clic pour le modifier
 - Événements récurrents, avec modification ou suppression d'une seule occurrence, des suivantes ou de toute la série
 - Rappels avec notification, alarme sonore (jusqu'à ce que vous l'arrêtiez, 2 minutes au maximum) et report, conservés aussi après un redémarrage
+- Liste des alarmes (icône à côté de la loupe) : celles qui sonnent et celles à venir dans les 60 prochains jours, avec le temps restant ; vous pouvez les arrêter, les annuler (sur cet ordinateur seulement) ou ouvrir l'événement. Les alarmes sonnent une à la fois et seulement quand GGCalendar est ouvert ; les rappels des agendas masqués ne sonnent pas (les alarmes reportées, si)
 - Synchronisation dans les deux sens avec un ou plusieurs comptes Google Agenda, avec gestion des conflits ; les alarmes voyagent avec l'événement sur Google et sont partagées avec [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) pour Android
 - Invités, liens Google Meet, rappels par e-mail (envoyés par Google)
 - Recherche d'un texte dans le titre, la description, le lieu et les invités, dans un ou plusieurs agendas, avec des dates et des mots à exclure
