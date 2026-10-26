@@ -26,17 +26,19 @@ public partial class MainWindow : Window
 
     /// <summary>The public calendars followed by address.</summary>
     public SubscriptionService Subscriptions { get; }
-    private readonly SemaphoreSlim _syncLock = new(1, 1);
     private DispatcherTimer? _syncTimer;
     private DispatcherTimer? _retryTimer;
     private CancellationTokenSource? _syncCts;
     private DispatcherTimer? _debounce;
     private ReminderScheduler? _scheduler;
 
+    /// <summary>How the Google service is made when the window opens: the tests put a service on a fake Google here.</summary>
+    public static Func<GoogleSyncService>? GoogleFactory { get; set; }
+
     public MainWindow()
     {
         InitializeComponent();
-        _google = new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
+        _google = GoogleFactory?.Invoke() ?? new GoogleSyncService(new CalendarStore(), new GoogleAccountStore(), new HttpClient());
         Subscriptions = new SubscriptionService(new CalendarStore());
         Subscriptions.Changed += () => { if (Vm is { } vm) _ = vm.ReloadAsync(); };
         Grid.IsReadOnly = MainViewModel.IsReadOnly;
@@ -227,7 +229,7 @@ public partial class MainWindow : Window
     private async Task SyncAsync()
     {
         if (Vm is not { } vm || _google.AccountEmails.Count == 0) return;
-        if (!await _syncLock.WaitAsync(0)) return;
+        if (!await _google.Gate.WaitAsync(0)) return;
         vm.IsSyncing = true;
         vm.SetStatus("status.syncing");
         try
@@ -298,7 +300,7 @@ public partial class MainWindow : Window
         finally
         {
             vm.IsSyncing = false;
-            _syncLock.Release();
+            _google.Gate.Release();
         }
     }
 
@@ -737,10 +739,63 @@ public partial class MainWindow : Window
         if ((sender as Control)?.DataContext is AccountGroup group) group.IsExpanded = !group.IsExpanded;
     }
 
-    // TODO: create a new calendar in this account (on Google: issue #16).
-    private void OnNewCalendarInAccount(object? sender, RoutedEventArgs e)
+    private static AccountGroup? AccountOf(object? sender) =>
+        sender is Control { DataContext: AccountGroup g }
+            ? g
+            : (sender as Avalonia.StyledElement)?.Parent is ContextMenu { PlacementTarget.DataContext: AccountGroup p } ? p : null;
+
+    /// <summary>The menu of an account: a new calendar in it. On a Google account it is created on Google; in "Local" it is a calendar of this PC.</summary>
+    private async void OnNewCalendarInAccount(object? sender, RoutedEventArgs e)
     {
-        if (Vm is { } vm) vm.SetStatus("status.new_calendar_unavailable");
+        if (AccountOf(sender) is not { } group) return;
+        if (group.Calendars.Any(c => c.IsGoogle)) await CreateGoogleCalendarAsync(group.AccountName);
+        else OnNewLocalCalendar(sender, e);
+    }
+
+    /// <summary>"Create" menu: a calendar on one of the Google accounts (the window asks which one when there are several).</summary>
+    private async void OnNewGoogleCalendar(object? sender, RoutedEventArgs e) => await CreateGoogleCalendarAsync(null);
+
+    private async Task CreateGoogleCalendarAsync(string? email)
+    {
+        if (Vm is not { } vm) return;
+        var accounts = _google.AccountEmails;
+        if (accounts.Count == 0) return;
+        var color = MainViewModel.CalendarPalette[vm.Calendars.Count(c => c.IsGoogle) % MainViewModel.CalendarPalette.Length];
+        if (await new GoogleCalendarWindow(accounts, email, color).ShowDialog<GoogleCalendarRequest?>(this) is not { } request) return;
+        try
+        {
+            var created = await RunBusyAsync(Msg.Of("busy.gcal_creating"), () => _google.CreateCalendarAsync(request.Email, request.Name, request.ColorHex, CancellationToken.None));
+            await vm.ReloadAsync();
+            vm.SetStatus("status.gcal_created", created.Name, request.Email);
+        }
+        catch (GoogleCalendarException ex)
+        {
+            vm.SetStatus(Msg.Of("error.gcal_create", ex.Reason));
+        }
+    }
+
+    /// <summary>Deletes a calendar of Google (the item is grey for the primary one and for those the person does not own).</summary>
+    private async void OnDeleteGoogleCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { CanDeleteFromGoogle: true } cal) return;
+        var events = vm.EventsOf(cal.Id).Count(x => x.SeriesMasterId is null);
+        var pending = vm.PendingChangesFor(cal.Id);
+        var text = L.N("gcal.delete_text", events, cal.Name, cal.AccountName) + (pending > 0 ? "\n\n" + L.N("gcal.delete_pending", pending) : "");
+        if (!await new ConfirmWindow(L.T("gcal.delete_title"), text, L.T("calendar.delete_button")).ShowDialog<bool>(this)) return;
+        try
+        {
+            await RunBusyAsync(Msg.Of("busy.gcal_deleting"), async () =>
+            {
+                await _google.DeleteCalendarAsync(cal.Id, CancellationToken.None);
+                return true;
+            });
+            await vm.ReloadAsync();
+            vm.SetStatus("status.gcal_deleted", cal.Name);
+        }
+        catch (GoogleCalendarException ex)
+        {
+            vm.SetStatus(Msg.Of("error.gcal_delete", ex.Reason));
+        }
     }
 
     // ---------- Public calendars (by address) ----------
@@ -846,11 +901,7 @@ public partial class MainWindow : Window
     private async void OnDeleteCalendar(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm || CalendarOf(sender) is not { } cal) return;
-        if (Services.GoogleSyncService.IsGoogleCalendar(cal.Id))
-        {
-            vm.SetStatus("status.google_calendars_hint");
-            return;
-        }
+        if (Services.GoogleSyncService.IsGoogleCalendar(cal.Id)) return; // the menu item of a Google calendar is another one (OnDeleteGoogleCalendar)
 
         if (await new ConfirmWindow(L.T("calendar.delete_title"), L.T("calendar.delete_text", cal.Name), L.T("calendar.delete_button")).ShowDialog<bool>(this))
             vm.DeleteLocalCalendar(cal.Id);

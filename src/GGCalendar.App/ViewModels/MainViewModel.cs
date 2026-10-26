@@ -29,6 +29,7 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     {
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(ProblemText));
+        OnPropertyChanged(nameof(DeleteHint));
     }
     public string ColorHex { get; } = info.ColorHex;
     public string AccountName { get; } = info.AccountName;
@@ -43,6 +44,15 @@ public sealed partial class CalendarItemViewModel(CalendarInfo info, Action chan
     public bool IsSubscription { get; } = SubscriptionRecord.IsSubscriptionId(info.Id);
 
     public bool IsGoogle => !IsLocal && !IsSubscription;
+
+    /// <summary>On Google: whether the person owns the calendar; null until the next sync tells it.</summary>
+    public bool? IsOwner { get; } = info.IsOwner;
+
+    /// <summary>Only a calendar of Google that the person owns and that is not the primary one can be deleted (the menu item is grey otherwise).</summary>
+    public bool CanDeleteFromGoogle => IsGoogle && !IsPrimary && IsOwner == true;
+
+    /// <summary>Why the item "delete" is grey (the tooltip), or empty when it can be used.</summary>
+    public string DeleteHint => IsPrimary ? L.T("gcal.hint_primary") : IsOwner == false ? L.T("gcal.hint_not_owner") : IsOwner is null ? L.T("gcal.hint_unknown") : "";
 
     /// <summary>The last refresh of the subscription failed: a warning sign beside the name, the reason in the tooltip.</summary>
     public bool HasProblem => subscription?.LastError is { Length: > 0 };
@@ -219,12 +229,19 @@ public sealed partial class MainViewModel : ViewModelBase
         _allEvents.Clear();
         _allEvents.AddRange(events);
         Search.SetCalendars(_calendars);
+        OnPropertyChanged(nameof(HasGoogleAccounts));
         EventsChanged?.Invoke();
         if (SelectedDate is not null) Refresh();
     }
 
     /// <summary>The search of events (issue #8).</summary>
     public SearchViewModel Search { get; }
+
+    /// <summary>At least one calendar comes from a Google account: a calendar can be created on Google (the item of the "Create" menu is grey otherwise).</summary>
+    public bool HasGoogleAccounts => _calendars.Any(c => c.IsGoogle);
+
+    /// <summary>How many changes wait to be sent to Google for the calendar (they are lost with it when it is deleted).</summary>
+    public int PendingChangesFor(string calendarId) => _store.GetPending().Count(p => p.CalendarId == calendarId);
 
     public ObservableCollection<AccountGroup> Accounts { get; } = [];
     public IReadOnlyList<CalendarItemViewModel> Calendars => _calendars;

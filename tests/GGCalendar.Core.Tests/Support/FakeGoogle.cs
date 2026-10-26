@@ -7,13 +7,16 @@ namespace GGCalendar.Core.Tests.Support;
 
 /// <summary>
 /// A tiny in-memory Google Calendar for the sync tests: one account with one calendar ("primary"), the OAuth token
-/// endpoint, the calendar list and the events (list with or without sync token, get, insert, patch with If-Match, delete).
+/// endpoint, the calendar list and the events (list with or without sync token, get, insert, patch with If-Match, delete), and the
+/// calendars themselves: other calendars can be added (owned, or read-only like the holidays), created (POST calendars), recoloured
+/// (PATCH calendarList) and deleted (DELETE calendars, never the primary one or one the person does not own).
 /// PATCH follows the JSON merge semantics Google uses: a null removes the field, an object is merged.
 /// </summary>
 public sealed class FakeGoogle : HttpMessageHandler
 {
     public const string Account = "me@example.com";
-    public const string RemoteCalendar = "primary";
+    /// <summary>As on Google, the primary calendar has the email of the account as its id.</summary>
+    public const string RemoteCalendar = Account;
     public const string LocalCalendarId = Account + "|" + RemoteCalendar;
 
     private sealed class Stored(JsonObject body)
@@ -23,9 +26,24 @@ public sealed class FakeGoogle : HttpMessageHandler
         public bool Deleted { get; set; }
     }
 
-    private readonly Dictionary<string, Stored> _events = [];
+    private Dictionary<string, Stored> _events = [];
+
+    private sealed class CalendarRec(string id, string summary, string color, string role, bool primary, Dictionary<string, Stored> events)
+    {
+        public string Id { get; } = id;
+        public string Summary { get; set; } = summary;
+        public string Color { get; set; } = color;
+        public string Role { get; } = role;
+        public bool Primary { get; } = primary;
+        public Dictionary<string, Stored> Events { get; } = events;
+    }
+
+    private readonly List<CalendarRec> _calendars = [];
+    private int _nextCalendar = 1;
     private long _version;
     private int _nextId = 1;
+
+    public FakeGoogle() => _calendars.Add(new CalendarRec(RemoteCalendar, "Principale", "#1A73E8", "owner", true, _events));
 
     /// <summary>Every request received, as "METHOD path?query".</summary>
     public List<string> Requests { get; } = [];
@@ -45,10 +63,55 @@ public sealed class FakeGoogle : HttpMessageHandler
     /// <summary>Writes (insert, patch, delete) received so far, including the refused ones.</summary>
     public int Writes { get; private set; }
 
+    /// <summary>Every request fails as if there were no network (an exception, no answer).</summary>
+    public bool Offline { get; set; }
+
+    /// <summary>The bodies received to create calendars (POST calendars), in order.</summary>
+    public List<string> CreatedBodies { get; } = [];
+
+    /// <summary>The colours set on calendars (PATCH calendarList): the id, the query and the body.</summary>
+    public List<(string Id, string Query, string Body)> ColorPatches { get; } = [];
+
+    /// <summary>The ids of the calendars deleted so far.</summary>
+    public List<string> DeletedCalendars { get; } = [];
+
     /// <summary>Called with the remote id of an event just before a PATCH is applied (e.g. to simulate a local edit during a sync).</summary>
     public Action<string>? OnPatch { get; set; }
 
     // Test helpers: what the "server" holds
+
+    /// <summary>Adds a calendar to the list of the account. A role other than "owner" (for example "reader") makes it one that cannot be deleted.</summary>
+    public string AddCalendar(string summary, string role = "owner", string color = "#9FE1E7", string? id = null)
+    {
+        id ??= $"cal{_nextCalendar++}@group.calendar.google.com";
+        _calendars.Add(new CalendarRec(id, summary, color, role, false, []));
+        return id;
+    }
+
+    public IReadOnlyList<string> CalendarIds => _calendars.Select(c => c.Id).ToList();
+
+    public bool HasCalendar(string id) => _calendars.Any(c => c.Id == id);
+
+    public string? CalendarSummary(string id) => _calendars.FirstOrDefault(c => c.Id == id)?.Summary;
+
+    public string? CalendarColor(string id) => _calendars.FirstOrDefault(c => c.Id == id)?.Color;
+
+    /// <summary>Puts an event in another calendar (not the primary one).</summary>
+    public string SeedIn(string calendarId, string summary, DateTime utcStart)
+    {
+        var saved = _events;
+        _events = _calendars.First(c => c.Id == calendarId).Events;
+        try
+        {
+            return Seed(summary, utcStart);
+        }
+        finally
+        {
+            _events = saved;
+        }
+    }
+
+    public int EventsIn(string calendarId) => _calendars.First(c => c.Id == calendarId).Events.Count(e => !e.Value.Deleted);
 
     public string Seed(string summary, DateTime utcStart, string? colorId = null, string? id = null)
     {
@@ -104,9 +167,37 @@ public sealed class FakeGoogle : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        var saved = _events;
+        try
+        {
+            return await SendCoreAsync(request, cancellationToken);
+        }
+        finally
+        {
+            _events = saved;
+        }
+    }
+
+    /// <summary>Counts a write and refuses it when a test asked so (a limit, a failure); null when it goes on.</summary>
+    private HttpResponseMessage? RefuseWrite()
+    {
+        Writes++;
+        if (NextWriteFails is { } failure)
+        {
+            NextWriteFails = null;
+            return Reply(failure.Status, ErrorBody(failure.Status, failure.Reason));
+        }
+
+        if (LimitAfterWrites is { } limit && Writes > limit) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "rateLimitExceeded"));
+        return null;
+    }
+
+    private async Task<HttpResponseMessage> SendCoreAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
         var url = request.RequestUri!;
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add($"{request.Method} {url.AbsolutePath}{url.Query}");
+        if (Offline) throw new HttpRequestException("Nessuna connessione.");
 
         if (url.Host == "oauth2.googleapis.com") return Reply(HttpStatusCode.OK, """{"access_token":"at","expires_in":3600}""");
         if (url.AbsolutePath == "/batch/calendar/v3") return await BatchAsync(request, body!, cancellationToken);
@@ -114,25 +205,59 @@ public sealed class FakeGoogle : HttpMessageHandler
         var path = url.AbsolutePath.Replace("/calendar/v3/", "");
         if (path == "users/me/calendarList")
         {
-            return Reply(HttpStatusCode.OK, $$"""
-                {"items":[{"id":"{{RemoteCalendar}}","summary":"Principale","backgroundColor":"#1A73E8","primary":true,"accessRole":"owner","defaultReminders":[]}]}
-                """);
+            var items = new JsonArray();
+            foreach (var c in _calendars)
+            {
+                var item = new JsonObject { ["id"] = c.Id, ["summary"] = c.Summary, ["backgroundColor"] = c.Color, ["accessRole"] = c.Role, ["defaultReminders"] = new JsonArray() };
+                if (c.Primary) item["primary"] = true;
+                items.Add(item);
+            }
+
+            return Reply(HttpStatusCode.OK, new JsonObject { ["items"] = items }.ToJsonString());
         }
 
         var parts = path.Split('/');
-        if (parts is not ["calendars", _, "events", ..]) return Reply(HttpStatusCode.NotFound, "{}");
-        var id = parts.Length > 3 ? Uri.UnescapeDataString(parts[3]) : null;
-        if (request.Method != HttpMethod.Get)
-        {
-            Writes++;
-            if (NextWriteFails is { } failure)
-            {
-                NextWriteFails = null;
-                return Reply(failure.Status, ErrorBody(failure.Status, failure.Reason));
-            }
 
-            if (LimitAfterWrites is { } limit && Writes > limit) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "rateLimitExceeded"));
+        // The calendars themselves.
+        if (parts is ["calendars"] && request.Method == HttpMethod.Post)
+        {
+            if (RefuseWrite() is { } refused) return refused;
+            CreatedBodies.Add(body!);
+            var sent = JsonNode.Parse(body!)!.AsObject();
+            var created = AddCalendar(sent["summary"]?.GetValue<string>() ?? "");
+            return Reply(HttpStatusCode.OK, new JsonObject { ["id"] = created, ["summary"] = sent["summary"]?.DeepClone(), ["timeZone"] = sent["timeZone"]?.DeepClone() }.ToJsonString());
         }
+
+        if (parts is ["users", "me", "calendarList", _] && request.Method == HttpMethod.Patch)
+        {
+            if (RefuseWrite() is { } refused) return refused;
+            var target = _calendars.FirstOrDefault(c => c.Id == Uri.UnescapeDataString(parts[3]));
+            if (target is null) return Reply(HttpStatusCode.NotFound, "{}");
+            ColorPatches.Add((target.Id, url.Query, body!));
+            if (!url.Query.Contains("colorRgbFormat=true")) return Reply(HttpStatusCode.BadRequest, ErrorBody(HttpStatusCode.BadRequest, "invalid"));
+            if (JsonNode.Parse(body!)!["backgroundColor"]?.GetValue<string>() is { } color) target.Color = color;
+            return Reply(HttpStatusCode.OK, "{}");
+        }
+
+        if (parts is ["calendars", _] && request.Method == HttpMethod.Delete)
+        {
+            if (RefuseWrite() is { } refused) return refused;
+            var deleteId = Uri.UnescapeDataString(parts[1]);
+            var target = _calendars.FirstOrDefault(c => c.Id == deleteId);
+            if (target is null) return Reply(HttpStatusCode.NotFound, "{}");
+            if (target.Primary) return Reply(HttpStatusCode.BadRequest, ErrorBody(HttpStatusCode.BadRequest, "invalid"));
+            if (target.Role != "owner") return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "forbidden"));
+            _calendars.Remove(target);
+            DeletedCalendars.Add(deleteId);
+            return Reply(HttpStatusCode.NoContent, "");
+        }
+
+        if (parts is not ["calendars", _, "events", ..]) return Reply(HttpStatusCode.NotFound, "{}");
+        var calendar = _calendars.FirstOrDefault(c => c.Id == Uri.UnescapeDataString(parts[1]));
+        if (calendar is null) return Reply(HttpStatusCode.NotFound, "{}");
+        _events = calendar.Events;
+        var id = parts.Length > 3 ? Uri.UnescapeDataString(parts[3]) : null;
+        if (request.Method != HttpMethod.Get && RefuseWrite() is { } refusedWrite) return refusedWrite;
 
         var query = System.Web.HttpUtility.ParseQueryString(url.Query);
 

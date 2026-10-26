@@ -213,6 +213,7 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem AutomationProperties.AutomationId="Menu.CreateEvent" Name="CreateEventItem" Header="{loc:T main.create_event}" Click="OnNewEvent" />
                             <MenuItem AutomationProperties.AutomationId="Menu.CreateLocalCalendar" Name="CreateLocalCalendarItem" Header="{loc:T main.create_local_calendar}" Click="OnNewLocalCalendar" />
+                            <MenuItem AutomationProperties.AutomationId="Menu.CreateGoogleCalendar" Name="CreateGoogleCalendarItem" Header="{loc:T main.create_google_calendar}" Click="OnNewGoogleCalendar" IsEnabled="{Binding HasGoogleAccounts}" />
                             <MenuItem AutomationProperties.AutomationId="Menu.CreatePublicCalendar" Name="CreatePublicCalendarItem" Header="{loc:T main.create_public_calendar}" Click="OnNewPublicCalendar" />
                         </MenuFlyout>
                     </Button.Flyout>
@@ -232,7 +233,7 @@
                                     <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,6" Background="Transparent">
                                         <Grid.ContextMenu>
                                             <ContextMenu>
-                                                <MenuItem Header="{loc:T main.new_calendar_todo}" Click="OnNewCalendarInAccount" IsVisible="{Binding !IsSubscriptions}" />
+                                                <MenuItem AutomationProperties.AutomationId="Menu.NewCalendarInAccount" Header="{loc:T menu.new_calendar_here}" Click="OnNewCalendarInAccount" IsVisible="{Binding !IsSubscriptions}" />
                                                 <MenuItem AutomationProperties.AutomationId="Menu.AddPublicCalendar" Header="{loc:T main.create_public_calendar}" Click="OnNewPublicCalendar" IsVisible="{Binding IsSubscriptions}" />
                                             </ContextMenu>
                                         </Grid.ContextMenu>
@@ -262,10 +263,11 @@
                                                             <MenuItem AutomationProperties.AutomationId="Menu.SubShowUrl" Header="{loc:T sub.show_url}" Click="OnShowSubscriptionUrl" IsVisible="{Binding IsSubscription}" />
                                                             <Separator IsVisible="{Binding IsSubscription}" />
                                                             <MenuItem AutomationProperties.AutomationId="Menu.SubRemove" Header="{loc:T sub.remove}" Click="OnRemoveSubscription" IsVisible="{Binding IsSubscription}" />
-                                                            <Separator IsVisible="{Binding IsLocal}" />
+                                                            <Separator IsVisible="{Binding !IsSubscription}" />
                                                             <MenuItem Header="{loc:T main.delete_calendar}" Click="OnDeleteCalendar" IsVisible="{Binding IsLocal}" />
-                                                            <!-- TODO: delete a Google calendar (not built yet). -->
-                                                            <MenuItem Header="{loc:T main.delete_google_calendar_todo}" IsVisible="{Binding IsGoogle}" />
+                                                            <!-- A calendar of Google: grey (with the reason as a tooltip) when it cannot be deleted: the primary one, one the person does not own. -->
+                                                            <MenuItem AutomationProperties.AutomationId="Menu.DeleteGoogleCalendar" Header="{loc:T main.delete_calendar}" Click="OnDeleteGoogleCalendar"
+                                                                      IsVisible="{Binding IsGoogle}" IsEnabled="{Binding CanDeleteFromGoogle}" ToolTip.Tip="{Binding DeleteHint}" ToolTip.ShowOnDisabled="True" />
                                                         </ContextMenu>
                                                     </Border.ContextMenu>
                                                     <!-- Round avatar for the account, rounded squares for the calendars: filled with the calendar colour and a tick when shown, an outline when hidden. -->

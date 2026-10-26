@@ -397,5 +397,6 @@ public static class AppDriver
 
         using var google = await TestGoogle.ConnectAsync();
         if (await google.DeleteLeftoversAsync() > 0) await SyncAsync(window);
+        if (await google.DeleteLeftoverCalendarsAsync() > 0) await SyncAsync(window); // calendars made by an interrupted run
     }
 }

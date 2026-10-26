@@ -123,5 +123,49 @@ public sealed class TestGoogle : IDisposable
         return count;
     }
 
+    // Calendars (never the primary one, and only those the test made: their name starts with the test prefix)
+
+    private const string Calendars = "https://www.googleapis.com/calendar/v3";
+
+    /// <summary>The calendars of the test account: id, name, role.</summary>
+    public async Task<List<(string Id, string Name, string Role)>> ListCalendarsAsync()
+    {
+        var list = new List<(string, string, string)>();
+        var answer = await SendAsync(HttpMethod.Get, Calendars + "/users/me/calendarList");
+        foreach (var c in answer.GetProperty("items").EnumerateArray())
+            list.Add((c.GetProperty("id").GetString()!, c.GetProperty("summary").GetString() ?? "", c.TryGetProperty("accessRole", out var r) ? r.GetString() ?? "" : ""));
+        return list;
+    }
+
+    public async Task<string?> FindCalendarAsync(string name) => (await ListCalendarsAsync()).FirstOrDefault(c => c.Name == name).Id;
+
+    public async Task<int> CountEventsAsync(string calendarId)
+    {
+        var answer = await SendAsync(HttpMethod.Get, $"{Calendars}/calendars/{Uri.EscapeDataString(calendarId)}/events?maxResults=2500&singleEvents=false");
+        return answer.GetProperty("items").GetArrayLength();
+    }
+
+    public Task<JsonElement> InsertEventInAsync(string calendarId, string title, DateTime utcStart) =>
+        SendAsync(HttpMethod.Post, $"{Calendars}/calendars/{Uri.EscapeDataString(calendarId)}/events", new JsonObject
+        {
+            ["summary"] = title,
+            ["start"] = new JsonObject { ["dateTime"] = utcStart.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) },
+            ["end"] = new JsonObject { ["dateTime"] = utcStart.AddHours(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) },
+        });
+
+    /// <summary>Deletes the calendars of the test account that the tests made (owned, with the test prefix in the name). Returns how many.</summary>
+    public async Task<int> DeleteLeftoverCalendarsAsync()
+    {
+        var count = 0;
+        foreach (var (id, name, role) in await ListCalendarsAsync())
+        {
+            if (role != "owner" || !name.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) || id.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase)) continue;
+            await SendAsync(HttpMethod.Delete, $"{Calendars}/calendars/{Uri.EscapeDataString(id)}");
+            count++;
+        }
+
+        return count;
+    }
+
     public void Dispose() => _http.Dispose();
 }

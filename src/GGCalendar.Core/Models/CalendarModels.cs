@@ -1,6 +1,7 @@
 namespace GGCalendar.Core.Models;
 
-public sealed record CalendarInfo(string Id, string AccountName, string Name, string ColorHex, bool IsVisible = true);
+/// <param name="IsOwner">On Google: whether the person owns the calendar (only an owner can delete it); null = not known yet (read at the next sync).</param>
+public sealed record CalendarInfo(string Id, string AccountName, string Name, string ColorHex, bool IsVisible = true, bool? IsOwner = null);
 
 public enum EventAvailability { Busy, Free }
 

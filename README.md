@@ -28,6 +28,7 @@
 - Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti; le sveglie viaggiano con l'evento su Google e si condividono con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) per Android
 - Invitati, link Google Meet, promemoria via email (inviati da Google)
 - Ricerca di un testo in titolo, descrizione, posizione e invitati, su uno o più calendari, con date e parole da escludere
+- Creazione ed eliminazione dei calendari sugli account Google (solo quelli di cui sei proprietario, non il principale)
 - Calendari locali, importazione ed esportazione di file `.ics`
 - Tema chiaro e scuro
 - Interfaccia in italiano, inglese, tedesco, spagnolo e francese: la lingua si sceglie in *Impostazioni* (di default quella di Windows) e cambia subito

@@ -28,6 +28,7 @@
 - Sincronización en ambos sentidos con una o más cuentas de Google Calendar, con gestión de conflictos; las alarmas viajan con el evento en Google y se comparten con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) para Android
 - Invitados, enlaces de Google Meet, recordatorios por correo (enviados por Google)
 - Búsqueda de un texto en título, descripción, lugar e invitados, en uno o varios calendarios, con fechas y palabras a excluir
+- Crear y eliminar calendarios en las cuentas de Google (solo los tuyos, nunca el principal)
 - Calendarios locales, importación y exportación de archivos `.ics`
 - Tema claro y oscuro
 - Interfaz en italiano, inglés, alemán, español y francés: el idioma se elige en *Ajustes* (por defecto, el de Windows) y cambia al instante
