@@ -284,6 +284,19 @@ public class SearchUiTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>Clicks the line until the card of the event is shown: a click can be lost while the list is still being drawn.</summary>
+    private static async Task<EventDetailsCard> ShowCardAsync(MainWindow window, Border row)
+    {
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            Tap(window, Rows(window).FirstOrDefault(r => ReferenceEquals(r.DataContext, row.DataContext)) ?? row);
+            await PauseAsync(TimeSpan.FromMilliseconds(200));
+            if (window.FindControl<Popup>("DetailsPopup")?.Child is EventDetailsCard card) return card;
+        }
+
+        return await WaitForAsync(() => window.FindControl<Popup>("DetailsPopup")?.Child as EventDetailsCard, "la scheda dell'evento");
+    }
+
     [Fact]
     [Trait("TestCase", "T172")]
     public Task T172_AClickShowsTheCardOfTheEventADoubleClickOpensTheEditorAndAChangeUpdatesTheLines() => InSearchAppAsync(async window =>
@@ -292,8 +305,7 @@ public class SearchUiTests
         Search(window, "importante");
         var row = Assert.Single(Rows(window));
 
-        Tap(window, row);
-        var card = await WaitForAsync(() => window.FindControl<Popup>("DetailsPopup")?.Child as EventDetailsCard, "la scheda dell'evento");
+        var card = await ShowCardAsync(window, row);
         Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == ev.Title);
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
@@ -326,8 +338,7 @@ public class SearchUiTests
 
         Search(window, Word + " pubblico");
         var row = Assert.Single(Rows(window));
-        Tap(window, row);
-        var card = await WaitForAsync(() => window.FindControl<Popup>("DetailsPopup")?.Child as EventDetailsCard, "la scheda dell'evento");
+        var card = await ShowCardAsync(window, row);
         Assert.Single(card.GetVisualDescendants().OfType<Button>()); // only Close: no Edit, no Delete
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
