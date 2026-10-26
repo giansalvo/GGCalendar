@@ -29,6 +29,7 @@
 - Invités, liens Google Meet, rappels par e-mail (envoyés par Google)
 - Recherche d'un texte dans le titre, la description, le lieu et les invités, dans un ou plusieurs agendas, avec des dates et des mots à exclure
 - Création et suppression d'agendas sur les comptes Google (seulement ceux dont vous êtes propriétaire, jamais l'agenda principal)
+- Modification du nom et de la couleur des agendas : le nom pour les agendas locaux et les vôtres sur Google, la couleur pour tous (8 couleurs rapides et les 24 de Google)
 - Agendas locaux, importation et exportation de fichiers `.ics`
 - Thème clair et sombre
 - Interface en italien, anglais, allemand, espagnol et français : la langue se choisit dans les *Paramètres* (par défaut, celle de Windows) et change immédiatement

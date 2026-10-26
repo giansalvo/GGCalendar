@@ -774,6 +774,38 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// "Edit calendar": the name and the colour. A calendar of this PC is changed here; one of Google goes to Google first (online only), then here.
+    /// The name can be changed only on a calendar of this PC or a Google calendar the person owns (not the primary one); the colour on any.
+    /// </summary>
+    private async void OnEditCalendar(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || CalendarOf(sender) is not { IsSubscription: false } cal) return;
+        var dialog = new CalendarEditWindow(cal.Name, cal.ColorHex, cal.CanRename, cal.RenameHint, cal.RenameNote);
+        if (await dialog.ShowDialog<CalendarEditRequest?>(this) is not { } request) return;
+
+        if (cal.IsLocal)
+        {
+            vm.UpdateLocalCalendar(cal.Id, request.Name, request.ColorHex);
+            vm.SetStatus("status.calendar_edited", request.Name);
+            return;
+        }
+
+        try
+        {
+            var name = cal.CanRename ? request.Name : null;
+            var edit = await RunBusyAsync(Msg.Of("busy.gcal_editing"), () => _google.UpdateCalendarAsync(cal.Id, name, request.ColorHex, CancellationToken.None));
+            await vm.ReloadAsync();
+            vm.SetStatus(edit.NotCompleted is { } problem
+                ? Msg.Of("status.gcal_edited_partial", edit.Calendar.Name, Msg.Of("gcal.problem." + problem))
+                : Msg.Of("status.calendar_edited", edit.Calendar.Name));
+        }
+        catch (GoogleCalendarException ex)
+        {
+            vm.SetStatus(Msg.Of("error.gcal_edit", ex.Reason));
+        }
+    }
+
     /// <summary>Deletes a calendar of Google (the item is grey for the primary one and for those the person does not own).</summary>
     private async void OnDeleteGoogleCalendar(object? sender, RoutedEventArgs e)
     {

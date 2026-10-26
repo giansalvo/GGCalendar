@@ -143,20 +143,29 @@ public sealed class GoogleCalendarClient
         return created.GetProperty("id").GetString()!;
     }
 
-    /// <summary>Sets the colour of a calendar in the list of the account (calendars.insert cannot): background as given, text black or white to be readable.</summary>
-    public async Task SetCalendarColorAsync(string calendarId, string colorHex, CancellationToken ct)
+    /// <summary>Sets the colour of a calendar in the list of the account (calendars.insert cannot): background as given, text readable on it.</summary>
+    public Task SetCalendarColorAsync(string calendarId, string colorHex, CancellationToken ct) => UpdateCalendarListEntryAsync(calendarId, colorHex, false, ct);
+
+    /// <summary>
+    /// Changes the entry of a calendar in the list of the account (calendarList.patch): the colour (background and text) and/or the personal name
+    /// removed. A personal name, when there is one, hides the real name of the calendar from the person: it is removed when the calendar is renamed.
+    /// </summary>
+    public async Task UpdateCalendarListEntryAsync(string calendarId, string? colorHex, bool clearPersonalName, CancellationToken ct)
     {
-        var body = new JsonObject { ["backgroundColor"] = colorHex, ["foregroundColor"] = ForegroundFor(colorHex) };
-        await SendAsync(new HttpMethod("PATCH"), $"{Base}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}?colorRgbFormat=true", body, ct);
+        var body = new JsonObject();
+        if (colorHex is not null)
+        {
+            body["backgroundColor"] = colorHex;
+            body["foregroundColor"] = CalendarColors.TextFor(colorHex);
+        }
+
+        if (clearPersonalName) body["summaryOverride"] = null; // a null removes the field in a patch
+        await SendAsync(HttpMethod.Patch, $"{Base}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}?colorRgbFormat=true", body, ct);
     }
 
-    private static string ForegroundFor(string colorHex)
-    {
-        var hex = colorHex.TrimStart('#');
-        if (hex.Length != 6 || !int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var rgb)) return "#000000";
-        var luminance = 0.299 * ((rgb >> 16) & 255) + 0.587 * ((rgb >> 8) & 255) + 0.114 * (rgb & 255);
-        return luminance < 140 ? "#FFFFFF" : "#000000";
-    }
+    /// <summary>Renames a calendar (calendars.patch): its real name, seen by everybody it is shared with. Only its owner can.</summary>
+    public async Task RenameCalendarAsync(string calendarId, string name, CancellationToken ct) =>
+        await SendAsync(HttpMethod.Patch, $"{Base}/calendars/{Uri.EscapeDataString(calendarId)}", new JsonObject { ["summary"] = name }, ct);
 
     /// <summary>
     /// Deletes a secondary calendar with all its events (calendars.delete): one request whatever the number of events, and for everybody it is

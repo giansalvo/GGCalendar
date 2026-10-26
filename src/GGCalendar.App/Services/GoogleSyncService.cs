@@ -206,6 +206,73 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         }
     }
 
+    /// <summary>What an edit of a Google calendar did: the calendar as it is now, and why the second step (colour, personal name) did not go through, if it did not.</summary>
+    public sealed record GoogleCalendarEdit(CalendarInfo Calendar, GoogleCalendarProblem? NotCompleted = null);
+
+    /// <summary>
+    /// Changes the name and/or the colour of a calendar of Google (online only; the sync would put back Google's own values otherwise). A new name
+    /// goes to the calendar itself, so only its owner can give one, never for the primary calendar; the colour is the person's own and can be changed on
+    /// any calendar. Renaming also removes the personal name the person may have set on Google, which would hide the new one. When the name is changed
+    /// but the colour is refused, the name stays changed (here as on Google) and the result says why the rest did not go through.
+    /// </summary>
+    public async Task<GoogleCalendarEdit> UpdateCalendarAsync(string localId, string? newName, string? newColor, CancellationToken ct)
+    {
+        if (!IsGoogleCalendar(localId)) throw new GoogleCalendarException(GoogleCalendarProblem.Other);
+        var color = newColor is null ? null : CalendarColors.Normalize(newColor) ?? throw new GoogleCalendarException(GoogleCalendarProblem.Other);
+
+        await Gate.WaitAsync(ct);
+        try
+        {
+            var info = store.GetCalendars().FirstOrDefault(c => c.Id == localId) ?? throw new GoogleCalendarException(GoogleCalendarProblem.Other);
+            var name = newName?.Trim();
+            var rename = name is not null && name != info.Name;
+            var recolor = color is not null && !string.Equals(color, info.ColorHex, StringComparison.OrdinalIgnoreCase);
+            if (!rename && !recolor) return new GoogleCalendarEdit(info);
+
+            if (rename)
+            {
+                if (name!.Length == 0) throw new GoogleCalendarException(GoogleCalendarProblem.EmptyName);
+                if (IsPrimaryCalendar(localId)) throw new GoogleCalendarException(GoogleCalendarProblem.Primary);
+                if (info.IsOwner != true) throw new GoogleCalendarException(GoogleCalendarProblem.NotOwner);
+                if (name.Length > MaxCalendarName) name = name[..MaxCalendarName];
+            }
+
+            var client = ClientOf(AccountOf(localId));
+            var remoteId = RemoteCalendarId(localId);
+            if (rename)
+            {
+                try
+                {
+                    await client.RenameCalendarAsync(remoteId, name!, ct);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+                {
+                    throw Explain(ex);
+                }
+            }
+
+            GoogleCalendarProblem? notCompleted = null;
+            try
+            {
+                await client.UpdateCalendarListEntryAsync(remoteId, recolor ? color : null, clearPersonalName: rename, ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+            {
+                if (!rename) throw Explain(ex); // nothing was changed
+                notCompleted = Explain(ex).Problem;
+                recolor = false;
+            }
+
+            var updated = info with { Name = rename ? name! : info.Name, ColorHex = recolor ? color! : info.ColorHex };
+            store.UpsertCalendar(updated);
+            return new GoogleCalendarEdit(updated, notCompleted);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task<SyncResult> SyncAllAsync(CancellationToken ct, Action<int, int>? onProgress = null)
     {
         var errors = new List<Msg>();
