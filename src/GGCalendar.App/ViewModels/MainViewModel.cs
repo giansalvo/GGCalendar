@@ -120,6 +120,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public MainViewModel(CalendarStore store)
     {
         _store = store;
+        Search = new SearchViewModel(this);
         _allEvents = [];
         Settings = new AppSettings();
         Reload();
@@ -140,6 +141,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         foreach (var calendar in _calendars) calendar.LanguageChanged();
         foreach (var account in Accounts) account.LanguageChanged();
+        Search.LanguageChanged();
         OnPropertyChanged(nameof(ViewModeName));
         OnPropertyChanged(nameof(WeekLabel));
         OnPropertyChanged(nameof(SyncStatus));
@@ -156,6 +158,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         _changeCount++;
         EventsChanged?.Invoke();
+        Search.Refresh();
     }
 
     /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
@@ -215,9 +218,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
         _allEvents.Clear();
         _allEvents.AddRange(events);
+        Search.SetCalendars(_calendars);
         EventsChanged?.Invoke();
         if (SelectedDate is not null) Refresh();
     }
+
+    /// <summary>The search of events (issue #8).</summary>
+    public SearchViewModel Search { get; }
 
     public ObservableCollection<AccountGroup> Accounts { get; } = [];
     public IReadOnlyList<CalendarItemViewModel> Calendars => _calendars;
@@ -330,7 +337,12 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial IReadOnlyDictionary<string, string> CalendarColors { get; set; } = new Dictionary<string, string>();
 
-    partial void OnSelectedDateChanged(DateTime? value) => Refresh();
+    // A new day chosen (the small calendar, the arrows, Today, a day of the month view) ends the search and empties its box.
+    partial void OnSelectedDateChanged(DateTime? value)
+    {
+        Search.CloseAndClear();
+        Refresh();
+    }
 
     partial void OnSettingsChanged(AppSettings value)
     {
@@ -580,9 +592,10 @@ public sealed partial class MainViewModel : ViewModelBase
         };
     }
 
-    [RelayCommand] private void Today() => SelectedDate = DateTime.Today;
-    [RelayCommand] private void Previous() => Step(-1);
-    [RelayCommand] private void Next() => Step(1);
+    // Moving through the days ends a search and empties its box: the view of the period reached is shown.
+    [RelayCommand] private void Today() { Search.CloseAndClear(); SelectedDate = DateTime.Today; }
+    [RelayCommand] private void Previous() { Search.CloseAndClear(); Step(-1); }
+    [RelayCommand] private void Next() { Search.CloseAndClear(); Step(1); }
 
     private void Step(int direction)
     {
@@ -604,7 +617,11 @@ public sealed partial class MainViewModel : ViewModelBase
         SelectedDate = day.Date;
     }
 
-    partial void OnViewModeIndexChanged(int value) => Refresh();
+    partial void OnViewModeIndexChanged(int value)
+    {
+        Search.CloseAndClear(); // choosing a view ends the search and empties its box: the view chosen is shown
+        Refresh();
+    }
 
     public void MoveEvent(CalendarEvent ev, DateTime start, DateTime end)
     {
@@ -795,6 +812,15 @@ public sealed partial class MainViewModel : ViewModelBase
         var diff = (7 + (int)date.DayOfWeek - (int)Settings.FirstDayOfWeek) % 7;
         return date.Date.AddDays(-diff);
     }
+
+    /// <summary>The first day the current view shows (the first day of the grid for the month, of the year for the year view): where a search starts by default.</summary>
+    public DateTime FirstShownDay() => ViewModeIndex switch
+    {
+        2 => MonthGridStart.Date,
+        3 => new DateTime(Math.Clamp(YearNumber, 1, 9998), 1, 1),
+        4 => (SelectedDate ?? DateTime.Today).Date,
+        _ => WeekStart.Date,
+    };
 
     private void Refresh()
     {

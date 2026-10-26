@@ -31,6 +31,11 @@ public sealed class AppSettings
     /// <summary>How often the public calendars (by address) are downloaded again, in minutes; 0 = only by hand.</summary>
     public int SubscriptionIntervalMinutes { get; set; } = 30;
 
+    /// <summary>Calendars the search looks in: 0 = the ones shown, 1 = all, 2 = the ones in <see cref="SearchCalendarIds"/>.</summary>
+    public int SearchScope { get; set; }
+
+    public List<string> SearchCalendarIds { get; set; } = [];
+
     /// <summary>0 giorno, 1 settimana, 2 mese, 3 anno, 4 programma, 5 sei giorni.</summary>
     public int DefaultView { get; set; } = 1;
     public bool Use24HourClock { get; set; } = true;
