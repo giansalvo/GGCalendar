@@ -91,7 +91,7 @@ public class LanguageUiTests
         Assert.Equal(other, L.Language);
         Assert.Equal(L.T("main.today"), TodayButtonText(window));
         Assert.NotEqual(textBefore, TodayButtonText(window)); // the button really shows another text
-        Assert.Equal("status.syncing", vm.Status!.Key);       // the message is the same one...
+        Assert.True(vm.Status!.Key == "status.syncing", $"Lo stato è {vm.Status.Key}: {vm.SyncStatus}"); // the message is the same one...
         Assert.Equal(L.T("status.syncing"), vm.SyncStatus);    // ...shown in the new language
         Assert.NotEqual(statusBefore, vm.SyncStatus);
         Assert.NotEqual(titleBefore, vm.Title);                // "Ottobre 2026" is "October 2026"

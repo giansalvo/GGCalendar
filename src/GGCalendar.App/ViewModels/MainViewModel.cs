@@ -589,7 +589,7 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             // Cross-calendar move: delete at the origin, create at the destination.
             if (IsRemote(old.CalendarId) && oldRemote is not null)
-                Queue(() => _store.EnqueueDelete(ev.Id, old.CalendarId, oldRemote));
+                Queue(() => _store.EnqueueDelete(ev.Id, old.CalendarId, oldRemote, old));
             _store.ClearRemote(ev.Id);
             if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
 
@@ -842,7 +842,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _allEvents.RemoveAll(e => e.Id == ev.Id);
         _store.DeleteEvent(ev.Id);
         Changed();
-        if (IsRemote(ev.CalendarId) && remote is not null) Queue(() => _store.EnqueueDelete(ev.Id, ev.CalendarId, remote));
+        if (IsRemote(ev.CalendarId) && remote is not null) Queue(() => _store.EnqueueDelete(ev.Id, ev.CalendarId, remote, ev));
 
         // Removing a series removes its modified occurrences too (Google does the same remotely).
         foreach (var child in _allEvents.Where(e => e.SeriesMasterId == ev.Id).ToList())

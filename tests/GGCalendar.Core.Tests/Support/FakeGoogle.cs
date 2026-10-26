@@ -69,6 +69,12 @@ public sealed class FakeGoogle : HttpMessageHandler
     /// <summary>Every request fails as if there were no network (an exception, no answer).</summary>
     public bool Offline { get; set; }
 
+    /// <summary>Every request is answered after this pause (a slow Google: a long sending can be stopped in the middle).</summary>
+    public TimeSpan Delay { get; set; }
+
+    /// <summary>The calendars (by Google id) whose list of events is refused with the limit of requests (403 rateLimitExceeded), as when a big download goes over the quota.</summary>
+    public HashSet<string> QuotaOnEventList { get; } = [];
+
     /// <summary>The tokens revoked through the revoke address of Google (when an account is disconnected).</summary>
     public List<string> RevokedTokens { get; } = [];
 
@@ -101,6 +107,9 @@ public sealed class FakeGoogle : HttpMessageHandler
     }
 
     public IReadOnlyList<string> CalendarIds => _calendars.Select(c => c.Id).ToList();
+
+    /// <summary>The calendar is deleted on Google (by someone else, from another device): the app still has it until it looks.</summary>
+    public void RemoveCalendar(string id) => _calendars.RemoveAll(c => c.Id == id);
 
     public bool HasCalendar(string id) => _calendars.Any(c => c.Id == id);
 
@@ -218,6 +227,7 @@ public sealed class FakeGoogle : HttpMessageHandler
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add($"{request.Method} {url.AbsolutePath}{url.Query}");
         if (Offline) throw new HttpRequestException("Nessuna connessione.");
+        if (Delay > TimeSpan.Zero) await Task.Delay(Delay, cancellationToken);
 
         if (url.Host == "oauth2.googleapis.com" && url.AbsolutePath == "/revoke")
         {
@@ -309,6 +319,7 @@ public sealed class FakeGoogle : HttpMessageHandler
 
         var query = System.Web.HttpUtility.ParseQueryString(url.Query);
 
+        if (id is null && request.Method == HttpMethod.Get && QuotaOnEventList.Contains(calendar.Id)) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "rateLimitExceeded"));
         if (id is null && request.Method == HttpMethod.Get) return List(query["syncToken"]);
         if (id is null && request.Method == HttpMethod.Post)
         {

@@ -1,4 +1,4 @@
-﻿<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
+<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
         xmlns:ctl="using:GGCalendar.App.Controls"
@@ -69,10 +69,20 @@
     </Window.Styles>
 
     <DockPanel>
-        <Border DockPanel.Dock="Bottom" Padding="16,4" BorderThickness="0,1,0,0" BorderBrush="#33808080"
-                IsVisible="{Binding SyncStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <SelectableTextBlock Text="{Binding SyncStatus}" FontSize="12" TextWrapping="Wrap" MaxHeight="72"
-                                 Classes.error="{Binding SyncIsError}" Classes.muted="{Binding !SyncIsError}" />
+        <!-- MOCKUP of the queue of the changes waiting for Google (issue #19): the bar is always there; on the right a green dot (all sent) or an hourglass with the number of events. -->
+        <Border DockPanel.Dock="Bottom" Padding="16,2" MinHeight="28" BorderThickness="0,1,0,0" BorderBrush="#33808080">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <SelectableTextBlock Text="{Binding SyncStatus}" FontSize="12" TextWrapping="Wrap" MaxHeight="72" VerticalAlignment="Center"
+                                     Classes.error="{Binding SyncIsError}" Classes.muted="{Binding !SyncIsError}" />
+                <Button Grid.Column="1" Name="QueueButton" AutomationProperties.AutomationId="Main.SyncQueue" Background="Transparent" MinWidth="30" Height="24" Padding="8,0"
+                        CornerRadius="12" Click="OnOpenSyncQueue" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <Ellipse Name="QueueDot" Width="10" Height="10" Fill="#16A765" VerticalAlignment="Center" />
+                        <TextBlock Name="QueueGlyph" Text="&#x23F3;" FontSize="13" VerticalAlignment="Center" IsVisible="False" />
+                        <TextBlock Name="QueueCount" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" IsVisible="False" />
+                    </StackPanel>
+                </Button>
+            </Grid>
         </Border>
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,10">
             <!-- The title of the view is the one that gives way when the window is narrow: it is cut with dots, the buttons on the right stay. -->

@@ -44,7 +44,7 @@ public partial class MainWindow : Window
         Subscriptions.Changed += () => { if (Vm is { } vm) _ = vm.ReloadAsync(); };
         Grid.IsReadOnly = MainViewModel.IsReadOnly;
         L.Changed += OnLanguageChanged;
-        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); StopAlarmSound(); _alarmsTimer?.Stop(); _alarms?.Dispose(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
+        Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); StopAlarmSound(); _alarmsTimer?.Stop(); _alarms?.Dispose(); _queueTimer?.Stop(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
         Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
@@ -70,6 +70,7 @@ public partial class MainWindow : Window
         Month.EventClicked += (ev, rect) => ShowDetails(ev, Month, rect);
         Year.DayClicked += day => Vm?.ShowDay(day);
         KeyDown += OnShortcut;
+        SetUpSyncQueue();
         _ringer.SoundRequested += StartAlarmSound;
         _ringer.SoundStopRequested += StopAlarmSound;
         Opened += (_, _) =>
@@ -203,6 +204,89 @@ public partial class MainWindow : Window
         _ringer.RemoveAll();
     }
 
+    // ---------- The queue of the changes waiting for Google (issue #19) ----------
+
+    private SyncQueueWindow? _queueWindow;
+    private DispatcherTimer? _queueTimer;
+    private DateTime _queueRefreshedAt;
+
+    private void SetUpSyncQueue()
+    {
+        _queueTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _queueTimer.Tick += (_, _) => RefreshQueueIndicator();
+        _queueTimer.Start();
+        RefreshQueueIndicator();
+    }
+
+    /// <summary>The indicator in the status bar: a green dot when nothing waits for Google, an hourglass with the number of events when something does.</summary>
+    private void RefreshQueueIndicator()
+    {
+        int n;
+        try
+        {
+            n = _google.CountQueuedEvents();
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
+        {
+            return; // the store is busy: the next refresh will tell
+        }
+
+        _queueRefreshedAt = DateTime.UtcNow;
+        QueueDot.IsVisible = n == 0;
+        QueueGlyph.IsVisible = n > 0;
+        QueueCount.IsVisible = n > 0;
+        QueueCount.Text = n.ToString();
+        ToolTip.SetTip(QueueButton, n == 0 ? L.T("queue.tip_ok") : L.N("queue.tip", n));
+        _queueWindow?.Refresh();
+    }
+
+    /// <summary>The window of the queue is open (or opening): no automatic sync starts, so the list does not change under the person's eyes.</summary>
+    private bool _queueOpen;
+
+    private async void OnOpenSyncQueue(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || _queueOpen) return;
+        _queueOpen = true;
+        try
+        {
+            // A sending that is going on is stopped first (what was not sent stays in the queue): the list would change while it is read,
+            // and cancelling would have to wait for the end of a sending that may last minutes.
+            if (_syncCts is { } sending)
+            {
+                vm.SetStatus("queue.pausing");
+                sending.Cancel();
+            }
+
+            await _google.Gate.WaitAsync();
+            _google.Gate.Release();
+            RefreshQueueIndicator();
+
+            var window = new SyncQueueWindow(_google, vm, CancelQueuedAsync, () => SyncCoreAsync(fromQueue: true));
+            _queueWindow = window;
+            await window.ShowDialog(this);
+        }
+        finally
+        {
+            _queueWindow = null;
+            _queueOpen = false;
+        }
+
+        // What is still waiting goes on its way again (the sending was held while the window was open).
+        if (_google.CountQueuedEvents() > 0) _ = SyncAsync();
+    }
+
+    /// <summary>Cancels the changes waiting for the events: they go back as Google has them (a sync that is running ends first).</summary>
+    private async Task CancelQueuedAsync(IReadOnlyList<QueuedEvent> events)
+    {
+        if (Vm is not { } vm) return;
+        var result = await _google.CancelQueuedAsync(events.Select(q => q.EventId).ToList(), CancellationToken.None);
+        await vm.ReloadAsync();
+        vm.SetStatus(result.Cancelled == 0 ? Msg.Of("queue.cancel_none") : Msg.Count("queue.cancelled", result.Cancelled));
+        RefreshQueueIndicator();
+        // The events that come back from Google (deleted, moved) arrive with the next sync: it starts now.
+        if (result.RestoreFromGoogle) _ = SyncCoreAsync(fromQueue: true);
+    }
+
     // ---------- Refresh of the public calendars ----------
 
     private DispatcherTimer? _subscriptionTimer;
@@ -300,6 +384,7 @@ public partial class MainWindow : Window
         ConfigureGoogle();
         vm.ChangeQueued += () =>
         {
+            RefreshQueueIndicator();
             if (vm.Settings.SyncIntervalMinutes <= 0) return;
             _debounce ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _debounce.Stop();
@@ -338,9 +423,13 @@ public partial class MainWindow : Window
 
     private async void OnSyncNow(object? sender, RoutedEventArgs e) => await SyncAsync();
 
-    private async Task SyncAsync()
+    private Task SyncAsync() => SyncCoreAsync(fromQueue: false);
+
+    /// <param name="fromQueue">The window of the queue asked for it ("Riprova ora", or events that come back from Google): the automatic syncs are held while that window is open, this one is not.</param>
+    private async Task SyncCoreAsync(bool fromQueue)
     {
         if (Vm is not { } vm || _google.AccountEmails.Count == 0) return;
+        if (_queueOpen && !fromQueue) return;
         if (!await _google.Gate.WaitAsync(0)) return;
         vm.IsSyncing = true;
         vm.SetStatus("status.syncing");
@@ -354,6 +443,8 @@ public partial class MainWindow : Window
             var discard = false;
             var result = await Task.Run(() => _google.SyncAllAsync(cts.Token, (done, total) =>
             {
+                // The number in the status bar goes down as the changes are sent.
+                if (DateTime.UtcNow - _queueRefreshedAt > TimeSpan.FromSeconds(1)) Dispatcher.UIThread.Post(RefreshQueueIndicator);
                 if (total > 30)
                     Dispatcher.UIThread.Post(() =>
                     {
@@ -413,6 +504,7 @@ public partial class MainWindow : Window
         {
             vm.IsSyncing = false;
             _google.Gate.Release();
+            RefreshQueueIndicator();
         }
     }
 
@@ -489,6 +581,7 @@ public partial class MainWindow : Window
     private void OnLanguageChanged()
     {
         CloseDetails();
+        RefreshQueueIndicator();
         Grid.InvalidateVisual();
         AllDay.InvalidateVisual();
         Month.InvalidateVisual();
@@ -879,6 +972,7 @@ public partial class MainWindow : Window
         var revoked = await RunBusyAsync(Msg.Of("busy.account_disconnecting", email), () => _google.RemoveAccountAsync(email, CancellationToken.None));
         await vm.ReloadAsync();
         vm.SetStatus(revoked ? "settings.disconnected_revoked" : "settings.disconnected_not_revoked", email);
+        RefreshQueueIndicator();
     }
 
     /// <summary>"Create" menu: a calendar on one of the Google accounts (the window asks which one when there are several).</summary>
@@ -1087,7 +1181,7 @@ public partial class MainWindow : Window
         if ((dialog.DataContext as SettingsViewModel)?.SubscriptionsChanged == true) await vm.ReloadAsync();
         if (result is null)
         {
-            if (accountsChanged) { await vm.ReloadAsync(); await SyncAsync(); }
+            if (accountsChanged) { await vm.ReloadAsync(); RefreshQueueIndicator(); await SyncAsync(); }
             return;
         }
         result.ShowWeekends = vm.Settings.ShowWeekends;
@@ -1101,6 +1195,7 @@ public partial class MainWindow : Window
         ConfigureGoogle();
         ApplySyncInterval();
         if (accountsChanged) await vm.ReloadAsync();
+        RefreshQueueIndicator();
         if (result.SyncIntervalMinutes > 0 || accountsChanged) _ = SyncAsync();
         if (_scheduler is not null) _scheduler.Enabled = result.NotificationsEnabled;
         ScrollToDayStart();

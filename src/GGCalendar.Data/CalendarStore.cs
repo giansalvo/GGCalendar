@@ -16,7 +16,8 @@ public sealed record RemoteEvent(CalendarEvent Event, string RemoteId, string? E
 /// A local change not yet pushed to the remote provider. <paramref name="Base"/> is the event as it was before the change
 /// (for updates), used to tell a real remote edit from a version change made by the provider itself.
 /// </summary>
-public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload, string? Base = null);
+/// <param name="CreatedAt">When the change was queued (UTC).</param>
+public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload, string? Base = null, DateTime? CreatedAt = null);
 
 /// <summary>SQLite cache of calendars and events plus the queue of pending remote changes.</summary>
 public sealed class CalendarStore
@@ -331,8 +332,8 @@ public sealed class CalendarStore
 
                 RemoveSeries(c, old.Id);
                 if (remoteDestination && remoteId is not null)
-                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, 'Delete', $p, $t)",
-                        ("$e", old.Id), ("$c", old.CalendarId), ("$p", remoteId), ("$t", now));
+                    Run(c, "INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at, base) VALUES ($e, $c, 'Delete', $p, $t, $b)",
+                        ("$e", old.Id), ("$c", old.CalendarId), ("$p", remoteId), ("$t", now), ("$b", JsonSerializer.Serialize(old, Json)));
             }
 
             foreach (var ev in added)
@@ -427,13 +428,52 @@ public sealed class CalendarStore
 
     public IReadOnlyList<OutboxItem> GetPending() => WithConnection(c =>
     {
-        using var cmd = Command(c, "SELECT seq, event_id, calendar_id, operation, payload, base FROM outbox ORDER BY seq", []);
+        using var cmd = Command(c, "SELECT seq, event_id, calendar_id, operation, payload, base, created_at FROM outbox ORDER BY seq", []);
         using var r = cmd.ExecuteReader();
         var list = new List<OutboxItem>();
         while (r.Read())
             list.Add(new OutboxItem(r.GetInt64(0), r.GetString(1), r.GetString(2), Enum.Parse<OutboxOperation>(r.GetString(3)),
-                r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5)));
+                r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5),
+                DateTime.TryParse(r.GetString(6), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? at : null));
         return list;
+    });
+
+    /// <summary>
+    /// How many events of Google calendars have changes waiting in the queue (an event with five edits, or a moved one, counts once;
+    /// the calendars of this PC have no queue).
+    /// </summary>
+    public int CountPendingEvents() => WithConnection(c =>
+    {
+        using var cmd = Command(c, "SELECT COUNT(DISTINCT event_id) FROM outbox WHERE calendar_id LIKE '%|%'", []);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    });
+
+    /// <summary>
+    /// Gives up the creation of events that are not on Google yet: the events (with their modified occurrences) and every change queued
+    /// for them are removed from this PC. Used to cancel a new event, or the copy of an event that was moved to another calendar.
+    /// </summary>
+    public void DiscardCreatedEvents(IReadOnlyCollection<string> eventIds) => WithConnection(c =>
+    {
+        if (eventIds.Count == 0) return;
+        using var tx = c.BeginTransaction();
+        // One pass over the events, however many are cancelled (thousands after an import): a statement for each would take minutes.
+        Run(c, "CREATE TEMP TABLE discard_ids (id TEXT PRIMARY KEY)");
+        foreach (var id in eventIds) Run(c, "INSERT OR IGNORE INTO discard_ids (id) VALUES ($id)", ("$id", id));
+        Run(c, "CREATE TEMP TABLE discard_children AS SELECT id FROM events WHERE json_extract(data, '$.SeriesMasterId') IN (SELECT id FROM discard_ids)");
+        Run(c, "INSERT OR IGNORE INTO discard_ids (id) SELECT id FROM discard_children");
+        Run(c, "DELETE FROM outbox WHERE event_id IN (SELECT id FROM discard_ids)");
+        Run(c, "DELETE FROM events WHERE id IN (SELECT id FROM discard_ids)");
+        Run(c, "DROP TABLE discard_children");
+        Run(c, "DROP TABLE discard_ids");
+        tx.Commit();
+    });
+
+    /// <summary>Removes the changes queued for the events and leaves the events as they are (the caller put them back first, or they come back from Google).</summary>
+    public void DiscardOutboxOf(IReadOnlyCollection<string> eventIds) => WithConnection(c =>
+    {
+        using var tx = c.BeginTransaction();
+        foreach (var id in eventIds) Run(c, "DELETE FROM outbox WHERE event_id = $id", ("$id", id));
+        tx.Commit();
     });
 
     public void Complete(long seq) => WithConnection(c => Run(c, "DELETE FROM outbox WHERE seq = $s", ("$s", seq)));
@@ -457,12 +497,14 @@ public sealed class CalendarStore
     public void DiscardPending(string eventId) => WithConnection(c => Run(c, "DELETE FROM outbox WHERE event_id = $e", ("$e", eventId)));
 
     /// <summary>Queues a remote deletion; the payload carries the remote id because the local row is already gone.</summary>
-    public long EnqueueDelete(string eventId, string calendarId, string remoteId) => WithConnection(c =>
+    /// <param name="deleted">The event as it was, kept to tell what is waiting in the queue (its title); older rows do not have it.</param>
+    public long EnqueueDelete(string eventId, string calendarId, string remoteId, CalendarEvent? deleted = null) => WithConnection(c =>
     {
         using var cmd = Command(c, """
-            INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at) VALUES ($e, $c, 'Delete', $p, $t);
+            INSERT INTO outbox (event_id, calendar_id, operation, payload, created_at, base) VALUES ($e, $c, 'Delete', $p, $t, $b);
             SELECT last_insert_rowid();
-            """, [("$e", eventId), ("$c", calendarId), ("$p", remoteId), ("$t", DateTime.UtcNow.ToString("O"))]);
+            """, [("$e", eventId), ("$c", calendarId), ("$p", remoteId), ("$t", DateTime.UtcNow.ToString("O")),
+                  ("$b", deleted is null ? null : JsonSerializer.Serialize(deleted, Json))]);
         return Convert.ToInt64(cmd.ExecuteScalar());
     });
 
