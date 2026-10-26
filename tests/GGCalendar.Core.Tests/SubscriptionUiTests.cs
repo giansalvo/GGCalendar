@@ -325,7 +325,7 @@ public class SubscriptionUiTests
         Assert.Single(card.GetVisualDescendants().OfType<Button>());
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
-        DoubleClick(window, item);
+        DoubleClick(window, await FindInAgendaAsync(window, "Pubblico lezione", DateTime.Today.AddDays(1))); // the line is found again: the list may have been drawn anew
         await PauseAsync(TimeSpan.FromMilliseconds(300));
         Assert.Empty(window.OwnedWindows.OfType<EventEditWindow>());
 
