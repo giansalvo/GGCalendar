@@ -23,13 +23,13 @@
 <main class="legal"><div class="wrap">
   <a class="back" href="index.html">← Back to home</a>
   <h1>Privacy policy</h1>
-  <p class="updated">Last updated: 11 October 2026 · GGCalendar v1 for Windows and GGCalendar Mobile for Android · Translation of the Italian original, which is the reference text</p>
+  <p class="updated">Last updated: 11 October 2026 · GGCalendar for Windows and GGCalendar Mobile for Android · Translation of the Italian original, which is the reference text</p>
 
   <p>This policy describes how GGCalendar for Windows and GGCalendar Mobile for Android (together, "the App") and the related website process personal data, under Regulation (EU) 2016/679 (GDPR), and how the App uses the data received from Google APIs.</p>
 
   <h2>1. Data controller and scope</h2>
   <p>Giansalvo Gusinu, Sassari (Italy). Contact: <a href="#" data-mail data-show data-subject="GGCalendar – Privacy">write to the controller</a>.</a>.</p>
-  <p>The controller processes personal data only for the <strong>website</strong> (section 9) and for <strong>email communications</strong> (section 10). The App works entirely on your device (computer or phone): the author <strong>does not receive, see or keep</strong> your events or any other data entered or synced in the App. If you connect a Google account, your calendar data is processed by Google LLC as an independent controller, under <a href="https://policies.google.com/privacy?hl=en" rel="noopener">Google's Privacy Policy</a>.</a>.</p>
+  <p>The controller processes personal data only for the <strong>website</strong> (section 8) and for <strong>email communications</strong> (section 9). The App works entirely on your device (computer or phone): the author <strong>does not receive, see or keep</strong> your events or any other data entered or synced in the App. If you connect a Google account, your calendar data is processed by Google LLC as an independent controller, under <a href="https://policies.google.com/privacy?hl=en" rel="noopener">Google's Privacy Policy</a>.</a>.</p>
 
   <h2>2. The App in brief</h2>
   <ul>
@@ -49,7 +49,7 @@
     <li><code>reminders.json</code>: the reminders already shown or postponed;</li>
     <li><code>google-accounts.json</code>: the email address of the connected Google accounts and the related access token, <strong>encrypted</strong> with Windows data protection (DPAPI) and usable only by your Windows user.</li>
   </ul>
-  <p>The events database is not encrypted by the App and is protected by access to your Windows account: we recommend protecting the account with a password and, if possible, turning on disk encryption (BitLocker). Backup, retention and deletion of these files are under your control (section 8).</p>
+  <p>The events database is not encrypted by the App and is protected by access to your Windows account: we recommend protecting the account with a password and, if possible, turning on disk encryption (BitLocker). Backup, retention and deletion of these files are under your control (section 7).</p>
 
   <h3>3.2 Android</h3>
   <p>The App saves its data in the private storage that Android reserves for each app, not accessible to other apps:</p>
@@ -94,10 +94,7 @@
   <h2>5. Other people's data</h2>
   <p>Events may contain data of other people, for example the email addresses of guests. This data is managed by you, on your device and in your Google account; the author has no access to it. Please enter third-party data only when necessary.</p>
 
-  <h2>6. Local artificial intelligence models (Ollama, Windows only)</h2>
-  <p>In the Windows version, in the settings you can enter the address of an Ollama installation (default: your own computer). In version 1 the App only asks that address for the list of available models and <strong>does not send</strong> events or other calendar data. If you enter the address of another computer, the request reaches that computer.</p>
-
-  <h2>7. Import, export, sharing and printing</h2>
+  <h2>6. Import, export, sharing and printing</h2>
   <p>The .ics files you import or export are read and written only on your device, in the places you choose. On Android, when you share or print an event, the content is passed to the app or printer you choose (for example a mail or messaging app), which handles it under its own rules.</p>
 
   <h3>7.1 Permissions requested on Android</h3>
@@ -109,40 +106,40 @@
   </ul>
   <p>The sounds of the reminders and the .ics files are chosen through Android's file picker: the App accesses only the files you indicate.</p>
 
-  <h2>8. Deleting the App's data</h2>
+  <h2>7. Deleting the App's data</h2>
   <p>To delete from the device the data of a single Google account, disconnect it (section 4.6).</p>
   <p><strong>Android:</strong> uninstalling the App deletes all its data from the phone. You can also delete it without uninstalling, from <em>Settings → Apps → GGCalendar → Storage → Clear data</em>.</p>
   <p><strong>Windows:</strong> uninstalling the App <strong>does not</strong> delete the data, so as not to lose it in case of reinstallation or update: to delete it completely, after uninstalling delete the <code>%AppData%\GGCalendar</code> folder (paste the path in the address bar of File Explorer). If you had connected Google accounts without disconnecting them, also revoke access at <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>.</a>.</p>
 
-  <h2>9. Data processed by the website</h2>
+  <h2>8. Data processed by the website</h2>
   <p>The pages of this site use no cookies or analytics or third-party tools. The site is hosted on <strong>Altervista</strong> (<a href="https://www.altervista.org" rel="noopener">altervista.org</a>), which records in the server logs technical browsing data (for example IP address, date and time, requested page) for security and the correct operation of the service. Altervista may also use its own or third-party cookies, for example for advertising on freely hosted sites: this processing is managed by Altervista, which describes it in its own policy and in the cookie banner shown on the first visit.</a>), che registra nei log del server dati tecnici di navigazione (ad esempio indirizzo IP, data e ora, pagina richiesta) per finalità di sicurezza e corretto funzionamento del servizio. Altervista può inoltre utilizzare cookie propri o di terze parti, ad esempio per la pubblicità sui siti ospitati gratuitamente: questi trattamenti sono gestiti da Altervista, che li descrive nella propria informativa e nel banner dei cookie mostrato alla prima visita.</p>
   <p>The installation files of the App (for Windows and for Android) are downloaded from <strong>GitHub</strong> (GitHub, Inc., United States), which processes the technical data of the download, such as the IP address, under its own <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">privacy statement</a>. The Android App periodically checks GitHub for a new version: the request contains no personal data, but GitHub receives the phone's IP address.</a>. L'App per Android controlla periodicamente su GitHub se è disponibile una nuova versione: la richiesta non contiene dati personali, ma GitHub riceve l'indirizzo IP del telefono.</p>
 
-  <h2>10. Email communications</h2>
+  <h2>9. Email communications</h2>
   <p>If you write to the contact address, I will use your email address and the content of the message only to reply to you. Messages are kept for the time needed to handle the request and in any case no longer than 24 months after the last exchange, and are not given to third parties. The contact address is a Gmail account: the messages are therefore kept on Google's servers.</p>
 
-  <h2>11. Legal basis</h2>
+  <h2>10. Legal basis</h2>
   <p>The processing of contact data is based on the need to respond to your request and on the legitimate interest in replying to the communications received (art. 6(1)(b) and (f) GDPR). Server logs are based on the legitimate interest in the security of the site (point f). For the data in the App the author carries out no processing (section 1).</p>
 
-  <h2>12. Transfer of data outside the European Union</h2>
+  <h2>11. Transfer of data outside the European Union</h2>
   <p>Google (for sync and for the contact email) and GitHub (for the download and the update check) may process data in the United States. Both companies adhere to the EU-U.S. Data Privacy Framework and adopt the standard contractual clauses approved by the European Commission.</p>
 
-  <h2>13. Your rights</h2>
+  <h2>12. Your rights</h2>
   <p>You have the right to access your data, rectify it, erase it, restrict its processing, object and, where applicable, obtain its portability. You can also lodge a complaint with the Italian data protection authority (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>). To exercise your rights write to the contact indicated above. For the data of your Google account you can also use Google's tools (<a href="https://myaccount.google.com" rel="noopener">myaccount.google.com</a>).</a>). Per esercitare i tuoi diritti scrivi al contatto indicato sopra. Per i dati del tuo account Google puoi usare anche gli strumenti di Google (<a href="https://myaccount.google.com" rel="noopener">myaccount.google.com</a>).</p>
 
-  <h2>14. Minors</h2>
+  <h2>13. Minors</h2>
   <p>The author does not knowingly collect data of minors through the App or the site.</p>
 
-  <h2>15. Changes to this policy</h2>
+  <h2>14. Changes to this policy</h2>
   <p>This policy may be updated, for example in case of new features in future versions of the App. The date of the last update is shown at the top; any significant changes will be announced on the site.</p>
 
-  <h2>16. Contact</h2>
+  <h2>15. Contact</h2>
   <p>For any question about this policy: <a href="#" data-mail data-show data-subject="GGCalendar – Privacy">write to the author</a>.</a>.</p>
-  <noscript><p>Email: profgusinu [at] gmail [dot] com</p></noscript>
+  <noscript><p>Email: profgusinu+ggcalendar [at] gmail [dot] com</p></noscript>
 </div></main>
 
 <footer class="site"><div class="wrap">
-  <div>© 2026 Giansalvo Gusinu · GGCalendar v1 · GGCalendar Mobile</div>
+  <div>© 2026 Giansalvo Gusinu · GGCalendar · GGCalendar Mobile</div>
   <nav><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms of service</a></nav>
 </div></footer>
 </body>

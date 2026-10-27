@@ -106,3 +106,10 @@ footer.site a:hover{color:var(--text)}
   .band{padding:36px 20px}
   footer.site .wrap{flex-direction:column}
 }
+.stores{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:center}
+.store-badge,.gh-badge{display:inline-flex;align-items:center;width:183px;height:50px;border-radius:5px}
+.store-badge img{display:block;width:183px;height:50px}
+.gh-badge{box-sizing:border-box;justify-content:center;gap:10px;padding:0 12px;background:#fff;color:#202020;border:1px solid #d0d7de;text-decoration:none;font-weight:600;font-size:1.05rem;line-height:1.1}
+.gh-badge span{display:flex;flex-direction:column;text-align:left}
+.gh-badge small{font-size:.65rem;font-weight:400;opacity:.8}
+.gh-badge:hover{background:#e9ecf0}

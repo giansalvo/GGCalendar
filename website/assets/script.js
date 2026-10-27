@@ -1,6 +1,6 @@
 // Offuscamento email: l'indirizzo non compare mai in chiaro nell'HTML.
 (function () {
-  var parts = ['profgusinu', 'gmail', 'com'];
+  var parts = ['profgusinu+ggcalendar', 'gmail', 'com'];
   function build() {
     var addr = parts[0] + String.fromCharCode(64) + parts[1] + String.fromCharCode(46) + parts[2];
     document.querySelectorAll('[data-mail]').forEach(function (el) {
