@@ -238,7 +238,8 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft">
                             <MenuItem AutomationProperties.AutomationId="Menu.CreateEvent" Name="CreateEventItem" Header="{loc:T main.create_event}" Click="OnNewEvent" />
                             <MenuItem AutomationProperties.AutomationId="Menu.CreateLocalCalendar" Name="CreateLocalCalendarItem" Header="{loc:T main.create_local_calendar}" Click="OnNewLocalCalendar" />
-                            <MenuItem AutomationProperties.AutomationId="Menu.CreateGoogleCalendar" Name="CreateGoogleCalendarItem" Header="{loc:T main.create_google_calendar}" Click="OnNewGoogleCalendar" IsEnabled="{Binding HasGoogleAccounts}" />
+                            <MenuItem AutomationProperties.AutomationId="Menu.CreateGoogleCalendar" Name="CreateGoogleCalendarItem" Header="{loc:T main.create_google_calendar}" Click="OnNewGoogleCalendar" IsEnabled="{Binding HasGoogleAccounts}"
+                                      ToolTip.Tip="{Binding CreateGoogleHint}" ToolTip.ShowOnDisabled="True" />
                             <MenuItem AutomationProperties.AutomationId="Menu.CreatePublicCalendar" Name="CreatePublicCalendarItem" Header="{loc:T main.create_public_calendar}" Click="OnNewPublicCalendar" />
                         </MenuFlyout>
                     </Button.Flyout>

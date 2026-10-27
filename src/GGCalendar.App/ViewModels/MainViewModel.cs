@@ -253,6 +253,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _allEvents.AddRange(events);
         Search.SetCalendars(_calendars);
         OnPropertyChanged(nameof(HasGoogleAccounts));
+        OnPropertyChanged(nameof(CreateGoogleHint));
         EventsChanged?.Invoke();
         if (SelectedDate is not null) Refresh();
     }
@@ -262,6 +263,9 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>At least one calendar comes from a Google account: a calendar can be created on Google (the item of the "Create" menu is grey otherwise).</summary>
     public bool HasGoogleAccounts => _calendars.Any(c => c.IsGoogle);
+
+    /// <summary>What the grey "Google calendar" item says when it is pointed at: how to connect an account (nothing once there is one).</summary>
+    public string? CreateGoogleHint => HasGoogleAccounts ? null : L.T("main.create_google_hint");
 
     /// <summary>How many changes wait to be sent to Google for the calendar (they are lost with it when it is deleted).</summary>
     public int PendingChangesFor(string calendarId) => _store.GetPending().Count(p => p.CalendarId == calendarId);

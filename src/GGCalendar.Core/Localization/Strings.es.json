@@ -248,6 +248,7 @@
   "main.create": "＋  Crear  ▾",
   "main.create_event": "Evento",
   "main.create_google_calendar": "Calendario de Google…",
+  "main.create_google_hint": "Para crear un calendario de Google necesitas una cuenta de Google conectada: abre los Ajustes, pulsa «Añadir cuenta de Google» en la sección de cuentas de Google y completa el inicio de sesión.",
   "main.create_local_calendar": "Calendario local",
   "main.create_public_calendar": "Calendario público (URL)…",
   "main.default_calendar": "Personal",

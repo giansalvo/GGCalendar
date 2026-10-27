@@ -248,6 +248,7 @@
   "main.create": "＋  Créer  ▾",
   "main.create_event": "Événement",
   "main.create_google_calendar": "Agenda Google…",
+  "main.create_google_hint": "Pour créer un agenda Google, il faut un compte Google connecté : ouvrez les Paramètres, cliquez sur « Ajouter un compte Google » dans la section des comptes Google et terminez la connexion.",
   "main.create_local_calendar": "Agenda local",
   "main.create_public_calendar": "Agenda public (URL)…",
   "main.default_calendar": "Personnel",
