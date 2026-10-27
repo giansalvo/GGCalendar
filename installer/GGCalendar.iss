@@ -27,8 +27,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.22000
 OutputDir=..\website\downloads
 OutputBaseFilename=GGCalendar-v{#AppVersion}-Setup
-; GPL v3 shown for information: the license does not require accepting it to install or run the program.
-InfoBeforeFile=..\LICENSE
+; The setup always asks which language to use (also when upgrading). The GPL v3 is shown for information, in that language (GPL.<language>.txt are
+; unofficial translations; English is the original, LICENSE), because the license does not require accepting it to install or run the program.
+ShowLanguageDialog=yes
+UsePreviousLanguage=no
 ; What is new in this version is shown at the end of the setup: the file is chosen per language, in [Languages].
 SetupIconFile=..\src\GGCalendar.App\Assets\GGCalendar.ico
 UninstallDisplayIcon={app}\{#AppExe}
@@ -41,11 +43,11 @@ CloseApplications=yes
 ; The setup speaks the language of Windows when it is one of these (else English); the user can choose another one.
 ; Each language has its own what-is-new text, shown at the end of the setup and kept in the program folder.
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"; InfoAfterFile: "Novita.en.txt"
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"; InfoAfterFile: "Novita.it.txt"
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"; InfoAfterFile: "Novita.de.txt"
-Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoAfterFile: "Novita.es.txt"
-Name: "french"; MessagesFile: "compiler:Languages\French.isl"; InfoAfterFile: "Novita.fr.txt"
+Name: "english"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "..\LICENSE"; InfoAfterFile: "Novita.en.txt"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"; InfoBeforeFile: "GPL.it.txt"; InfoAfterFile: "Novita.it.txt"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"; InfoBeforeFile: "GPL.de.txt"; InfoAfterFile: "Novita.de.txt"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoBeforeFile: "GPL.es.txt"; InfoAfterFile: "Novita.es.txt"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"; InfoBeforeFile: "GPL.fr.txt"; InfoAfterFile: "Novita.fr.txt"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -53,6 +55,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Novita.*.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "GPL.*.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\GGCalendar"; Filename: "{app}\{#AppExe}"
@@ -66,4 +70,26 @@ Name: "{autodesktop}\GGCalendar"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,GGCalendar}"; Flags: nowait postinstall skipifsilent
 
-; User data in %AppData%\GGCalendar (calendar, settings, Google accounts) is kept on uninstall.
+; The data of the user in %AppData%\GGCalendar (calendar, settings, Google accounts) is deleted on uninstall if the user says so (always in a silent uninstall).
+[CustomMessages]
+english.DeleteUserData=Do you also want to delete your GGCalendar data on this computer (calendars, events, settings and connected Google accounts)?%n%nThis cannot be undone. The events in your Google account are not deleted.
+italian.DeleteUserData=Vuoi eliminare anche i dati di GGCalendar presenti su questo computer (calendari, eventi, impostazioni e account Google collegati)?%n%nL'operazione non si può annullare. Gli eventi nel tuo account Google non vengono eliminati.
+german.DeleteUserData=Möchten Sie auch die GGCalendar-Daten auf diesem Computer löschen (Kalender, Termine, Einstellungen und verbundene Google-Konten)?%n%nDies kann nicht rückgängig gemacht werden. Die Termine in Ihrem Google-Konto werden nicht gelöscht.
+spanish.DeleteUserData=¿Quieres eliminar también los datos de GGCalendar de este equipo (calendarios, eventos, ajustes y cuentas de Google conectadas)?%n%nNo se puede deshacer. Los eventos de tu cuenta de Google no se eliminan.
+french.DeleteUserData=Voulez-vous aussi supprimer les données de GGCalendar sur cet ordinateur (agendas, événements, paramètres et comptes Google connectés) ?%n%nCette action est irréversible. Les événements de votre compte Google ne sont pas supprimés.
+
+[Code]
+// The data of the user is deleted: always in a silent uninstall, only if the user says so in an interactive one (default: no).
+// An upgrade does not uninstall anything, so it keeps the data.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Delete: Boolean;
+begin
+  if CurUninstallStep <> usPostUninstall then Exit;
+  if UninstallSilent then
+    Delete := True
+  else
+    Delete := MsgBox(CustomMessage('DeleteUserData'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+  if Delete then
+    DelTree(ExpandConstant('{userappdata}\GGCalendar'), True, True, True);
+end;
