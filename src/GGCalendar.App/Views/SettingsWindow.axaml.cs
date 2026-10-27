@@ -13,6 +13,12 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        // The expander is the last thing of the window: opened, its fields are below the edge, so the window scrolls down to show them.
+        OauthExpander.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Expander.IsExpandedProperty && OauthExpander.IsExpanded)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => SettingsScroll.ScrollToEnd(), Avalonia.Threading.DispatcherPriority.Background);
+        };
     }
 
     private void OnSave(object? sender, RoutedEventArgs e)

@@ -23,7 +23,7 @@
             <Button AutomationProperties.AutomationId="Settings.Save" Grid.Column="2" Content="{loc:T common.save}" Classes="accent" IsDefault="True" Click="OnSave" />
         </Grid>
 
-        <ScrollViewer>
+        <ScrollViewer Name="SettingsScroll">
             <StackPanel Spacing="10" Margin="0,0,12,0">
                 <TextBlock Classes="section" Text="{loc:T settings.language_section}" Margin="0" />
                 <Grid ColumnDefinitions="220,*">
@@ -118,15 +118,6 @@
                     <Button AutomationProperties.AutomationId="Settings.SubRefreshNow" Content="{loc:T settings.sub_refresh_now}" Command="{Binding RefreshSubscriptionsCommand}" IsEnabled="{Binding !IsRefreshingSubscriptions}" />
                     <TextBlock AutomationProperties.AutomationId="Settings.SubStatus" Text="{Binding SubscriptionStatus}" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap" />
                 </StackPanel>
-                <Expander Header="{loc:T settings.oauth_advanced}">
-                    <StackPanel Spacing="8" Margin="0,8,0,0">
-                        <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
-                                   Text="{loc:T settings.oauth_hint}" />
-                        <TextBox PlaceholderText="{loc:T settings.client_id}" Text="{Binding GoogleClientId}" />
-                        <TextBox PlaceholderText="{loc:T settings.client_secret}" Text="{Binding GoogleClientSecret}" PasswordChar="●" />
-                    </StackPanel>
-                </Expander>
-
                 <TextBlock Classes="section" Text="{loc:T settings.notifications}" />
                 <CheckBox AutomationProperties.AutomationId="Settings.NotificationsEnabled" Content="{loc:T settings.notifications_enabled}" IsChecked="{Binding NotificationsEnabled}" />
                 <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
@@ -141,6 +132,16 @@
                     <TextBlock Grid.Row="1" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
                     <Slider Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
                 </Grid>
+
+                <TextBlock Classes="section" Text="{loc:T settings.advanced_section}" />
+                <Expander Name="OauthExpander" Header="{loc:T settings.oauth_advanced}">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                                   Text="{loc:T settings.oauth_hint}" />
+                        <TextBox PlaceholderText="{loc:T settings.client_id}" Text="{Binding GoogleClientId}" />
+                        <TextBox PlaceholderText="{loc:T settings.client_secret}" Text="{Binding GoogleClientSecret}" PasswordChar="●" />
+                    </StackPanel>
+                </Expander>
 
                 <!-- Ollama (local model) section hidden: not used by any feature yet and not needed for the Microsoft Store version.
                 <TextBlock Classes="section" Text="{loc:T settings.ollama}" />
