@@ -67,6 +67,10 @@ Name: "{autoprograms}\GGCalendar - Novedades"; Filename: "{app}\Novita.es.txt"; 
 Name: "{autoprograms}\GGCalendar - Nouveautés"; Filename: "{app}\Novita.fr.txt"; Languages: french
 Name: "{autodesktop}\GGCalendar"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
+; The program folder goes away completely, also when something else was left in it (the data of the user is handled in [Code]).
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,GGCalendar}"; Flags: nowait postinstall skipifsilent
 
