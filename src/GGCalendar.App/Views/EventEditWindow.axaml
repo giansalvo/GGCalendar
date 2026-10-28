@@ -184,7 +184,7 @@
                     <!-- Description -->
                     <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="≡" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <TextBox Grid.Column="1" Text="{Binding Description}" PlaceholderText="{loc:T edit.add_description}" AcceptsReturn="True" TextWrapping="Wrap"
+                        <TextBox Grid.Column="1" Text="{Binding Description}" MaxLength="8192" PlaceholderText="{loc:T edit.add_description}" AcceptsReturn="True" TextWrapping="Wrap"
                                  MaxWidth="640" HorizontalAlignment="Stretch" MinHeight="150" />
                     </Grid>
                 </StackPanel>

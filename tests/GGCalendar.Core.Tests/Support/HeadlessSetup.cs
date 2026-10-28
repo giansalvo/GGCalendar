@@ -10,8 +10,15 @@ public static class HeadlessApp
     private static readonly Lazy<HeadlessUnitTestSession> Session = new(() => HeadlessUnitTestSession.StartNew(typeof(HeadlessApp)));
 
     /// <summary>Entry point the headless session looks for.</summary>
-    public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<AppType>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).WithInterFont();
+    /// <summary>True with GGCALENDAR_TEST_SCREENSHOTS=1: the windows are really drawn (Skia), so a test can take a picture of them (T273) and the text has real positions (clicks on a link, T268).</summary>
+    public static bool DrawsForReal => Environment.GetEnvironmentVariable("GGCALENDAR_TEST_SCREENSHOTS") == "1";
+
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        var drawn = DrawsForReal;
+        var builder = AppBuilder.Configure<AppType>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = !drawn }).WithInterFont();
+        return drawn ? builder.UseSkia() : builder;
+    }
 
     /// <summary>Waits for the whole body, not only for its first await, and rethrows what it threw.</summary>
     public static Task RunAsync(Func<Task> test) =>

@@ -1,11 +1,7 @@
-﻿GGCalendar 1.0.2 - Nouveautés
+﻿GGCalendar 1.0.3 - Nouveautés
 =============================
 
-  - Interface en cinq langues (it, en, de, es, fr).
-  - Recherche d'événements par mots-clés.
-  - Abonnement à des agendas publics par URL (lecture seule).
-  - Deuxième fuseau horaire dans les vues et les événements.
-  - Créer, supprimer, renommer et colorer les agendas Google.
-  - Liste des alarmes en attente, avec annulation.
-  - File de synchro : voir et annuler les changements en attente.
-  - Déconnecter un compte par clic droit sur son nom.
+  - La description d'un événement affiche le gras, l'italique, le souligné, les retours à la ligne, les paragraphes, les titres, les listes et les liens comme dans Google Agenda (lecture seule).
+  - Les adresses web et les e-mails de la description sont cliquables ; un clic demande confirmation et montre la vraie adresse.
+  - La recherche regarde le texte que vous voyez.
+  - La description est limitée à 8192 caractères.
