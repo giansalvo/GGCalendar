@@ -16,7 +16,7 @@ public static class IcsMapper
 {
     public const int MaxTitle = 1024;
     public const int MaxLocation = 1024;
-    public const int MaxDescription = 8192;
+    public const int MaxDescription = DescriptionText.MaxLength;
     public const int MaxUid = 512;
     public const int MaxAlarms = 5;
     private const long MaxMinutesBefore = 40_320;

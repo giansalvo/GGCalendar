@@ -567,6 +567,7 @@ public partial class MainWindow : Window
         card.MailRequested += async () => await MailGuestsAsync(ev);
         card.ExportRequested += async () => { CloseDetails(); await ExportEventAsync(vm.ResolveMaster(ev)); };
         card.JoinMeetRequested += async () => await OpenHttpsAsync(ev.MeetLink);
+        card.LinkRequested += async uri => await OpenDescriptionLinkAsync(uri);
         card.CloseRequested += CloseDetails;
 
         DetailsPopup.IsOpen = false;
@@ -605,6 +606,15 @@ public partial class MainWindow : Window
         var to = string.Join(",", ev.Attendees.Select(a => Uri.EscapeDataString(a.Email)));
         if (to.Length == 0) return;
         await Launcher.LaunchUriAsync(new Uri($"mailto:{to}?subject={Uri.EscapeDataString(ev.Title)}"));
+    }
+
+    /// <summary>A link of a description comes from outside the app (an invitation, a feed): the user sees the real address and decides.</summary>
+    private async Task OpenDescriptionLinkAsync(Uri uri)
+    {
+        if (uri.Scheme is not ("http" or "https" or "mailto")) return;
+        var address = uri.Scheme == Uri.UriSchemeMailto ? uri.OriginalString : uri.AbsoluteUri;
+        var sure = await new ConfirmWindow(L.T("confirm.open_link_title"), L.T("confirm.open_link_text", address), L.T("confirm.open_link_button")).ShowDialog<bool>(this);
+        if (sure) await Launcher.LaunchUriAsync(uri);
     }
 
     private async Task OpenHttpsAsync(string? link)

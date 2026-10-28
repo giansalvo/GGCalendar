@@ -29,6 +29,9 @@ public sealed class EventDetailsCard : Border
     public event Action? JoinMeetRequested;
     public event Action? CloseRequested;
 
+    /// <summary>A link of the description was clicked; the window asks the user before opening it.</summary>
+    public event Action<Uri>? LinkRequested;
+
     /// <param name="ev">The clicked event (an occurrence for repeating events).</param>
     /// <param name="recurrence">RRULE of the series the event belongs to, if any.</param>
     public EventDetailsCard(CalendarEvent ev, string? recurrence, string colorHex, string calendarName, string accountName, bool use24Hour, bool dark, string? secondZoneText = null, bool readOnly = false)
@@ -99,11 +102,12 @@ public sealed class EventDetailsCard : Border
             body.Children.Add(Row(Icon("", muted), Text(ev.Location, fg)));
 
         if (!string.IsNullOrWhiteSpace(ev.Description))
-            body.Children.Add(Row(Icon("", muted), new TextBlock
-            {
-                Text = ev.Description.Trim(), Foreground = fg, TextWrapping = TextWrapping.Wrap,
-                MaxLines = 8, TextTrimming = TextTrimming.CharacterEllipsis,
-            }));
+        {
+            var description = new DescriptionBlock(ev.Description, fg, new SolidColorBrush(Color.Parse(dark ? "#8AB4F8" : "#1A73E8")));
+            description.LinkRequested += uri => LinkRequested?.Invoke(uri);
+            Avalonia.Automation.AutomationProperties.SetAutomationId(description, "Details.Description");
+            body.Children.Add(Row(Icon("", muted), description));
+        }
 
         if (ev.Attendees.Count > 0)
         {

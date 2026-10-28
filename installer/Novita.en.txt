@@ -1,11 +1,7 @@
-﻿GGCalendar 1.0.2 - What is new
+﻿GGCalendar 1.0.3 - What is new
 ==============================
 
-  - Interface in five languages (it, en, de, es, fr).
-  - Search events with keywords.
-  - Subscribe to public calendars by URL (read-only).
-  - Second time zone in views and events.
-  - Create, delete, rename and recolor Google calendars.
-  - List of pending alarms, with cancel.
-  - Sync queue: see and cancel pending changes.
-  - Disconnect an account with a right-click on its name.
+  - The description of an event shows bold, italic, underline, line breaks, paragraphs, titles, lists and links as in Google Calendar (read only).
+  - Web addresses and emails in the description are clickable; a click asks for confirmation and shows the real address.
+  - Search looks at the text you see.
+  - The description is limited to 8192 characters.

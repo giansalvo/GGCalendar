@@ -1,11 +1,7 @@
-﻿GGCalendar 1.0.2 - Neuigkeiten
+﻿GGCalendar 1.0.3 - Neuigkeiten
 ==============================
 
-  - Oberfläche in fünf Sprachen (it, en, de, es, fr).
-  - Termine mit Stichwörtern suchen.
-  - Öffentliche Kalender per URL abonnieren (nur lesen).
-  - Zweite Zeitzone in Ansichten und Terminen.
-  - Google-Kalender erstellen, löschen, umbenennen, einfärben.
-  - Liste der ausstehenden Wecker, mit Abbrechen.
-  - Sync-Warteschlange: ausstehende Änderungen ansehen, abbrechen.
-  - Konto per Rechtsklick auf seinen Namen trennen.
+  - Die Beschreibung eines Termins zeigt fett, kursiv, unterstrichen, Zeilenumbrüche, Absätze, Überschriften, Listen und Links wie in Google Kalender (nur Lesen).
+  - Webadressen und E-Mails in der Beschreibung sind anklickbar; ein Klick fragt nach und zeigt die echte Adresse.
+  - Die Suche betrachtet den sichtbaren Text.
+  - Die Beschreibung ist auf 8192 Zeichen begrenzt.

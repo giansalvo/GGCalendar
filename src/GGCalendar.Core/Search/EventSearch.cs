@@ -176,7 +176,9 @@ public static class EventSearch
         fields = [];
         snippet = "";
         var title = Normalize(e.Title);
-        var description = Normalize(e.Description);
+        // The text as the user reads it: the tags and the addresses hidden in them are not searched.
+        var descriptionText = DescriptionText.ToPlainText(e.Description);
+        var description = Normalize(descriptionText);
         var location = Normalize(e.Location);
         var guests = Normalize(string.Join(", ", e.Attendees.Select(a => a.Email)));
         var all = new[] { title, description, location, guests };
@@ -201,7 +203,7 @@ public static class EventSearch
         if (inLocation) found.Add(SearchField.Location);
         if (inGuests) found.Add(SearchField.Guests);
         fields = found;
-        if (inDescription) snippet = Snippet(e.Description, t.General.Concat(t.What).Concat(t.Description).ToArray());
+        if (inDescription) snippet = Snippet(descriptionText, t.General.Concat(t.What).Concat(t.Description).ToArray());
         else if (inGuests)
         {
             var words = t.General.Concat(t.Who).ToArray();
