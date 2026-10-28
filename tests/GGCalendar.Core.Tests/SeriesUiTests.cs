@@ -32,8 +32,8 @@ public class SeriesUiTests
     }
 
     [Fact]
-    [Trait("TestCase", "T04")]
-    public Task T04_ADailyEventIsOneSeriesOnGoogleAndShowsOnEveryDay() => InAppAsync(async window =>
+    [Trait("TestCase", "T282")]
+    public Task T282_ADailyEventIsOneSeriesOnGoogleAndShowsOnEveryDay() => InAppAsync(async window =>
     {
         var (title, first) = await CreateDailySeriesAsync(window);
 
@@ -56,8 +56,8 @@ public class SeriesUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T05")]
-    public Task T05_ChangingOnlyOneEventOfASeriesLeavesTheOthersAlone() => InAppAsync(async window =>
+    [Trait("TestCase", "T283")]
+    public Task T283_ChangingOnlyOneEventOfASeriesLeavesTheOthersAlone() => InAppAsync(async window =>
     {
         var (title, first) = await CreateDailySeriesAsync(window);
         var changed = first.AddDays(1);

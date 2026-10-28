@@ -48,8 +48,8 @@ public class ReminderUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T03")]
-    public Task T03_TheReminderFiresAtTheRightTimeOnce() => InAppAsync(async window =>
+    [Trait("TestCase", "T281")]
+    public Task T281_TheReminderFiresAtTheRightTimeOnce() => InAppAsync(async window =>
     {
         Assert.True(Vm(window).Settings.NotificationsEnabled, "Le notifiche sono disattivate nelle impostazioni dell'app.");
         var calendar = await CreateLocalCalendarAsync(window, NewTitle());
@@ -120,8 +120,8 @@ public class ReminderUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T10")]
-    public Task T10_TheAlarmRingsAndStops() => InAppAsync(async window =>
+    [Trait("TestCase", "T285")]
+    public Task T285_TheAlarmRingsAndStops() => InAppAsync(async window =>
     {
         // Semi-automatic: the test brings the app to the alarm; the person listens and says what was heard.
         var calendar = await CreateLocalCalendarAsync(window, NewTitle());

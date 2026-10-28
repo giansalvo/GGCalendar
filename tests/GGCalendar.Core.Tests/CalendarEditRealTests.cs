@@ -16,8 +16,8 @@ namespace GGCalendar.Core.Tests;
 public class CalendarEditRealTests
 {
     [Fact]
-    [Trait("TestCase", "T206")]
-    public async Task T206_TheTwentyFourColoursAreTheOnesOfGoogle()
+    [Trait("TestCase", "T298")]
+    public async Task T298_TheTwentyFourColoursAreTheOnesOfGoogle()
     {
         using var google = await TestGoogle.ConnectAsync();
         var colors = await google.GetCalendarColorsAsync();
@@ -40,8 +40,8 @@ public class CalendarEditRealTests
     }
 
     [Fact]
-    [Trait("TestCase", "T198")]
-    public Task T198_ACalendarMadeByTheTestIsRenamedAndRecolouredOnGoogleAndTheSyncKeepsIt() => InAppAsync(async window =>
+    [Trait("TestCase", "T296")]
+    public Task T296_ACalendarMadeByTheTestIsRenamedAndRecolouredOnGoogleAndTheSyncKeepsIt() => InAppAsync(async window =>
     {
         var vm = Vm(window);
         using var google = await TestGoogle.ConnectAsync();
@@ -79,8 +79,8 @@ public class CalendarEditRealTests
     });
 
     [Fact]
-    [Trait("TestCase", "T199")]
-    public Task T199_T200_TheColourOfThePrimaryCalendarAndOfOneOfSomeoneElseIsChangedAndPutBack() => InAppAsync(async window =>
+    [Trait("TestCase", "T297")]
+    public Task T297_TheColourOfThePrimaryCalendarAndOfOneOfSomeoneElseIsChangedAndPutBack() => InAppAsync(async window =>
     {
         var vm = Vm(window);
         using var google = await TestGoogle.ConnectAsync();

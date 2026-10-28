@@ -17,8 +17,8 @@ namespace GGCalendar.Core.Tests;
 public class LocalUiTests
 {
     [Fact]
-    [Trait("TestCase", "T08")]
-    public Task T08_ALocalCalendarWithSeveralEventsKeepsThemAndSendsNothingToGoogle() => InAppAsync(async window =>
+    [Trait("TestCase", "T284")]
+    public Task T284_ALocalCalendarWithSeveralEventsKeepsThemAndSendsNothingToGoogle() => InAppAsync(async window =>
     {
         var name = NewTitle();
         var calendar = await CreateLocalCalendarAsync(window, name);

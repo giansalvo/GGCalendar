@@ -23,8 +23,8 @@ public class EventColorUiTests
     private const string PickedOnGoogle = "11";
 
     [Fact]
-    [Trait("TestCase", "T01")]
-    public Task T01_TheColorChosenForAnEventStaysAfterSyncingAndReopeningTheApp() => InAppAsync(async window =>
+    [Trait("TestCase", "T280")]
+    public Task T280_TheColorChosenForAnEventStaysAfterSyncingAndReopeningTheApp() => InAppAsync(async window =>
     {
         // The user creates an event and picks a color different from the calendar's.
         var title = NewTitle();
@@ -60,8 +60,8 @@ public class EventColorUiTests
     /// like a user would. It shows that the windows can be driven, and that Save hands back the picked color.
     /// </summary>
     [Fact]
-    [Trait("TestCase", "T01")]
-    public Task T01_TheEditorSavesTheColorPickedByTheUser() => HeadlessApp.RunAsync(async () =>
+    [Trait("TestCase", "T280")]
+    public Task T280_TheEditorSavesTheColorPickedByTheUser() => HeadlessApp.RunAsync(async () =>
     {
         var owner = new Window();
         owner.Show();

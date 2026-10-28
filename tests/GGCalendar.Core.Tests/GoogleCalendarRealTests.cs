@@ -24,8 +24,8 @@ public class GoogleCalendarRealTests
     }
 
     [Fact]
-    [Trait("TestCase", "T182")]
-    public Task T182_T185_ACalendarIsCreatedOnGoogleUsedAndDeletedWithItsEvents() => InAppAsync(async window =>
+    [Trait("TestCase", "T295")]
+    public Task T295_ACalendarIsCreatedOnGoogleUsedAndDeletedWithItsEvents() => InAppAsync(async window =>
     {
         var vm = Vm(window);
         var name = NewTitle() + " calendario";
@@ -86,7 +86,7 @@ public class GoogleCalendarRealTests
     });
 
     [Fact]
-    [Trait("TestCase", "T182")]
+    [Trait("TestCase", "T295")]
     public async Task NoCalendarOfTheTestsIsLeftOnTheTestAccount()
     {
         using var google = await TestGoogle.ConnectAsync();

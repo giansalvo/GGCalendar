@@ -32,8 +32,8 @@ public class SyncUiTests
         Vm(window).AllEvents.Where(e => e.CalendarId == TestCalendarId && e.Title.StartsWith(TestPrefix, StringComparison.Ordinal)).Select(e => e.Title).ToList();
 
     [Fact]
-    [Trait("TestCase", "T11")]
-    public Task T11_AnEventChangedOnBothSidesKeepsGoogleAndSavesTheLocalCopy() => InAppAsync(async window =>
+    [Trait("TestCase", "T286")]
+    public Task T286_AnEventChangedOnBothSidesKeepsGoogleAndSavesTheLocalCopy() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window);
         var day = created.Start.Date;
@@ -59,8 +59,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T12")]
-    public Task T12_ANewTitleSetOnGoogleArrivesInTheApp() => InAppAsync(async window =>
+    [Trait("TestCase", "T287")]
+    public Task T287_ANewTitleSetOnGoogleArrivesInTheApp() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window);
         var day = created.Start.Date;
@@ -77,8 +77,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T12")]
-    public Task T12_ANewColorSetOnGoogleArrivesInTheApp() => InAppAsync(async window =>
+    [Trait("TestCase", "T287")]
+    public Task T287_ANewColorSetOnGoogleArrivesInTheApp() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window);
         var day = created.Start.Date;
@@ -93,8 +93,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T13")]
-    public Task T13_AnEventDeletedInTheAppDisappearsFromGoogle() => InAppAsync(async window =>
+    [Trait("TestCase", "T288")]
+    public Task T288_AnEventDeletedInTheAppDisappearsFromGoogle() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window);
         var day = created.Start.Date;
@@ -109,8 +109,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T13")]
-    public Task T13_AnEventDeletedOnGoogleDisappearsFromTheApp() => InAppAsync(async window =>
+    [Trait("TestCase", "T288")]
+    public Task T288_AnEventDeletedOnGoogleDisappearsFromTheApp() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window);
         var day = created.Start.Date;
@@ -124,8 +124,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T13")]
-    public Task T13_DeletingOneEventOfASeriesKeepsTheOthers() => InAppAsync(async window =>
+    [Trait("TestCase", "T288")]
+    public Task T288_DeletingOneEventOfASeriesKeepsTheOthers() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window, t => new EventSpec(t) { Recurrence = "FREQ=DAILY" });
         var first = created.Start.Date;
@@ -147,8 +147,8 @@ public class SyncUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T13")]
-    public Task T13_DeletingAWholeSeriesRemovesItFromGoogle() => InAppAsync(async window =>
+    [Trait("TestCase", "T288")]
+    public Task T288_DeletingAWholeSeriesRemovesItFromGoogle() => InAppAsync(async window =>
     {
         var (title, created, remoteId) = await CreateSyncedAsync(window, t => new EventSpec(t) { Recurrence = "FREQ=DAILY" });
         var first = created.Start.Date;

@@ -30,8 +30,8 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
     }
 
     [Fact]
-    [Trait("TestCase", "T92")]
-    public async Task T92_ARedirectToHttpsIsFollowed()
+    [Trait("TestCase", "T289")]
+    public async Task T289_ARedirectToHttpsIsFollowed()
     {
         var (service, _) = Rig();
         var preview = await service.PreviewAsync(Feeds + "redirect.php");
@@ -40,8 +40,8 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
     }
 
     [Fact]
-    [Trait("TestCase", "T94")]
-    public async Task T94_AFileOf11MbSentInPiecesIsRefusedWhileReading()
+    [Trait("TestCase", "T290")]
+    public async Task T290_AFileOf11MbSentInPiecesIsRefusedWhileReading()
     {
         var (service, store) = Rig();
         Assert.Equal(SubscriptionProblem.TooLarge, (await service.PreviewAsync(Feeds + "big.php")).Problem);
@@ -49,28 +49,28 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
     }
 
     [Fact]
-    [Trait("TestCase", "T95")]
-    public async Task T95_ASlowSiteEndsWithATimeout()
+    [Trait("TestCase", "T291")]
+    public async Task T291_ASlowSiteEndsWithATimeout()
     {
         var (service, _) = Rig(TimeSpan.FromSeconds(3));
         Assert.Equal(SubscriptionProblem.Timeout, (await service.PreviewAsync(Feeds + "slow.php?delay=20")).Problem);
     }
 
     [Theory]
-    [Trait("TestCase", "T97")]
+    [Trait("TestCase", "T292")]
     [InlineData(404, SubscriptionProblem.NotFound)]
     [InlineData(403, SubscriptionProblem.AccessDenied)]
     [InlineData(429, SubscriptionProblem.RateLimited)]
     [InlineData(500, SubscriptionProblem.ServerError)]
-    public async Task T97_TheStatusesOfASiteHaveTheirOwnProblem(int code, SubscriptionProblem expected)
+    public async Task T292_TheStatusesOfASiteHaveTheirOwnProblem(int code, SubscriptionProblem expected)
     {
         var (service, _) = Rig();
         Assert.Equal(expected, (await service.PreviewAsync(Feeds + "status.php?code=" + code)).Problem);
     }
 
     [Fact]
-    [Trait("TestCase", "T99")]
-    public async Task T99_ASiteThatKeepsTheDateOfLastChangeAnswers304()
+    [Trait("TestCase", "T293")]
+    public async Task T293_ASiteThatKeepsTheDateOfLastChangeAnswers304()
     {
         var (service, store) = Rig();
         var preview = await service.PreviewAsync(Feeds + "etag.php");
@@ -102,8 +102,8 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
     }
 
     [Fact]
-    [Trait("TestCase", "T157")]
-    public async Task T157_GoogleSendsNoETagSoTheSameFileIsRecognisedByItsContent()
+    [Trait("TestCase", "T294")]
+    public async Task T294_GoogleSendsNoETagSoTheSameFileIsRecognisedByItsContent()
     {
         if (GoogleUrl() is not { } url) { output.WriteLine("Test saltato: manca public-calendar-url.txt nella cartella dei test."); return; }
         var (service, store) = Rig();
@@ -121,8 +121,8 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
     }
 
     [Fact]
-    [Trait("TestCase", "T157")]
-    public async Task T157_TwoReadsOneAfterTheOtherWithTheSameFetcherBothWork()
+    [Trait("TestCase", "T294")]
+    public async Task T294_TwoReadsOneAfterTheOtherWithTheSameFetcherBothWork()
     {
         if (GoogleUrl() is not { } url) return;
         using var fetcher = new IcsFetcher();
