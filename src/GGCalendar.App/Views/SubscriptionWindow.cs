@@ -28,7 +28,7 @@ public sealed class SubscriptionWindow : Window
     private readonly SubscriptionService _service;
     private readonly bool _editing;
 
-    private readonly TextBox _url = new() { Watermark = "https://…", Name = "UrlBox" };
+    private readonly TextBox _url = new() { PlaceholderText = "https://…", Name = "UrlBox" };
     private readonly Button _paste = new() { Content = L.T("sub.paste") };
     private readonly Button _check = new() { Content = L.T("sub.check") };
     private readonly TextBlock _progress = new() { Text = L.T("sub.reading"), IsVisible = false, Opacity = 0.75 };

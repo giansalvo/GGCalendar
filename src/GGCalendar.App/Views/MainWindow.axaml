@@ -103,7 +103,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
                 <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Margin="4,0" />
                 <TextBox Grid.Column="1" Name="SearchBox" AutomationProperties.AutomationId="Search.Box" Text="{Binding Search.Text}"
-                         Watermark="{loc:T search.box_hint}" ToolTip.Tip="{loc:T search.syntax_tip}" BorderThickness="0" Background="Transparent" KeyDown="OnSearchBoxKeyDown" />
+                         PlaceholderText="{loc:T search.box_hint}" ToolTip.Tip="{loc:T search.syntax_tip}" BorderThickness="0" Background="Transparent" KeyDown="OnSearchBoxKeyDown" />
                 <TextBlock Grid.Column="2" Text="{Binding Search.Summary}" Classes="muted" VerticalAlignment="Center" AutomationProperties.AutomationId="Search.Summary" />
                 <Button Grid.Column="3" Classes="nav" Padding="0" Click="OnToggleAdvancedSearch" AutomationProperties.AutomationId="Search.Advanced" ToolTip.Tip="{loc:T search.advanced_tip}">
                     <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -156,18 +156,18 @@
                                 </Button.Flyout>
                             </Button>
                             <TextBlock Grid.Row="1" Text="{loc:T search.what}" VerticalAlignment="Center" />
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Search.WhatText}" Watermark="{loc:T search.what_hint}" AutomationProperties.AutomationId="Search.What" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Search.WhatText}" PlaceholderText="{loc:T search.what_hint}" AutomationProperties.AutomationId="Search.What" />
                             <TextBlock Grid.Row="2" Text="{loc:T search.who}" VerticalAlignment="Center" />
-                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Search.WhoText}" Watermark="{loc:T search.who_hint}" AutomationProperties.AutomationId="Search.Who" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Search.WhoText}" PlaceholderText="{loc:T search.who_hint}" AutomationProperties.AutomationId="Search.Who" />
                             <TextBlock Grid.Row="3" Text="{loc:T search.where}" VerticalAlignment="Center" />
-                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Search.WhereText}" Watermark="{loc:T search.where_hint}" AutomationProperties.AutomationId="Search.Where" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Search.WhereText}" PlaceholderText="{loc:T search.where_hint}" AutomationProperties.AutomationId="Search.Where" />
                             <TextBlock Grid.Row="4" Text="{loc:T search.not}" VerticalAlignment="Center" />
-                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Search.NotText}" Watermark="{loc:T search.not_hint}" AutomationProperties.AutomationId="Search.Not" />
+                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Search.NotText}" PlaceholderText="{loc:T search.not_hint}" AutomationProperties.AutomationId="Search.Not" />
                             <TextBlock Grid.Row="5" Text="{loc:T search.date}" VerticalAlignment="Center" />
                             <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <CalendarDatePicker SelectedDate="{Binding Search.FromDate}" Watermark="{loc:T search.from_hint}" AutomationProperties.AutomationId="Search.From" />
+                                <CalendarDatePicker SelectedDate="{Binding Search.FromDate}" PlaceholderText="{loc:T search.from_hint}" AutomationProperties.AutomationId="Search.From" />
                                 <TextBlock Text="&#x2013;" VerticalAlignment="Center" />
-                                <CalendarDatePicker SelectedDate="{Binding Search.ToDate}" Watermark="{loc:T search.to_hint}" AutomationProperties.AutomationId="Search.To" />
+                                <CalendarDatePicker SelectedDate="{Binding Search.ToDate}" PlaceholderText="{loc:T search.to_hint}" AutomationProperties.AutomationId="Search.To" />
                             </StackPanel>
                             <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,4,0,0">
                                 <Button Content="{loc:T common.cancel}" Click="OnCancelAdvancedSearch" AutomationProperties.AutomationId="Search.CancelAdvanced" />
