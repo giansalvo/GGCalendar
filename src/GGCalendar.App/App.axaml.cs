@@ -15,16 +15,30 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        var store = new GGCalendar.Data.SettingsStore();
+        var settings = store.Load();
         // The language comes first: the texts of the view model and of the window are made in it.
-        GGCalendar.Core.Localization.L.Apply(new GGCalendar.Data.SettingsStore().Load().Language);
+        GGCalendar.Core.Localization.L.Apply(settings.Language);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            if (GGCalendar.Data.SplashGate.Claim(store, settings, AppInfo.Version))
             {
-                DataContext = new MainViewModel(new GGCalendar.Data.CalendarStore()),
-            };
+                // The main window is made and loads at once; the splash opens on top of it when it is shown and closes by itself.
+                var main = CreateMainWindow();
+                desktop.MainWindow = main;
+                SplashWindow.ShowWhenOpened(main);
+            }
+            else
+            {
+                desktop.MainWindow = CreateMainWindow();
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    private static MainWindow CreateMainWindow() => new()
+    {
+        DataContext = new MainViewModel(new GGCalendar.Data.CalendarStore()),
+    };
 }

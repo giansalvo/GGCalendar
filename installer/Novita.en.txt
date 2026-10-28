@@ -5,3 +5,4 @@
   - Web addresses and emails in the description are clickable; a click asks for confirmation and shows the real address.
   - Search looks at the text you see.
   - The description is limited to 8192 characters.
+  - The first time the app runs after an install or an update, a splash screen with the app information appears for 5 seconds.

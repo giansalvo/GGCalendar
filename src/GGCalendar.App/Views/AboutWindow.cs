@@ -1,9 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using GGCalendar.Core.Localization;
 
 namespace GGCalendar.App.Views;
@@ -23,37 +20,10 @@ public sealed class AboutWindow : Window
         Avalonia.Automation.AutomationProperties.SetAutomationId(close, "About.Close");
         close.Click += (_, _) => Close();
 
-        Content = new StackPanel
-        {
-            Margin = new Thickness(24),
-            Spacing = 12,
-            Children =
-            {
-                new Image
-                {
-                    Source = new Bitmap(AssetLoader.Open(new System.Uri("avares://GGCalendar.App/Assets/GGCalendar_logo.jpg"))),
-                    Width = 64,
-                    Height = 64,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                },
-                new TextBlock { Text = "GGCalendar", FontSize = 22, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
-                new SelectableTextBlock
-                {
-                    Text = L.T("about.details", AppInfo.Version, AppInfo.Author, AppInfo.BuildDate),
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                },
-                new SelectableTextBlock
-                {
-                    Text = AppInfo.LegalNotice,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextAlignment = TextAlignment.Center,
-                    FontSize = 12,
-                    Opacity = 0.75,
-                },
-                close,
-            },
-        };
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
+        foreach (var c in AboutContent.Build()) panel.Children.Add(c);
+        panel.Children.Add(close);
+        Content = panel;
         close.HorizontalAlignment = HorizontalAlignment.Right;
     }
 }

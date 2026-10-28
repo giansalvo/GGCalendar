@@ -5,3 +5,4 @@
   - Les adresses web et les e-mails de la description sont cliquables ; un clic demande confirmation et montre la vraie adresse.
   - La recherche regarde le texte que vous voyez.
   - La description est limitée à 8192 caractères.
+  - Au premier lancement après une installation ou une mise à jour, un écran de démarrage avec les informations sur l'application s'affiche pendant 5 secondes.

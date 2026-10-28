@@ -5,3 +5,4 @@
   - Las direcciones web y los correos de la descripción se pueden pulsar; al pulsar se pide confirmación y se muestra la dirección real.
   - La búsqueda mira el texto que ves.
   - La descripción está limitada a 8192 caracteres.
+  - La primera vez que se abre la aplicación tras una instalación o una actualización aparece durante 5 segundos una pantalla de inicio con la información de la aplicación.

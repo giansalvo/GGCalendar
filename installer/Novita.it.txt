@@ -5,3 +5,4 @@
   - Gli indirizzi di siti ed email nella descrizione sono cliccabili; un clic chiede conferma e mostra l'indirizzo reale.
   - La ricerca guarda il testo che vedi.
   - La descrizione ha un limite di 8192 caratteri.
+  - Alla prima apertura dopo un'installazione o un aggiornamento compare per 5 secondi una schermata iniziale con le informazioni sull'app.

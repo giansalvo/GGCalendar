@@ -8,6 +8,9 @@ public sealed class AppSettings
     /// </summary>
     public int SyncSchema { get; set; }
 
+    /// <summary>The version of the app that showed the splash screen last; another version (or none) shows it again.</summary>
+    public string? SplashVersion { get; set; }
+
     public int DayStartHour { get; set; } = 7;
     public int DayEndHour { get; set; } = 22;
     public bool HideOutsideHours { get; set; }

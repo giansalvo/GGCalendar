@@ -6,6 +6,7 @@
 - Gli indirizzi di siti e le email nella descrizione sono cliccabili. Un clic su un link chiede conferma e mostra l'indirizzo reale prima di aprire il browser; si aprono solo link http, https e mailto.
 - La ricerca guarda il testo che vedi: non trova i tag che diventano formattazione né gli indirizzi nascosti nei link, trova invece gli altri tag scritti nel testo.
 - La descrizione ha un limite di 8192 caratteri.
+- Alla prima apertura dopo un'installazione o un aggiornamento compare per 5 secondi una schermata iniziale con le informazioni sull'app.
 
 ## 1.0.2
 
