@@ -279,7 +279,18 @@ public class SubscriptionUiTests
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
         var confirm = await WaitForAsync(() => window.OwnedWindows.OfType<ConfirmWindow>().FirstOrDefault(), "la conferma");
         Click(FindButton(confirm, "Dialog.Ok"));
-        await WaitForAsync(() => window.OwnedWindows.Count == 0 && Vm(window).Calendars.All(c => !c.IsSubscription) ? window : null, "la rimozione");
+        try
+        {
+            await WaitForAsync(() => window.OwnedWindows.Count == 0 && Vm(window).Calendars.All(c => !c.IsSubscription) ? window : null, "la rimozione");
+        }
+        catch (Xunit.Sdk.XunitException ex)
+        {
+            // Diagnosis of a flaky wait: which of the conditions is not met, and did a reload fail?
+            var open = string.Join(", ", window.OwnedWindows.Select(w => w.GetType().Name));
+            var subs = string.Join(", ", Vm(window).Calendars.Where(c => c.IsSubscription).Select(c => c.Name));
+            var inDb = new CalendarStore().GetSubscriptions().Count;
+            throw new Xunit.Sdk.XunitException($"{ex.Message} Finestre aperte: [{open}]; abbonamenti in lista: [{subs}]; nel database: {inDb}; errore di ricarica: {Vm(window).LastReloadError?.ToString() ?? "nessuno"}.");
+        }
         Assert.Empty(new CalendarStore().GetSubscriptions());
         Assert.DoesNotContain(new CalendarStore().GetAllEvents(), e => e.CalendarId == subscribed.Id);
         Assert.DoesNotContain(Vm(window).Accounts, a => a.IsSubscriptions);

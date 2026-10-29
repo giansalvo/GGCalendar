@@ -199,15 +199,27 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Like <see cref="Reload"/>, but reads the store off the UI thread; retried if the user edits meanwhile.</summary>
     public async Task ReloadAsync()
     {
-        while (true)
+        try
         {
-            var before = _changeCount;
-            var data = await Task.Run(Load);
-            if (before != _changeCount) continue;
-            Apply(data);
-            return;
+            while (true)
+            {
+                var before = _changeCount;
+                var data = await Task.Run(Load);
+                if (before != _changeCount) continue;
+                Apply(data);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Callers fire this without awaiting (or from async void handlers): a failure would vanish and leave the lists stale.
+            LastReloadError = ex;
+            Console.Error.WriteLine($"ReloadAsync failed: {ex}");
         }
     }
+
+    /// <summary>The last failure of <see cref="ReloadAsync"/>, kept to diagnose a list that did not refresh.</summary>
+    public Exception? LastReloadError { get; private set; }
 
     private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) Load()
     {
