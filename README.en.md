@@ -25,7 +25,7 @@
 - Summary card when you click an event (edit, delete, share, join Meet); double-click to edit it
 - Share an event from its card: WhatsApp, Telegram, email (title as subject, text as body), email to the guests (only when there are any), `.ics` file on disk, clipboard and the other apps of Windows (text and `.ics` file)
 - Recurring events, with edit or delete of a single occurrence, of the following ones or of the whole series
-- Reminders with notification, sound alarm (until you switch it off, 2 minutes at most) and snooze, kept also after a restart
+- Reminders with notification, sound alarm (until you switch it off, 1 to 10 minutes at most as you choose, 2 by default; a sound for alarms apart from the one of reminders, also your own mp3 or wav file) and snooze, kept also after a restart
 - List of the alarms (icon next to the lens): the ones ringing now and the ones coming in the next 60 days, with the time left; you can turn them off, cancel them (on this computer only) or open the event. Alarms ring one at a time and only while GGCalendar is open; reminders of hidden calendars do not ring (snoozed alarms do)
 - Two-way sync with one or more Google Calendar accounts, with conflict handling; alarms travel with the event on Google and are shared with [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) for Android
 - Guests, Google Meet links, email reminders (sent by Google)

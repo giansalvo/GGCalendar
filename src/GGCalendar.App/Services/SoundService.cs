@@ -12,10 +12,11 @@ public sealed class SoundService : IDisposable
 
     public static string MediaFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
 
-    public void Play(string? path, int volumePercent = 80, bool loop = false)
+    /// <returns>True when the sound started; false when there is nothing to play or the file cannot be played (the caller may try another sound).</returns>
+    public bool Play(string? path, int volumePercent = 80, bool loop = false)
     {
         Stop();
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
         try
         {
             var reader = new AudioFileReader(path) { Volume = Math.Clamp(volumePercent, 0, 100) / 100f };
@@ -33,10 +34,12 @@ public sealed class SoundService : IDisposable
             };
             output.Init(reader);
             output.Play();
+            return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or FormatException or IOException or NAudio.MmException)
         {
             Stop();
+            return false;
         }
     }
 

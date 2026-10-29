@@ -25,7 +25,7 @@
 - Übersichtskarte beim Klick auf einen Termin (bearbeiten, löschen, teilen, an Meet teilnehmen); Doppelklick zum Bearbeiten
 - Einen Termin über seine Karte teilen: WhatsApp, Telegram, E-Mail (Titel als Betreff, Text im Nachrichtentext), E-Mail an die Gäste (nur wenn es welche gibt), `.ics`-Datei auf der Festplatte, Zwischenablage und die anderen Apps von Windows (Text und `.ics`-Datei)
 - Wiederkehrende Termine, mit Bearbeiten oder Löschen eines einzelnen Termins, der folgenden oder der ganzen Serie
-- Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 2 Minuten) und Schlummerfunktion, auch nach einem Neustart erhalten
+- Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 1 bis 10 Minuten nach Ihrer Wahl, standardmäßig 2; ein Weckton getrennt von dem der Erinnerungen, auch eine eigene mp3- oder wav-Datei) und Schlummerfunktion, auch nach einem Neustart erhalten
 - Liste der Wecker (Symbol neben der Lupe): die gerade klingelnden und die in den nächsten 60 Tagen anstehenden, mit der verbleibenden Zeit; Sie können sie ausschalten, abbrechen (nur auf diesem Computer) oder den Termin öffnen. Wecker klingeln einzeln nacheinander und nur bei geöffnetem GGCalendar; Erinnerungen ausgeblendeter Kalender klingeln nicht (verschobene Wecker schon)
 - Synchronisierung in beide Richtungen mit einem oder mehreren Google-Kalender-Konten, mit Konfliktbehandlung; Wecker reisen mit dem Termin über Google und werden mit [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) für Android geteilt
 - Gäste, Google-Meet-Links, Erinnerungen per E-Mail (von Google gesendet)

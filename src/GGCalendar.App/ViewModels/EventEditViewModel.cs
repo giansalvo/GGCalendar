@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GGCalendar.App.Services;
 using GGCalendar.Core.Models;
+using GGCalendar.Core.Reminders;
 using GGCalendar.Core.Zones;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Core.Localization;
@@ -65,14 +66,14 @@ public sealed partial class EventEditViewModel : ViewModelBase
     private static readonly Regex EmailPattern = new(@"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$", RegexOptions.Compiled);
     private readonly CalendarEvent _original;
     private readonly SoundService? _sound;
-    private readonly string _defaultSound;
+    private readonly AppSettings _settings;
     private readonly int _volume;
 
     public EventEditViewModel(CalendarEvent ev, IReadOnlyList<CalendarItemViewModel> calendars, bool isNew, AppSettings settings, SoundService? sound = null)
     {
         _original = ev;
         _sound = sound;
-        _defaultSound = settings.DefaultReminderSound;
+        _settings = settings;
         _volume = settings.ReminderVolumePercent;
         IsNew = isNew;
         Use24Hour = settings.Use24HourClock;
@@ -324,14 +325,11 @@ public sealed partial class EventEditViewModel : ViewModelBase
     [RelayCommand]
     private void PreviewSound(ReminderItemViewModel r)
     {
-        var path = r.Sound.Path switch
-        {
-            null => _defaultSound,
-            EventReminder.NoSound => null,
-            var p => p,
-        };
-        _sound?.Play(path, _volume);
+        _sound?.Play(PreviewPathOf(r), _volume);
     }
+
+    /// <summary>What the preview of a reminder plays: its sound, else the default of its kind (popup or alarm), as when it rings.</summary>
+    public string? PreviewPathOf(ReminderItemViewModel r) => ReminderSounds.Choose(r.ToModel(), _settings);
 
     public void StopSound() => _sound?.Stop();
 

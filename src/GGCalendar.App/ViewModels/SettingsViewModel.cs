@@ -43,6 +43,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
 
         DefaultSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultReminderSound) ?? AddCustomSound(s.DefaultReminderSound);
+        AlarmSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultAlarmSound) ?? AddCustomSound(s.DefaultAlarmSound);
+        AlarmDurationMinutes = Math.Clamp(s.AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes);
         DayStartHour = s.DayStartHour;
         DayEndHour = s.DayEndHour;
         HideOutsideHours = s.HideOutsideHours;
@@ -198,6 +200,20 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial int ReminderVolumePercent { get; set; }
     [ObservableProperty] public partial SoundOption DefaultSound { get; set; }
 
+    /// <summary>The sound of the alarms (apart from the one of the popups).</summary>
+    [ObservableProperty] public partial SoundOption AlarmSound { get; set; }
+
+    /// <summary>How many minutes an alarm rings (1 to 10).</summary>
+    [ObservableProperty] public partial int AlarmDurationMinutes { get; set; }
+
+    public int MinAlarmMinutes => AppSettings.MinAlarmMinutes;
+    public int MaxAlarmMinutes => AppSettings.MaxAlarmMinutes;
+
+    /// <summary>"2 minutes", next to the slider.</summary>
+    public string AlarmDurationLabel => L.N("settings.alarm_minutes", AlarmDurationMinutes);
+
+    partial void OnAlarmDurationMinutesChanged(int value) => OnPropertyChanged(nameof(AlarmDurationLabel));
+
     public SoundOption AddCustomSound(string path)
     {
         var existing = Sounds.FirstOrDefault(o => o.Path == path);
@@ -209,6 +225,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void PreviewDefaultSound() => _sound?.Play(DefaultSound.Path, ReminderVolumePercent);
+
+    [RelayCommand]
+    private void PreviewAlarmSound() => _sound?.Play(AlarmSound.Path, ReminderVolumePercent);
 
     public void StopSound() => _sound?.Stop();
 
@@ -322,6 +341,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             NotificationsEnabled = NotificationsEnabled,
             ReminderVolumePercent = ReminderVolumePercent,
             DefaultReminderSound = DefaultSound.Path ?? new AppSettings().DefaultReminderSound,
+            DefaultAlarmSound = AlarmSound.Path ?? new AppSettings().DefaultAlarmSound,
+            AlarmDurationMinutes = Math.Clamp(AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes),
             SnapMinutes = SnapMinutes,
             SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == TimeZoneInfo.Local.Id ? null : SecondaryTimeZone.Id,
             SecondaryTimeZoneLabel = SecondZones.ClampLabel(SecondaryTimeZoneLabel) is { Length: > 0 } label ? label : null,

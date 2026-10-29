@@ -173,9 +173,11 @@ public partial class MainWindow : Window
     {
         StopAlarmSound();
         _alarmPlayer = new SoundService();
-        _alarmPlayer.Play(alarm.Sound, Vm?.Settings.ReminderVolumePercent ?? 80, loop: true);
-        // An alarm rings until it is turned off, but at most AlarmMaxDuration; the notification stays on screen, and the next alarm in line starts.
-        var limit = new DispatcherTimer { Interval = AlarmMaxDuration };
+        var volume = Vm?.Settings.ReminderVolumePercent ?? 80;
+        // A file that does not play (damaged, in use) is replaced by the sound of Windows: an alarm must not be silent.
+        if (!_alarmPlayer.Play(alarm.Sound, volume, loop: true)) _alarmPlayer.Play(ReminderSounds.Playable(ReminderSounds.SystemAlarmSound, isAlarm: true), volume, loop: true);
+        // An alarm rings until it is turned off, but at most the time set in the settings (1 to 10 minutes); the notification stays on screen, and the next alarm in line starts.
+        var limit = new DispatcherTimer { Interval = (Vm?.Settings ?? new AppSettings()).AlarmDuration };
         limit.Tick += (_, _) =>
         {
             limit.Stop();
@@ -330,25 +332,23 @@ public partial class MainWindow : Window
         }
     }
 
-    private static readonly TimeSpan AlarmMaxDuration = TimeSpan.FromMinutes(2);
+    /// <summary>How long the alarm that rings now has to ring (the limit set in the settings when it started); null when none rings.</summary>
+    public TimeSpan? AlarmLimit => _alarmLimit?.Interval;
 
     private void OnReminderFired(DueReminder due)
     {
         if (Vm is not { } vm) return;
         var isAlarm = due.Reminder.Method == ReminderMethod.Alarm;
-        var sound = due.Reminder.SoundPath switch
-        {
-            null => vm.Settings.DefaultReminderSound,
-            EventReminder.NoSound => isAlarm ? vm.Settings.DefaultReminderSound : null,
-            var p => p,
-        };
+        // The sound of the reminder, else the default of its kind (popup or alarm); a file that is gone is replaced by a sound of Windows.
+        var sound = ReminderSounds.Playable(ReminderSounds.Choose(due.Reminder, vm.Settings), isAlarm);
 
         // A reminder plays its sound once; an alarm rings in a loop, one at a time (see AlarmRinger), until it is turned off.
         SoundService? player = null;
         if (!isAlarm)
         {
             player = new SoundService();
-            player.Play(sound, vm.Settings.ReminderVolumePercent, loop: false);
+            if (!player.Play(sound, vm.Settings.ReminderVolumePercent, loop: false) && sound is not null)
+                player.Play(ReminderSounds.Playable(ReminderSounds.SystemReminderSound, isAlarm: false), vm.Settings.ReminderVolumePercent, loop: false);
         }
 
         var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm);

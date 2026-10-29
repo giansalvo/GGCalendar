@@ -45,13 +45,13 @@ public partial class SettingsWindow : Window
     private async void OnBrowseSound(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SettingsViewModel vm) return;
-        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        if (await SoundPicker.PickAsync(this) is not { } path) return;
+        if ((sender as Control)?.Tag as string == "alarm")
         {
-            Title = L.T("common.choose_sound_title"),
-            AllowMultiple = false,
-            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("common.audio_files")) { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
-        });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+            vm.AlarmSound = vm.AddCustomSound(path);
+            vm.PreviewAlarmSoundCommand.Execute(null);
+        }
+        else
         {
             vm.DefaultSound = vm.AddCustomSound(path);
             vm.PreviewDefaultSoundCommand.Execute(null);
