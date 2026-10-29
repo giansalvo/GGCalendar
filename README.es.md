@@ -25,7 +25,7 @@
 - Ficha resumen al hacer clic en un evento (editar, eliminar, compartir, unirse a Meet); doble clic para editarlo
 - Compartir un evento desde su ficha: WhatsApp, Telegram, correo (título como asunto, texto en el cuerpo), correo a los invitados (solo si hay), archivo `.ics` en el disco, portapapeles y las otras aplicaciones de Windows (texto y archivo `.ics`)
 - Eventos recurrentes, con edición o eliminación de una sola repetición, de las siguientes o de toda la serie
-- Recordatorios con notificación, alarma sonora (hasta que la apagas, como máximo 2 minutos) y posposición, conservados también tras un reinicio
+- Recordatorios con notificación, alarma sonora (hasta que la apagas, como máximo de 1 a 10 minutos a tu elección, 2 por defecto; un sonido de las alarmas aparte del de los recordatorios, también un archivo mp3 o wav tuyo) y posposición, conservados también tras un reinicio
 - Lista de las alarmas (icono junto a la lupa): las que suenan y las de los próximos 60 días, con el tiempo que falta; puedes apagarlas, cancelarlas (solo en este equipo) o abrir el evento. Las alarmas suenan una a una y solo con GGCalendar abierto; los recordatorios de calendarios ocultos no suenan (las alarmas pospuestas sí)
 - Sincronización en ambos sentidos con una o más cuentas de Google Calendar, con gestión de conflictos; las alarmas viajan con el evento en Google y se comparten con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) para Android
 - Invitados, enlaces de Google Meet, recordatorios por correo (enviados por Google)

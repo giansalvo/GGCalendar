@@ -16,6 +16,7 @@ namespace GGCalendar.App.Services;
 /// The share sheet of Windows ("Other apps…"): it lists the apps of the user that accept text and files, and gets the text of the event and its .ics file.
 /// An app that is not packaged has to ask for the sheet through the window (<c>IDataTransferManagerInterop</c>).
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")] // the share sheet exists from Windows 10 (the app as a whole says only "windows")
 public static class WindowsShareSheet
 {
     [ComImport, Guid("3A3DCD6C-3EAB-43DC-BCDE-45671CE800C8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

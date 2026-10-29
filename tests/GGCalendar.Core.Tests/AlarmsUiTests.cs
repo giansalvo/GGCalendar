@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
 using GGCalendar.App.Views;
 using GGCalendar.Core.Localization;
@@ -462,5 +463,91 @@ public class AlarmsUiTests
         Assert.Contains(L.T("alarms.section_coming"), texts);
         Assert.Contains("ⓘ " + L.T("alarms.only_open"), texts);
         Assert.DoesNotContain(texts, t => t?.StartsWith("alarms.", StringComparison.Ordinal) == true); // no key left without its text
+    });
+
+    // ---- T330: the alarm that rings uses the time and the sound of the settings (issue #32) ----
+
+    [Fact]
+    [Trait("TestCase", "T330")]
+    public Task T330_AnAlarmRingsForTheTimeSetInTheSettingsAndTheChangeCountsAtOnce() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Add(window, "prima", TimeSpan.FromMinutes(40), null, Alarm(10));
+        Add(window, "seconda", TimeSpan.FromMinutes(40), null, Alarm(10));
+
+        Vm(window).Settings.AlarmDurationMinutes = 7;
+        FireAt(window, TimeSpan.FromMinutes(31));
+        Assert.Equal(TimeSpan.FromMinutes(7), window.AlarmLimit);
+
+        // The second alarm waits in line and starts when the first is silenced: with the time set at that moment.
+        Vm(window).Settings.AlarmDurationMinutes = 3;
+        window.Ringer.Silence(window.Ringer.Current!.Key);
+        Assert.Equal(TimeSpan.FromMinutes(3), window.AlarmLimit);
+        await Task.CompletedTask;
+    });
+
+    [Fact]
+    [Trait("TestCase", "T330")]
+    public Task T330_TheTimeIsAlwaysBetweenOneAndTenMinutes() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Add(window, "fuori limite", TimeSpan.FromMinutes(40), null, Alarm(10));
+        Vm(window).Settings.AlarmDurationMinutes = 600; // a file edited by hand
+        FireAt(window, TimeSpan.FromMinutes(31));
+        Assert.Equal(TimeSpan.FromMinutes(10), window.AlarmLimit);
+        await Task.CompletedTask;
+    });
+
+    [Fact]
+    [Trait("TestCase", "T330")]
+    public Task T330_AnAlarmPlaysTheSoundOfTheAlarmsAndAPopupTheOtherOne() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        var alarmFile = Path.Combine(Path.GetTempPath(), "ggcal-sveglia-" + Guid.NewGuid().ToString("N")[..8] + ".wav");
+        var popupFile = Path.Combine(Path.GetTempPath(), "ggcal-popup-" + Guid.NewGuid().ToString("N")[..8] + ".wav");
+        File.Copy(Path.Combine(SoundService.MediaFolder, "Alarm01.wav"), alarmFile);
+        File.Copy(Path.Combine(SoundService.MediaFolder, "Alarm01.wav"), popupFile);
+        try
+        {
+            Vm(window).Settings.DefaultAlarmSound = alarmFile;
+            Vm(window).Settings.DefaultReminderSound = popupFile;
+            Add(window, "sveglia", TimeSpan.FromMinutes(40), null, Alarm(10));
+            Add(window, "muta", TimeSpan.FromMinutes(40), null, new EventReminder(ReminderMethod.Alarm, 10, EventReminder.NoSound));
+            Add(window, "propria", TimeSpan.FromMinutes(40), null, new EventReminder(ReminderMethod.Alarm, 10, popupFile));
+            FireAt(window, TimeSpan.FromMinutes(31));
+
+            string SoundOf(string title) => window.Ringer.Items.Single(i => i.Reminder.Event.Title.EndsWith(" " + title, StringComparison.Ordinal)).Sound!;
+            Assert.Equal(3, window.Ringer.Items.Count);
+            Assert.Equal(alarmFile, SoundOf("sveglia")); // the default of the alarms, not the one of the popups
+            Assert.Equal(alarmFile, SoundOf("muta")); // an alarm "without sound" still rings: with the sound of the alarms
+            Assert.Equal(popupFile, SoundOf("propria")); // an alarm with a sound of its own plays that one
+        }
+        finally
+        {
+            window.Ringer.RemoveAll(); // the sound stops and lets go of the files
+            Dispatcher.UIThread.RunJobs();
+            foreach (var f in new[] { alarmFile, popupFile })
+            {
+                try { File.Delete(f); } catch (IOException) { } // a temporary file: if the player still holds it, the system cleans it later
+            }
+        }
+    });
+
+    [Fact]
+    [Trait("TestCase", "T330")]
+    public Task T330_AnAlarmWhoseFileIsGoneRingsWithTheSoundOfWindows() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Vm(window).Settings.DefaultAlarmSound = Path.Combine(Path.GetTempPath(), "ggcal-sparito-" + Guid.NewGuid().ToString("N") + ".mp3");
+        Add(window, "sparito", TimeSpan.FromMinutes(40), null, Alarm(10));
+        FireAt(window, TimeSpan.FromMinutes(31));
+
+        var expected = File.Exists(ReminderSounds.SystemAlarmSound) ? ReminderSounds.SystemAlarmSound : null;
+        Assert.Equal(expected, window.Ringer.Current!.Sound);
+        await Task.CompletedTask;
     });
 }

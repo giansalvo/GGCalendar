@@ -62,6 +62,20 @@ public sealed class AppSettings
     public string? SecondaryTimeZoneLabel { get; set; }
     public bool NotificationsEnabled { get; set; } = true;
     public string DefaultReminderSound { get; set; } = @"C:\Windows\Media\Windows Notify Calendar.wav";
+
+    /// <summary>The sound of the alarms, apart from the one of the popups (issue #32): an alarm rings in a loop for minutes.</summary>
+    public string DefaultAlarmSound { get; set; } = @"C:\Windows\Media\Alarm01.wav";
+
+    public const int MinAlarmMinutes = 1;
+    public const int MaxAlarmMinutes = 10;
+
+    /// <summary>How long an alarm rings, if nobody turns it off or puts it off (1 to 10 minutes).</summary>
+    public int AlarmDurationMinutes { get; set; } = 2;
+
+    /// <summary><see cref="AlarmDurationMinutes"/> kept in its limits, as a time.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TimeSpan AlarmDuration => TimeSpan.FromMinutes(Math.Clamp(AlarmDurationMinutes, MinAlarmMinutes, MaxAlarmMinutes));
+
     public int ReminderVolumePercent { get; set; } = 80;
     public string OllamaUrl { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "qwen3.6:latest";

@@ -121,13 +121,7 @@ public partial class EventEditWindow : Window
     private async void OnBrowseSound(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is not ReminderItemViewModel r || Vm is null) return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = L.T("common.choose_sound_title"),
-            AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType(L.T("common.audio_files")) { Patterns = ["*.mp3", "*.wav", "*.wma", "*.m4a"] }],
-        });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
+        if (await SoundPicker.PickAsync(this) is { } path)
         {
             Vm.UseCustomSound(r, path);
             Vm.PreviewSoundCommand.Execute(r);

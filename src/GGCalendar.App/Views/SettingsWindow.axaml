@@ -128,7 +128,7 @@
                 </StackPanel>
                 <TextBlock Classes="section" Text="{loc:T settings.notifications}" />
                 <CheckBox AutomationProperties.AutomationId="Settings.NotificationsEnabled" Content="{loc:T settings.notifications_enabled}" IsChecked="{Binding NotificationsEnabled}" />
-                <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+                <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
                     <TextBlock Text="{loc:T settings.default_sound}" VerticalAlignment="Center" />
                     <ComboBox AutomationProperties.AutomationId="Settings.DefaultSound" Grid.Column="1" ItemsSource="{Binding Sounds}" SelectedItem="{Binding DefaultSound}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
@@ -136,9 +136,20 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <Button Grid.Column="2" Content="▶" Margin="6,0,0,0" Command="{Binding PreviewDefaultSoundCommand}" ToolTip.Tip="{loc:T common.listen}" />
-                    <Button Grid.Column="3" Content="📂" Margin="4,0,0,0" Click="OnBrowseSound" ToolTip.Tip="{loc:T common.choose_audio}" />
-                    <TextBlock Grid.Row="1" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
-                    <Slider Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
+                    <Button Grid.Column="3" Content="📂" Margin="4,0,0,0" Click="OnBrowseSound" Tag="reminder" ToolTip.Tip="{loc:T common.choose_audio}" />
+                    <TextBlock Grid.Row="1" Text="{loc:T settings.alarm_sound}" VerticalAlignment="Center" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.AlarmSound" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Sounds}" SelectedItem="{Binding AlarmSound}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Row="1" Grid.Column="2" Content="▶" Margin="6,0,0,0" Command="{Binding PreviewAlarmSoundCommand}" ToolTip.Tip="{loc:T common.listen}" />
+                    <Button Grid.Row="1" Grid.Column="3" Content="📂" Margin="4,0,0,0" Click="OnBrowseSound" Tag="alarm" ToolTip.Tip="{loc:T common.choose_audio}" />
+                    <TextBlock Grid.Row="2" Text="{loc:T settings.alarm_duration}" VerticalAlignment="Center" />
+                    <Slider AutomationProperties.AutomationId="Settings.AlarmDuration" Grid.Row="2" Grid.Column="1" Minimum="{Binding MinAlarmMinutes}" Maximum="{Binding MaxAlarmMinutes}" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding AlarmDurationMinutes}" />
+                    <TextBlock AutomationProperties.AutomationId="Settings.AlarmDurationLabel" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Text="{Binding AlarmDurationLabel}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <TextBlock Grid.Row="3" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
+                    <Slider Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
                 </Grid>
 
                 <TextBlock Classes="section" Text="{loc:T settings.advanced_section}" />

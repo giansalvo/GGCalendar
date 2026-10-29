@@ -25,7 +25,7 @@
 - Scheda riassuntiva al clic su un evento (modifica, elimina, condividi, partecipa a Meet); doppio clic per modificarlo
 - Condividi un evento dalla sua scheda: WhatsApp, Telegram, email (titolo come oggetto, testo nel corpo), email agli invitati (solo se ci sono), file `.ics` su disco, appunti e le altre app di Windows (testo e file `.ics`)
 - Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
-- Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo 2 minuti) e posticipo, conservati anche dopo un riavvio
+- Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo da 1 a 10 minuti a tua scelta, 2 di partenza; suono delle sveglie a parte da quello dei promemoria, anche un tuo file mp3 o wav) e posticipo, conservati anche dopo un riavvio
 - Elenco delle sveglie (icona accanto alla lente): quelle che stanno suonando e quelle in arrivo nei prossimi 60 giorni, con il tempo rimasto; le puoi spegnere, annullare (solo su questo computer) o aprire l'evento. Le sveglie suonano una alla volta e solo con GGCalendar aperto; i promemoria dei calendari nascosti non suonano (le sveglie posticipate sì)
 - Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti; le sveglie viaggiano con l'evento su Google e si condividono con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) per Android
 - Invitati, link Google Meet, promemoria via email (inviati da Google)
