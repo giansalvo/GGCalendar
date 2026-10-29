@@ -16,7 +16,8 @@ namespace GGCalendar.Core.Tests.Support;
 /// <summary>What the user fills in when creating an event with the "Crea" button.</summary>
 public sealed record EventSpec(string Title)
 {
-    public string CalendarId { get; init; } = AppDriver.TestCalendarId;
+    /// <summary>The calendar of the real Google tests when they made one; in the tests with a fake Google, the main calendar of the test account.</summary>
+    public string CalendarId { get; init; } = AppDriver.TestCalendarRemoteId is null ? AppDriver.PrimaryCalendarId : AppDriver.TestCalendarId;
     public string? ColorHex { get; init; }
     /// <summary>RRULE of the repetition ("FREQ=DAILY"), or null for "Non si ripete".</summary>
     public string? Recurrence { get; init; }
