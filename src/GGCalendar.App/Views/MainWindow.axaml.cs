@@ -668,7 +668,11 @@ public partial class MainWindow : Window
             await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(Clipboard, text);
         },
         SaveIcs = ExportEventAsync,
-        ShowShareSheet = async (ev, text) => await WindowsShareSheet.ShowAsync(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, ev, text),
+        ShowShareSheet = async (ev, text) =>
+        {
+            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 10240)) throw new PlatformNotSupportedException("Windows 10");
+            await WindowsShareSheet.ShowAsync(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, ev, text);
+        },
     };
 
     private async Task<bool> ExportEventAsync(CalendarEvent ev)
