@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
+using GGCalendar.App.Services;
 
 namespace GGCalendar.App.Controls;
 
@@ -122,7 +123,7 @@ public sealed class MonthGrid : Control
         var culture = L.Culture;
         var cw = CellWidth;
         var ch = CellHeight;
-        var typeface = new Typeface(FontFamily.Default);
+        var typeface = new Typeface(AppFonts.Current);
 
         context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
         _hits.Clear();

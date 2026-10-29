@@ -1,6 +1,6 @@
 {
   "about.details": "Version : {0}\nAuteur : {1}\nDate de compilation : {2}",
-  "about.legal": "Copyright © 2026 Giansalvo Gusinu.\nLogiciel libre distribué sous la licence publique générale GNU, version 3 ou (à votre choix) toute version ultérieure, SANS AUCUNE GARANTIE. Vous pouvez le redistribuer et le modifier selon les termes de la licence : https://www.gnu.org/licenses/gpl-3.0.html\nCode source : {0}\nLe nom et le logo GGCalendar ne sont pas concédés sous licence.",
+  "about.legal": "Copyright © 2026 Giansalvo Gusinu.\nLogiciel libre distribué sous la licence publique générale GNU, version 3 ou (à votre choix) toute version ultérieure, SANS AUCUNE GARANTIE. Vous pouvez le redistribuer et le modifier selon les termes de la licence : https://www.gnu.org/licenses/gpl-3.0.html\nCode source : {0}\nLe nom et le logo GGCalendar ne sont pas concédés sous licence.\nPolices incluses : Inter, Roboto et Plus Jakarta Sans, sous licence SIL Open Font License 1.1.",
   "about.title": "À propos de GGCalendar",
   "account.disconnect_button": "Déconnecter",
   "account.disconnect_calendars.one": "• {0} agenda",
@@ -452,6 +452,7 @@
   "settings.disconnected_revoked": "Compte {0} déconnecté et accès de GGCalendar révoqué sur Google.",
   "settings.disconnecting": "Déconnexion de {0}...",
   "settings.error_day_end": "La fin de la journée doit être postérieure au début.",
+  "settings.font": "Police",
   "settings.google_accounts": "Comptes Google",
   "settings.hide_outside_hours": "Afficher uniquement les heures de la journée",
   "settings.language_label": "Langue de l'interface",

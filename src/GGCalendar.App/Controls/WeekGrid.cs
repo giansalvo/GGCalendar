@@ -12,6 +12,7 @@ using GGCalendar.Core.Layout;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
 using GGCalendar.Core.Zones;
+using GGCalendar.App.Services;
 
 namespace GGCalendar.App.Controls;
 
@@ -537,5 +538,5 @@ public sealed class WeekGrid : Control
 
     private static FormattedText Text(string s, double size, IBrush brush, FontWeight weight = FontWeight.Normal) =>
         new(s, L.Culture, FlowDirection.LeftToRight,
-            new Typeface(FontFamily.Default, FontStyle.Normal, weight), size, brush);
+            new Typeface(AppFonts.Current, FontStyle.Normal, weight), size, brush);
 }

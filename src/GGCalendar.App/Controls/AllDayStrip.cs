@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
+using GGCalendar.App.Services;
 
 namespace GGCalendar.App.Controls;
 
@@ -153,7 +154,7 @@ public sealed class AllDayStrip : Control
             {
                 var text = new FormattedText(string.IsNullOrEmpty(ev.Title) ? L.T("common.untitled") : ev.Title,
                     L.Culture, FlowDirection.LeftToRight,
-                    new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
+                    new Typeface(AppFonts.Current, FontStyle.Normal, FontWeight.SemiBold), 12, Brushes.White);
                 context.DrawText(text, new Point(rect.X + 6, rect.Y + (RowHeight - text.Height) / 2));
             }
         }

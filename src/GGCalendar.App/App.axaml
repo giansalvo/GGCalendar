@@ -9,7 +9,15 @@
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <!-- The font of the text: AppFonts.Apply replaces it when the person picks another one in the settings. -->
+        <FontFamily x:Key="AppFontFamily">fonts:Inter#Inter</FontFamily>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
+        <Style Selector=":is(Window)">
+            <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+        </Style>
     </Application.Styles>
 </Application>

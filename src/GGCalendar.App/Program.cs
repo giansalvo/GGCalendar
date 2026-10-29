@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using GGCalendar.App.Services;
 using System;
 
 namespace GGCalendar.App;
@@ -22,6 +23,6 @@ sealed class Program
 #if DEBUG
             .WithDeveloperTools()
 #endif
-            .WithInterFont()
+            .WithAppFonts()
             .LogToTrace();
 }

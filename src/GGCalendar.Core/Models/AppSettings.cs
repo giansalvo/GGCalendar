@@ -1,4 +1,4 @@
-namespace GGCalendar.Core.Models;
+﻿namespace GGCalendar.Core.Models;
 
 public sealed class AppSettings
 {
@@ -21,6 +21,13 @@ public sealed class AppSettings
 
     /// <summary>0 sistema, 1 chiaro, 2 scuro.</summary>
     public int Theme { get; set; }
+
+    /// <summary>
+    /// Name of the font of the text of the app: one of the fonts that come with it (Inter, Roboto, Plus Jakarta Sans) or a font of the
+    /// system. Null or empty: the default one (Inter). A name that is not found falls back to the default.
+    /// </summary>
+    public string? FontFamily { get; set; }
+
     public bool DimPastEvents { get; set; } = true;
     public bool DefaultGuestsCanModify { get; set; }
     public bool DefaultGuestsCanInvite { get; set; }

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Headless;
+using GGCalendar.App.Services;
 using AppType = GGCalendar.App.App;
 
 namespace GGCalendar.Core.Tests.Support;
@@ -16,7 +17,7 @@ public static class HeadlessApp
     public static AppBuilder BuildAvaloniaApp()
     {
         var drawn = DrawsForReal;
-        var builder = AppBuilder.Configure<AppType>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = !drawn }).WithInterFont();
+        var builder = AppBuilder.Configure<AppType>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = !drawn }).WithAppFonts();
         return drawn ? builder.UseSkia() : builder;
     }
 
