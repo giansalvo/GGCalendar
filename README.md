@@ -99,7 +99,7 @@ GGCalendar non ha server propri e non raccoglie telemetria. I dati restano sul t
 
 Copyright © 2026 Giansalvo Gusinu.
 
-GGCalendar è software libero: puoi ridistribuirlo e/o modificarlo secondo i termini della GNU General Public License pubblicata dalla Free Software Foundation, versione 3 della licenza o (a tua scelta) qualsiasi versione successiva. È distribuito nella speranza che sia utile, ma **senza alcuna garanzia**, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo è nel file [LICENSE](LICENSE).
+GGCalendar è software libero: puoi ridistribuirlo e/o modificarlo secondo i termini della GNU General Public License pubblicata dalla Free Software Foundation, versione 3 della licenza o (a tua scelta) qualsiasi versione successiva. È distribuito nella speranza che sia utile, ma **senza alcuna garanzia**, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo è nel file [LICENSE](LICENSE). I font Inter, Roboto e Plus Jakarta Sans inclusi nell'app hanno licenza SIL Open Font License 1.1: vedi [THIRD-PARTY-FONTS.md](THIRD-PARTY-FONTS.md).
 
 ### Termini aggiuntivi (GPL v3, sezione 7)
 

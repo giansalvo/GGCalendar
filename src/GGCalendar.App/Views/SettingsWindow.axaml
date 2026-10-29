@@ -62,6 +62,14 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{loc:T settings.font}" VerticalAlignment="Center" Width="220" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.FontFamily" ItemsSource="{Binding FontChoices}" SelectedItem="{Binding SelectedFont}" MinWidth="220" MaxDropDownHeight="360">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontFamily="{Binding}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Text="{loc:T settings.snap}" VerticalAlignment="Center" Width="220" />
                     <ComboBox AutomationProperties.AutomationId="Settings.SnapMinutes" ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding SnapMinutes}" MinWidth="100" />
                 </StackPanel>

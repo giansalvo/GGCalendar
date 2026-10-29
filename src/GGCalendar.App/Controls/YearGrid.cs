@@ -10,6 +10,7 @@ using Avalonia.Styling;
 using Avalonia.VisualTree;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Localization;
+using GGCalendar.App.Services;
 
 namespace GGCalendar.App.Controls;
 
@@ -115,7 +116,7 @@ public sealed class YearGrid : Control
         var muted = new SolidColorBrush(Color.Parse(dark ? "#80868B" : "#70757A"));
         var accent = new SolidColorBrush(Color.Parse("#1A73E8"));
         var culture = L.Culture;
-        var typeface = new Typeface(FontFamily.Default);
+        var typeface = new Typeface(AppFonts.Current);
         var withEvents = new HashSet<DateTime>();
         foreach (var ev in Events ?? [])
         {
@@ -133,7 +134,7 @@ public sealed class YearGrid : Control
             var ox = col * CellW + Pad;
             var oy = row * CellH;
             var title = new FormattedText(culture.TextInfo.ToTitleCase(culture.DateTimeFormat.GetMonthName(m)), culture,
-                FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold), 14, fg);
+                FlowDirection.LeftToRight, new Typeface(AppFonts.Current, FontStyle.Normal, FontWeight.SemiBold), 14, fg);
             context.DrawText(title, new Point(ox, oy + 4));
 
             for (var i = 0; i < 7; i++)

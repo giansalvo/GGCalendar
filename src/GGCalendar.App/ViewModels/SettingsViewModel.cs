@@ -54,6 +54,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
         SnapMinutes = s.SnapMinutes;
         OllamaUrl = s.OllamaUrl;
         ThemeIndex = Math.Clamp(s.Theme, 0, 2);
+        var systemFonts = AppFonts.SystemFontNames();
+        FontChoices = AppFonts.Choices(systemFonts);
+        SelectedFont = AppFonts.Normalize(s.FontFamily, systemFonts);
         DimPastEvents = s.DimPastEvents;
         DefaultGuestsCanModify = s.DefaultGuestsCanModify;
         DefaultGuestsCanInvite = s.DefaultGuestsCanInvite;
@@ -228,6 +231,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool ShowWeekNumbers { get; set; }
     [ObservableProperty] public partial bool Use24HourClock { get; set; }
     [ObservableProperty] public partial int ThemeIndex { get; set; }
+
+    /// <summary>The fonts the text of the app can be set in: the ones that come with it, then those of the system.</summary>
+    public IReadOnlyList<string> FontChoices { get; }
+
+    [ObservableProperty] public partial string SelectedFont { get; set; } = AppFonts.DefaultName;
     [ObservableProperty] public partial bool DimPastEvents { get; set; }
     [ObservableProperty] public partial bool DefaultGuestsCanModify { get; set; }
     [ObservableProperty] public partial bool DefaultGuestsCanInvite { get; set; }
@@ -301,6 +309,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             Use24HourClock = Use24HourClock,
             Language = SelectedLanguage.Code,
             Theme = ThemeIndex,
+            FontFamily = SelectedFont == AppFonts.DefaultName ? null : SelectedFont,
             DimPastEvents = DimPastEvents,
             DefaultGuestsCanModify = DefaultGuestsCanModify,
             DefaultGuestsCanInvite = DefaultGuestsCanInvite,

@@ -523,6 +523,17 @@ public partial class MainWindow : Window
         _retryTimer.Start();
     }
 
+    /// <summary>Puts the font chosen in the settings in use; the grids drawn by hand are drawn again with it.</summary>
+    private void ApplyFont(AppSettings s)
+    {
+        AppFonts.Apply(s.FontFamily);
+        foreach (var grid in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(this).OfType<Control>().Where(c => c is Controls.WeekGrid or Controls.MonthGrid or Controls.YearGrid or Controls.AllDayStrip))
+        {
+            grid.InvalidateMeasure();
+            grid.InvalidateVisual();
+        }
+    }
+
     private static void ApplyTheme(AppSettings s)
     {
         if (Avalonia.Application.Current is { } app)
@@ -1202,6 +1213,7 @@ public partial class MainWindow : Window
         vm.Settings = result;
         L.Apply(result.Language);
         ApplyTheme(result);
+        ApplyFont(result);
         ConfigureGoogle();
         ApplySyncInterval();
         if (accountsChanged) await vm.ReloadAsync();
