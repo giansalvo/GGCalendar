@@ -14,7 +14,11 @@ namespace GGCalendar.Core.Tests.Support;
 public sealed class TestGoogle : IDisposable
 {
     private readonly HttpClient _http = new();
-    private readonly string _events = "https://www.googleapis.com/calendar/v3/calendars/" + Uri.EscapeDataString(AppDriver.TestAccount) + "/events";
+    /// <summary>The events of a calendar of the test account; without an id, those of the calendar the tests work in (the primary one before it exists).</summary>
+    private static string EventsOf(string? calendarId = null) =>
+        "https://www.googleapis.com/calendar/v3/calendars/" + Uri.EscapeDataString(calendarId ?? AppDriver.TestCalendarRemoteId ?? AppDriver.TestAccount) + "/events";
+
+    private static string _events => EventsOf();
 
     private TestGoogle() { }
 
@@ -56,14 +60,14 @@ public sealed class TestGoogle : IDisposable
     public Task<JsonElement> GetAsync(string remoteId) => SendAsync(HttpMethod.Get, $"{_events}/{Uri.EscapeDataString(remoteId)}");
 
     /// <summary>Events (series masters and modified occurrences, not expanded) whose text matches <paramref name="text"/>.</summary>
-    public async Task<List<JsonElement>> FindAsync(string text)
+    public async Task<List<JsonElement>> FindAsync(string text, string? calendarId = null)
     {
         var items = new List<JsonElement>();
         string? page = null;
         do
         {
             var result = await SendAsync(HttpMethod.Get,
-                $"{_events}?singleEvents=false&showDeleted=false&maxResults=250&q={Uri.EscapeDataString(text)}" + (page is null ? "" : "&pageToken=" + Uri.EscapeDataString(page)));
+                $"{EventsOf(calendarId)}?singleEvents=false&showDeleted=false&maxResults=250&q={Uri.EscapeDataString(text)}" + (page is null ? "" : "&pageToken=" + Uri.EscapeDataString(page)));
             items.AddRange(result.GetProperty("items").EnumerateArray());
             page = result.TryGetProperty("nextPageToken", out var next) ? next.GetString() : null;
         }
@@ -106,24 +110,32 @@ public sealed class TestGoogle : IDisposable
             ["attachments"] = new JsonArray(attachments.Select(a => (JsonNode)new JsonObject { ["fileUrl"] = a.Url, ["title"] = a.Title }).ToArray()),
         });
 
-    public Task DeleteAsync(string remoteId) => SendAsync(HttpMethod.Delete, $"{_events}/{Uri.EscapeDataString(remoteId)}");
+    public Task DeleteAsync(string remoteId, string? calendarId = null) => SendAsync(HttpMethod.Delete, $"{EventsOf(calendarId)}/{Uri.EscapeDataString(remoteId)}");
 
-    /// <summary>Deletes every event of the test calendar whose title starts with the test prefix (left by an interrupted run). Returns how many.</summary>
+    /// <summary>
+    /// Deletes every event whose title starts with the test prefix, in the calendar of the tests and in the primary one (where
+    /// the tests used to work: an old interrupted run may have left some there). Returns how many.
+    /// </summary>
     public async Task<int> DeleteLeftoversAsync()
     {
         var count = 0;
-        foreach (var item in await FindAsync(AppDriver.TestPrefix))
+        var calendars = new List<string?> { null };
+        if (AppDriver.TestCalendarRemoteId is not null) calendars.Add(AppDriver.TestAccount);
+        foreach (var calendar in calendars)
         {
-            if (!item.TryGetProperty("summary", out var title) || title.GetString()?.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) != true) continue;
-            if (item.TryGetProperty("recurringEventId", out _)) continue; // an occurrence goes away with its series
-            try
+            foreach (var item in await FindAsync(AppDriver.TestPrefix, calendar))
             {
-                await DeleteAsync(item.GetProperty("id").GetString()!);
-                count++;
-            }
-            catch (HttpRequestException ex) when (ex.Message.Contains("410") || ex.Message.Contains("404"))
-            {
-                // already gone
+                if (!item.TryGetProperty("summary", out var title) || title.GetString()?.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) != true) continue;
+                if (item.TryGetProperty("recurringEventId", out _)) continue; // an occurrence goes away with its series
+                try
+                {
+                    await DeleteAsync(item.GetProperty("id").GetString()!, calendar);
+                    count++;
+                }
+                catch (HttpRequestException ex) when (ex.Message.Contains("410") || ex.Message.Contains("404"))
+                {
+                    // already gone
+                }
             }
         }
 
@@ -180,14 +192,24 @@ public sealed class TestGoogle : IDisposable
         SendAsync(HttpMethod.Patch, $"{Calendars}/users/me/calendarList/{Uri.EscapeDataString(calendarId)}?colorRgbFormat=true",
             new JsonObject { ["backgroundColor"] = background, ["foregroundColor"] = foreground });
 
-    /// <summary>Deletes the calendars of the test account that the tests made (owned, with the test prefix in the name). Returns how many.</summary>
+    /// <summary>Makes a calendar (calendars.insert, which also puts it in the list of the account) and returns its id.</summary>
+    public async Task<string> CreateCalendarAsync(string name) =>
+        (await SendAsync(HttpMethod.Post, Calendars + "/calendars", new JsonObject { ["summary"] = name, ["timeZone"] = "Europe/Rome" })).GetProperty("id").GetString()!;
+
+    public Task DeleteCalendarAsync(string calendarId) => SendAsync(HttpMethod.Delete, $"{Calendars}/calendars/{Uri.EscapeDataString(calendarId)}");
+
+    /// <summary>
+    /// Deletes the calendars of the test account that the tests made (owned, with the test prefix in the name), but the one
+    /// the tests are working in. Returns how many.
+    /// </summary>
     public async Task<int> DeleteLeftoverCalendarsAsync()
     {
         var count = 0;
         foreach (var (id, name, role) in await ListCalendarsAsync())
         {
             if (role != "owner" || !name.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) || id.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase)) continue;
-            await SendAsync(HttpMethod.Delete, $"{Calendars}/calendars/{Uri.EscapeDataString(id)}");
+            if (id == AppDriver.TestCalendarRemoteId) continue;
+            await DeleteCalendarAsync(id);
             count++;
         }
 

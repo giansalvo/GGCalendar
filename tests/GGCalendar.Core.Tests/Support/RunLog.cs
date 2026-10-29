@@ -22,8 +22,28 @@ public sealed class RunLogFramework(IMessageSink diagnosticMessageSink) : XunitT
         protected override async void RunTestCases(IEnumerable<IXunitTestCase> testCases, IMessageSink executionMessageSink, ITestFrameworkExecutionOptions executionOptions)
         {
             var sink = RunLog.Wrap(executionMessageSink);
-            using var runner = new XunitTestAssemblyRunner(TestAssembly, testCases, DiagnosticMessageSink, sink, executionOptions);
+            using var runner = new Runner(TestAssembly, testCases, DiagnosticMessageSink, sink, executionOptions);
             await runner.RunAsync();
+        }
+    }
+
+    /// <summary>The usual runner; before it reports that the run is over it deletes the calendar the real Google tests worked in.</summary>
+    private sealed class Runner(ITestAssembly testAssembly, IEnumerable<IXunitTestCase> testCases, IMessageSink diagnosticMessageSink, IMessageSink executionMessageSink, ITestFrameworkExecutionOptions executionOptions)
+        : XunitTestAssemblyRunner(testAssembly, testCases, diagnosticMessageSink, executionMessageSink, executionOptions)
+    {
+        protected override async Task BeforeTestAssemblyFinishedAsync()
+        {
+            try
+            {
+                await AppDriver.DeleteTestCalendarAsync();
+            }
+            catch (Exception ex)
+            {
+                // The next run (and every real test) removes a calendar that stays behind, so this must not fail the run.
+                DiagnosticMessageSink.OnMessage(new DiagnosticMessage("Il calendario di prova non è stato cancellato: " + ex.Message));
+            }
+
+            await base.BeforeTestAssemblyFinishedAsync();
         }
     }
 }

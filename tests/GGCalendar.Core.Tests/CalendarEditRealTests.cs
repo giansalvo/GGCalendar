@@ -108,7 +108,7 @@ public class CalendarEditRealTests
             }
         }
 
-        var primary = vm.Calendars.First(c => c.Id == TestCalendarId);
+        var primary = vm.Calendars.First(c => c.Id == PrimaryCalendarId);
         Assert.False(primary.CanRename);
         await ChangeAndRestoreAsync(primary);
 
