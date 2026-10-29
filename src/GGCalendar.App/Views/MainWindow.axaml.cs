@@ -16,6 +16,8 @@ using GGCalendar.Core.Subscriptions;
 using GGCalendar.Core.Reminders;
 using GGCalendar.Data;
 using GGCalendar.Core.Localization;
+using GGCalendar.Core.Recurrence;
+using GGCalendar.Core.Sharing;
 
 namespace GGCalendar.App.Views;
 
@@ -575,8 +577,18 @@ public partial class MainWindow : Window
             vm.SecondZoneText(ev), readOnly: MainViewModel.IsReadOnly(ev));
         card.EditRequested += async () => { CloseDetails(); await EditAsync(ev, isNew: false); };
         card.DeleteRequested += async () => { CloseDetails(); await DeleteAsync(ev); };
-        card.MailRequested += async () => await MailGuestsAsync(ev);
-        card.ExportRequested += async () => { CloseDetails(); await ExportEventAsync(vm.ResolveMaster(ev)); };
+        string ShareText()
+        {
+            var rule = RecurrenceRule.Parse(series?.Recurrence)?.Describe();
+            return EventShareText.Build(ev, rule is null ? null : char.ToUpper(rule[0], L.Culture) + rule[1..], calendar?.Name ?? "", vm.Settings.Use24HourClock, vm.SecondZoneText(ev));
+        }
+
+        card.ShareHint += key => vm.SetStatus(key is null ? null : Msg.Of(key));
+        card.ShareRequested += async target =>
+        {
+            CloseDetails();
+            vm.SetStatus(await NewSharer().ShareAsync(vm.ResolveMaster(ev), ShareText(), target));
+        };
         card.JoinMeetRequested += async () => await OpenHttpsAsync(ev.MeetLink);
         card.LinkRequested += async uri => await OpenDescriptionLinkAsync(uri);
         card.CloseRequested += CloseDetails;
@@ -612,13 +624,6 @@ public partial class MainWindow : Window
         DetailsPopup.Child = null;
     }
 
-    private async Task MailGuestsAsync(CalendarEvent ev)
-    {
-        var to = string.Join(",", ev.Attendees.Select(a => Uri.EscapeDataString(a.Email)));
-        if (to.Length == 0) return;
-        await Launcher.LaunchUriAsync(new Uri($"mailto:{to}?subject={Uri.EscapeDataString(ev.Title)}"));
-    }
-
     /// <summary>A link of a description comes from outside the app (an invitation, a feed): the user sees the real address and decides.</summary>
     private async Task OpenDescriptionLinkAsync(Uri uri)
     {
@@ -634,7 +639,39 @@ public partial class MainWindow : Window
         if (Uri.TryCreate(link, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps) await Launcher.LaunchUriAsync(uri);
     }
 
-    private async Task ExportEventAsync(CalendarEvent ev)
+    /// <summary>For tests: replaces what the share button of the card does on the screen and in the system.</summary>
+    public static Func<MainWindow, EventSharer>? SharerFactory { get; set; }
+
+    private EventSharer NewSharer() => SharerFactory?.Invoke(this) ?? new EventSharer
+    {
+        // The system opens the address with the program that handles it (the apps of WhatsApp and Telegram have their own); false when there is none.
+        Launch = uri =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.OriginalString) { UseShellExecute = true })?.Dispose();
+                return Task.FromResult(true);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                return Task.FromResult(false);
+            }
+        },
+        OpenMailTo = mailto =>
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(mailto) { UseShellExecute = true })?.Dispose();
+            return Task.CompletedTask;
+        },
+        Copy = async text =>
+        {
+            if (Clipboard is null) throw new InvalidOperationException("clipboard");
+            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(Clipboard, text);
+        },
+        SaveIcs = ExportEventAsync,
+        ShowShareSheet = async (ev, text) => await WindowsShareSheet.ShowAsync(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, ev, text),
+    };
+
+    private async Task<bool> ExportEventAsync(CalendarEvent ev)
     {
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
@@ -643,17 +680,20 @@ public partial class MainWindow : Window
             DefaultExtension = "ics",
             FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics"] }],
         });
-        if (file is null) return;
+        if (file is null) return false;
         try
         {
             await using var stream = await file.OpenWriteAsync();
             stream.SetLength(0);
             await using var writer = new System.IO.StreamWriter(stream, new System.Text.UTF8Encoding(false));
-            await writer.WriteAsync(IcsWriter.Write([ev]));
+            // Shared with someone else: the addresses of the guests do not go in the file (the text of the event has only how many they are).
+            await writer.WriteAsync(IcsWriter.Write([ev], includeAttendees: false));
+            return true;
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
             if (Vm is { } vm) vm.SetStatus("error.export", ex.Message);
+            return false;
         }
     }
 

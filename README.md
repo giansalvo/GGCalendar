@@ -22,7 +22,8 @@
 
 - Viste giorno, settimana, 6 giorni, mese, anno e programma; weekend nascondibili
 - Creazione, spostamento e ridimensionamento degli eventi con il trascinamento, anche tra calendari diversi
-- Scheda riassuntiva al clic su un evento (modifica, elimina, email agli invitati, esporta, partecipa a Meet); doppio clic per modificarlo
+- Scheda riassuntiva al clic su un evento (modifica, elimina, condividi, partecipa a Meet); doppio clic per modificarlo
+- Condividi un evento dalla sua scheda: WhatsApp, Telegram, email (titolo come oggetto, testo nel corpo), email agli invitati (solo se ci sono), file `.ics` su disco, appunti e le altre app di Windows (testo e file `.ics`)
 - Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
 - Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo 2 minuti) e posticipo, conservati anche dopo un riavvio
 - Elenco delle sveglie (icona accanto alla lente): quelle che stanno suonando e quelle in arrivo nei prossimi 60 giorni, con il tempo rimasto; le puoi spegnere, annullare (solo su questo computer) o aprire l'evento. Le sveglie suonano una alla volta e solo con GGCalendar aperto; i promemoria dei calendari nascosti non suonano (le sveglie posticipate sì)
@@ -99,7 +100,7 @@ GGCalendar non ha server propri e non raccoglie telemetria. I dati restano sul t
 
 Copyright © 2026 Giansalvo Gusinu.
 
-GGCalendar è software libero: puoi ridistribuirlo e/o modificarlo secondo i termini della GNU General Public License pubblicata dalla Free Software Foundation, versione 3 della licenza o (a tua scelta) qualsiasi versione successiva. È distribuito nella speranza che sia utile, ma **senza alcuna garanzia**, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo è nel file [LICENSE](LICENSE). I font Inter, Roboto e Plus Jakarta Sans inclusi nell'app hanno licenza SIL Open Font License 1.1: vedi [THIRD-PARTY-FONTS.md](THIRD-PARTY-FONTS.md).
+GGCalendar è software libero: puoi ridistribuirlo e/o modificarlo secondo i termini della GNU General Public License pubblicata dalla Free Software Foundation, versione 3 della licenza o (a tua scelta) qualsiasi versione successiva. È distribuito nella speranza che sia utile, ma **senza alcuna garanzia**, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo è nel file [LICENSE](LICENSE). I font Inter, Roboto e Plus Jakarta Sans inclusi nell'app hanno licenza SIL Open Font License 1.1: vedi [THIRD-PARTY-FONTS.md](THIRD-PARTY-FONTS.md). I loghi di WhatsApp e Telegram nel menu Condividi sono marchi dei rispettivi proprietari, usati senza modifiche solo per indicare dove si condivide: vedi [THIRD-PARTY-BRANDS.md](THIRD-PARTY-BRANDS.md); GGCalendar non è affiliato né approvato da loro.
 
 ### Termini aggiuntivi (GPL v3, sezione 7)
 

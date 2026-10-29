@@ -22,7 +22,8 @@
 
 - Day, week, 6-day, month, year and schedule views; weekends can be hidden
 - Create, move and resize events by dragging, also between different calendars
-- Summary card when you click an event (edit, delete, email the guests, export, join Meet); double-click to edit it
+- Summary card when you click an event (edit, delete, share, join Meet); double-click to edit it
+- Share an event from its card: WhatsApp, Telegram, email (title as subject, text as body), email to the guests (only when there are any), `.ics` file on disk, clipboard and the other apps of Windows (text and `.ics` file)
 - Recurring events, with edit or delete of a single occurrence, of the following ones or of the whole series
 - Reminders with notification, sound alarm (until you switch it off, 2 minutes at most) and snooze, kept also after a restart
 - List of the alarms (icon next to the lens): the ones ringing now and the ones coming in the next 60 days, with the time left; you can turn them off, cancel them (on this computer only) or open the event. Alarms ring one at a time and only while GGCalendar is open; reminders of hidden calendars do not ring (snoozed alarms do)

@@ -22,7 +22,8 @@
 
 - Vues jour, semaine, 6 jours, mois, année et programme ; week-ends masquables
 - Création, déplacement et redimensionnement des événements par glisser-déposer, y compris entre agendas différents
-- Fiche récapitulative au clic sur un événement (modifier, supprimer, écrire aux invités, exporter, rejoindre Meet) ; double-clic pour le modifier
+- Fiche récapitulative au clic sur un événement (modifier, supprimer, partager, rejoindre Meet) ; double-clic pour le modifier
+- Partager un événement depuis sa fiche : WhatsApp, Telegram, e-mail (titre en objet, texte dans le corps), e-mail aux invités (seulement s'il y en a), fichier `.ics` sur le disque, presse-papiers et les autres applications de Windows (texte et fichier `.ics`)
 - Événements récurrents, avec modification ou suppression d'une seule occurrence, des suivantes ou de toute la série
 - Rappels avec notification, alarme sonore (jusqu'à ce que vous l'arrêtiez, 2 minutes au maximum) et report, conservés aussi après un redémarrage
 - Liste des alarmes (icône à côté de la loupe) : celles qui sonnent et celles à venir dans les 60 prochains jours, avec le temps restant ; vous pouvez les arrêter, les annuler (sur cet ordinateur seulement) ou ouvrir l'événement. Les alarmes sonnent une à la fois et seulement quand GGCalendar est ouvert ; les rappels des agendas masqués ne sonnent pas (les alarmes reportées, si)

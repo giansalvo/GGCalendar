@@ -221,22 +221,25 @@ public class SearchUiTests
     [Trait("TestCase", "T166")]
     public Task T166_TheLinesShowTheEventTheFieldsFoundAndTheCalendar() => InSearchAppAsync(async window =>
     {
-        Add(window, "Riunione", Soon, description: "Parlare del budget trimestrale", location: "Sala Giove", guests: "mario@example.com");
+        // Words only this test has: the app of the tests also holds the events synced from the Google account of the tests, which can have "budget" or "mario@" too.
+        var tag = Guid.NewGuid().ToString("N")[..6];
+        var budget = "budget" + tag;
+        Add(window, "Riunione", Soon, description: "Parlare del " + budget + " trimestrale", location: "Sala Giove" + tag, guests: "mario" + tag + "@example.com");
         Add(window, "Altro", Soon.AddHours(3));
-        Search(window, "budget");
+        Search(window, budget);
         var rows = Rows(window);
         var row = Assert.Single(rows);
         var texts = row.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Contains(Word + " Riunione", texts);
         Assert.Contains(L.T("search.field_description"), texts);
-        Assert.Contains(texts, t => t?.Contains("budget") == true);
+        Assert.Contains(texts, t => t?.Contains(budget) == true);
         Assert.Equal(L.N("search.count", 1), ((TextBlock)FindById(window, "Search.Summary")).Text);
 
-        Search(window, "giove");
+        Search(window, "giove" + tag);
         Assert.Contains(L.T("search.field_location"), Rows(window).Single().GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text));
-        Search(window, "mario@");
+        Search(window, "mario" + tag + "@");
         Assert.Contains(L.T("search.field_guests"), Rows(window).Single().GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text));
-        Search(window, Word + " riunione budget"); // all the words, in different fields
+        Search(window, Word + " riunione " + budget); // all the words, in different fields
         Assert.Single(Rows(window));
         await Task.CompletedTask;
     });
@@ -339,7 +342,8 @@ public class SearchUiTests
         Search(window, Word + " pubblico");
         var row = Assert.Single(Rows(window));
         var card = await ShowCardAsync(window, row);
-        Assert.Single(card.GetVisualDescendants().OfType<Button>()); // only Close: no Edit, no Delete
+        Assert.Equal(2, card.GetVisualDescendants().OfType<Button>().Count()); // Share and Close: no Edit, no Delete
+        Assert.Single(card.GetVisualDescendants().OfType<Button>().Where(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) == "Details.Share"));
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
         DoubleClick(window, Rows(window).Single());

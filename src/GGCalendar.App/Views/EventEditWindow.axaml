@@ -46,8 +46,8 @@
     </Window.Styles>
 
     <DockPanel Margin="24,16,24,16">
-        <!-- Header: title, save, cancel, delete, export -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,0,0,12">
+        <!-- Header: title, save, cancel, delete -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,12">
             <TextBox Name="TitleBox" Text="{Binding Title}" PlaceholderText="{loc:T edit.add_title}" FontSize="22" Margin="0,0,16,0" />
             <Button AutomationProperties.AutomationId="Edit.Save" Grid.Column="1" Content="{loc:T common.save}" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnSave"
                     ToolTip.Tip="{loc:T edit.save_tip}" />
@@ -55,9 +55,6 @@
                     ToolTip.Tip="{loc:T edit.cancel_tip}" />
             <Button AutomationProperties.AutomationId="Edit.Delete" Grid.Column="3" Classes="iconbtn" Click="OnDelete" IsVisible="{Binding !IsNew}" ToolTip.Tip="{loc:T edit.delete_event}">
                 <TextBlock Text="&#xE74D;" />
-            </Button>
-            <Button AutomationProperties.AutomationId="Edit.Export" Grid.Column="4" Classes="iconbtn" Click="OnExport" ToolTip.Tip="{loc:T edit.export_ics}">
-                <TextBlock Text="&#xE896;" />
             </Button>
         </Grid>
 

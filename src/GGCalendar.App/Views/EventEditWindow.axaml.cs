@@ -49,24 +49,6 @@ public partial class EventEditWindow : Window
 
     private void OnCancel(object? sender, RoutedEventArgs e) => Close((EventEditResult?)null);
 
-    private async void OnExport(object? sender, RoutedEventArgs e)
-    {
-        if (Vm?.TryBuild() is not { } ev) return;
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = L.T("file.export_event_title"),
-            SuggestedFileName = (string.IsNullOrWhiteSpace(ev.Title) ? L.T("file.default_event_name") : string.Concat(ev.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c))) + ".ics",
-            DefaultExtension = "ics",
-            FileTypeChoices = [new FilePickerFileType(L.T("calendar.ics_type")) { Patterns = ["*.ics"] }],
-        });
-        if (file is null) return;
-
-        await using var stream = await file.OpenWriteAsync();
-        stream.SetLength(0);
-        await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
-        await writer.WriteAsync(IcsWriter.Write([ev]));
-    }
-
     private async void OnOpenMeet(object? sender, RoutedEventArgs e)
     {
         // Only web links are opened: the value comes from Google, but it is still data from outside the app.

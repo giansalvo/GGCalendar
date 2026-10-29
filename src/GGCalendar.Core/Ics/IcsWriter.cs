@@ -17,7 +17,8 @@ public static class IcsWriter
     private const string DateStamp = "yyyyMMdd";
 
     /// <param name="localZone">The zone the local times of the events are in (null = this PC's).</param>
-    public static string Write(IEnumerable<CalendarEvent> events, string productId = "-//GGCalendar//IT", TimeZoneInfo? localZone = null)
+    /// <param name="includeAttendees">False leaves the guests (their addresses) out: the file shared with someone else does not pass them on.</param>
+    public static string Write(IEnumerable<CalendarEvent> events, string productId = "-//GGCalendar//IT", TimeZoneInfo? localZone = null, bool includeAttendees = true)
     {
         var zone = localZone ?? TimeZoneInfo.Local;
         var tzid = IanaId(zone);
@@ -70,7 +71,7 @@ public static class IcsWriter
             Line(sb, "TRANSP:" + (e.Availability == EventAvailability.Free ? "TRANSPARENT" : "OPAQUE"));
             if (e.Visibility != EventVisibility.Default)
                 Line(sb, "CLASS:" + (e.Visibility == EventVisibility.Private ? "PRIVATE" : "PUBLIC"));
-            foreach (var a in e.Attendees)
+            foreach (var a in includeAttendees ? e.Attendees : [])
                 Line(sb, $"ATTENDEE;ROLE={(a.IsOptional ? "OPT-PARTICIPANT" : "REQ-PARTICIPANT")}:mailto:{Clean(a.Email)}");
             // Email reminders are sent by Google, not by the calendar that opens the file: they have no VALARM.
             foreach (var r in e.Reminders.Where(r => r.Method != ReminderMethod.Email))
