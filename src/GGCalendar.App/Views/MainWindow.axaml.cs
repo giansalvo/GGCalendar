@@ -1209,6 +1209,9 @@ public partial class MainWindow : Window
         result.DefaultView = vm.Settings.DefaultView;
         result.SearchScope = vm.Settings.SearchScope;
         result.SearchCalendarIds = vm.Settings.SearchCalendarIds;
+        // What the settings window does not show stays as it was: the splash already shown and the version of the sync data.
+        result.SplashVersion = vm.Settings.SplashVersion;
+        result.SyncSchema = vm.Settings.SyncSchema;
         _store.Save(result);
         vm.Settings = result;
         L.Apply(result.Language);
