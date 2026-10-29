@@ -55,6 +55,8 @@ public static class IcsWriter
             var description = Describe(e);
             if (description.Length > 0) Line(sb, "DESCRIPTION:" + Escape(description));
             if (e.MeetLink is not null) Line(sb, "URL:" + Clean(e.MeetLink));
+            foreach (var attachment in (e.Attachments ?? []).Where(x => x.CanOpen).Take(AttachmentLink.MaxCount))
+                Line(sb, Attach(attachment));
             if (e.Recurrence is { Length: > 0 })
             {
                 Line(sb, "RRULE:" + e.Recurrence);
@@ -100,6 +102,21 @@ public static class IcsWriter
     {
         if (zone.Id.Contains('/')) return zone.Id;
         return TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : null;
+    }
+
+    /// <summary>ATTACH with the address; the type and the name of the file are parameters (a name with : ; or , goes between quotes, which cannot be in it).</summary>
+    private static string Attach(EventAttachment a)
+    {
+        var sb = new StringBuilder("ATTACH");
+        if (!string.IsNullOrEmpty(a.MimeType)) sb.Append(";FMTTYPE=").Append(Param(a.MimeType));
+        if (a.Title.Length > 0) sb.Append(";FILENAME=").Append(Param(a.Title));
+        return sb.Append(':').Append(Clean(a.Url)).ToString();
+    }
+
+    private static string Param(string value)
+    {
+        var text = Clean(value).Replace('"', '\'').Replace('\r', ' ').Replace('\n', ' ');
+        return text.IndexOfAny([':', ';', ',']) >= 0 ? "\"" + text + "\"" : text;
     }
 
     private static string Describe(CalendarEvent e)

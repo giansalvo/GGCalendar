@@ -5,6 +5,7 @@ public sealed class AppSettings
     /// <summary>
     /// Version of what the sync stores. 1: alarms come from Google (<see cref="EventReminder.AlarmProperty"/>), so the
     /// first start after the update downloads everything again once.
+    /// 2: the attachments of the events come from Google, same.
     /// </summary>
     public int SyncSchema { get; set; }
 

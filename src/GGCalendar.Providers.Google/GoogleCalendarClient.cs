@@ -324,6 +324,6 @@ public sealed class GoogleCalendarClient
     private static string EventsUrl(string calendarId, CalendarEvent ev, string? remoteId)
     {
         var url = $"{Base}/calendars/{Uri.EscapeDataString(calendarId)}/events" + (remoteId is null ? "" : "/" + Uri.EscapeDataString(remoteId));
-        return url + $"?conferenceDataVersion=1&sendUpdates={(ev.SendInvites ? "all" : "none")}";
+        return url + $"?conferenceDataVersion=1&supportsAttachments=true&sendUpdates={(ev.SendInvites ? "all" : "none")}";
     }
 }

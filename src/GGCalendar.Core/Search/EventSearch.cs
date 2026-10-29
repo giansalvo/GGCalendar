@@ -6,7 +6,7 @@ using GGCalendar.Core.Recurrence;
 namespace GGCalendar.Core.Search;
 
 /// <summary>Where the text was found.</summary>
-public enum SearchField { Title, Description, Location, Guests }
+public enum SearchField { Title, Description, Location, Guests, Attachments }
 
 /// <summary>
 /// What to look for. <see cref="Text"/> (the simple box) looks in the title, the description, the location and the guests; the other
@@ -181,11 +181,14 @@ public static class EventSearch
         var description = Normalize(descriptionText);
         var location = Normalize(e.Location);
         var guests = Normalize(string.Join(", ", e.Attendees.Select(a => a.Email)));
-        var all = new[] { title, description, location, guests };
+        // The titles and the names of the files attached (not their addresses).
+        var attachmentNames = (e.Attachments ?? []).Select(x => (Shown: x.DisplayName, Text: AttachmentLink.SearchText(x))).Where(x => x.Text.Length > 0).ToList();
+        var attachments = Normalize(string.Join(" ", attachmentNames.Select(x => x.Text)));
+        var all = new[] { title, description, location, guests, attachments };
         static bool Has(string text, string word) => text.Contains(word, StringComparison.Ordinal);
 
         if (!t.General.All(w => all.Any(x => Has(x, w)))) return false;
-        if (!t.What.All(w => Has(title, w) || Has(description, w))) return false;
+        if (!t.What.All(w => Has(title, w) || Has(description, w) || Has(attachments, w))) return false;
         if (!t.Title.All(w => Has(title, w))) return false;
         if (!t.Description.All(w => Has(description, w))) return false;
         if (!t.Who.All(w => Has(guests, w))) return false;
@@ -197,13 +200,20 @@ public static class EventSearch
         var inDescription = t.General.Concat(t.What).Concat(t.Description).Any(w => Has(description, w));
         var inLocation = t.General.Concat(t.Where).Any(w => Has(location, w));
         var inGuests = t.General.Concat(t.Who).Any(w => Has(guests, w));
+        var inAttachments = t.General.Concat(t.What).Any(w => Has(attachments, w));
         var found = new List<SearchField>();
         if (inTitle) found.Add(SearchField.Title);
         if (inDescription) found.Add(SearchField.Description);
         if (inLocation) found.Add(SearchField.Location);
         if (inGuests) found.Add(SearchField.Guests);
+        if (inAttachments) found.Add(SearchField.Attachments);
         fields = found;
         if (inDescription) snippet = Snippet(descriptionText, t.General.Concat(t.What).Concat(t.Description).ToArray());
+        else if (inAttachments)
+        {
+            var words = t.General.Concat(t.What).ToArray();
+            snippet = string.Join(", ", attachmentNames.Where(x => words.Any(w => Has(Normalize(x.Text), w))).Select(x => x.Shown));
+        }
         else if (inGuests)
         {
             var words = t.General.Concat(t.Who).ToArray();

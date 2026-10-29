@@ -6,3 +6,4 @@
   - La búsqueda mira el texto que ves.
   - La descripción está limitada a 8192 caracteres.
   - La primera vez que se abre la aplicación tras una instalación o una actualización aparece durante 5 segundos una pantalla de inicio con la información de la aplicación.
+  - Los eventos pueden tener adjuntos (enlaces https a archivos, también de Google Drive): se añaden en la ventana del evento, se ven en la ficha, viajan con Google Calendar y en los archivos .ics y la búsqueda los encuentra.

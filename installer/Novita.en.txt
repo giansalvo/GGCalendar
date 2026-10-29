@@ -6,3 +6,4 @@
   - Search looks at the text you see.
   - The description is limited to 8192 characters.
   - The first time the app runs after an install or an update, a splash screen with the app information appears for 5 seconds.
+  - Events can have attachments (https links to files, also from Google Drive): add them in the event window, see them in the event card; they travel with Google Calendar and in .ics files and the search finds them.

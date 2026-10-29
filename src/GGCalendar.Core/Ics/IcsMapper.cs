@@ -123,7 +123,7 @@ public static class IcsMapper
     private sealed class Draft(
         string uid, string? recurrenceKey, DateTime? originalStart, bool cancelled, string calendarId, string title, string location, string description,
         DateTime start, DateTime end, bool allDay, string? recurrence, List<DateTime> excluded, bool busy, EventVisibility visibility,
-        IReadOnlyList<EventAttendee> attendees, IReadOnlyList<EventReminder> reminders)
+        IReadOnlyList<EventAttendee> attendees, IReadOnlyList<EventReminder> reminders, IReadOnlyList<EventAttachment> attachments)
     {
         public string Uid { get; } = uid;
         public string? RecurrenceKey { get; } = recurrenceKey;
@@ -144,6 +144,7 @@ public static class IcsMapper
             OriginalStart = master is null ? null : originalStart,
             Availability = busy ? EventAvailability.Busy : EventAvailability.Free,
             Visibility = visibility,
+            Attachments = attachments,
             SendInvites = false,
         };
     }
@@ -243,7 +244,7 @@ public static class IcsMapper
                 : (originalStart.Value - local.GetUtcOffset(originalStart.Value)).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
         }
 
-        if (c.All("ATTACH").Any()) issues.Add(IcsIssueCode.AttachIgnored);
+        var attachments = Attachments(c, issues);
         if (c.All("CATEGORIES").Any()) issues.Add(IcsIssueCode.CategoriesIgnored);
 
         var attendees = c.All("ATTENDEE")
@@ -263,7 +264,37 @@ public static class IcsMapper
         };
         var busy = c.Property("TRANSP")?.Value.Trim().ToUpperInvariant() != "TRANSPARENT";
         return new Draft(uid, recurrenceKey, originalStart, cancelled, calendarId, title, location, description, begin, end, allDay, rule, excluded, busy,
-            visibility, attendees, reminders);
+            visibility, attendees, reminders, attachments);
+    }
+
+    /// <summary>
+    /// The links of ATTACH (https only; the type and the name come from FMTTYPE and FILENAME). A file inside the calendar (BINARY), another
+    /// scheme, an address that is not valid or more than 25 are ignored and counted as one issue.
+    /// </summary>
+    private static List<EventAttachment> Attachments(IcsComponent c, IcsIssueList issues)
+    {
+        var list = new List<EventAttachment>();
+        var ignored = false;
+        foreach (var p in c.All("ATTACH"))
+        {
+            var binary = p.Params.TryGetValue("VALUE", out var kind) && kind.Equals("BINARY", StringComparison.OrdinalIgnoreCase)
+                || p.Params.ContainsKey("ENCODING");
+            var address = p.Value.Trim();
+            if (binary || !AttachmentLink.IsValid(address) || list.Count >= AttachmentLink.MaxCount || list.Any(x => x.Url == address))
+            {
+                ignored = true;
+                continue;
+            }
+
+            var title = p.Params.TryGetValue("FILENAME", out var name) ? name.Trim() : "";
+            if (title.Length > AttachmentLink.MaxTitleLength) title = title[..AttachmentLink.MaxTitleLength];
+            if (title.Length == 0) title = AttachmentLink.FileName(address);
+            var mime = p.Params.TryGetValue("FMTTYPE", out var type) && type.Trim().Length > 0 ? type.Trim() : AttachmentLink.MimeType(address);
+            list.Add(new EventAttachment(address, title, mime));
+        }
+
+        if (ignored) issues.Add(IcsIssueCode.AttachIgnored);
+        return list;
     }
 
     private static string ReadUid(IcsComponent c, IcsProperty startProperty, string title, string location, IcsIssueList issues)

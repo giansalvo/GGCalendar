@@ -109,6 +109,34 @@ public sealed class EventDetailsCard : Border
             body.Children.Add(Row(Icon("", muted), description));
         }
 
+        if (ev.Attachments is { Count: > 0 } attachments)
+        {
+            var linkBrush = new SolidColorBrush(Color.Parse(dark ? "#8AB4F8" : "#1A73E8"));
+            var list = new StackPanel { Spacing = 2 };
+            Avalonia.Automation.AutomationProperties.SetAutomationId(list, "Details.Attachments");
+            foreach (var attachment in attachments)
+            {
+                if (!attachment.CanOpen)
+                {
+                    list.Children.Add(Muted(attachment.DisplayName, muted));
+                    continue;
+                }
+
+                var open = new Button
+                {
+                    Content = new TextBlock { Text = attachment.DisplayName, Foreground = linkBrush, TextDecorations = TextDecorations.Underline, TextTrimming = TextTrimming.CharacterEllipsis },
+                    Background = Brushes.Transparent, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left,
+                    Cursor = new Cursor(StandardCursorType.Hand),
+                };
+                ToolTip.SetTip(open, attachment.Url);
+                Avalonia.Automation.AutomationProperties.SetAutomationId(open, "Details.Attachment");
+                open.Click += (_, _) => LinkRequested?.Invoke(new Uri(attachment.Url));
+                list.Children.Add(open);
+            }
+
+            body.Children.Add(Row(Icon("\uE723", muted), list));
+        }
+
         if (ev.Attendees.Count > 0)
         {
             var guests = new StackPanel { Spacing = 2 };

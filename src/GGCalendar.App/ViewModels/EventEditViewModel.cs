@@ -94,6 +94,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
         BuildSoundOptions(ev.Reminders);
         foreach (var r in ev.Reminders) Reminders.Add(new ReminderItemViewModel(r, SoundOptions));
         foreach (var a in ev.Attendees) Attendees.Add(new AttendeeViewModel(a));
+        foreach (var attachment in ev.Attachments ?? []) Attachments.Add(attachment);
 
         var current = RecurrenceOptions.FirstOrDefault(o => o.Value == ev.Recurrence);
         if (current is null)
@@ -122,6 +123,11 @@ public sealed partial class EventEditViewModel : ViewModelBase
 
     public ObservableCollection<ReminderItemViewModel> Reminders { get; } = [];
     public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
+
+    /// <summary>The attachments (links). An event whose attachments were never read keeps them unread (null) until the person adds or removes one.</summary>
+    public ObservableCollection<EventAttachment> Attachments { get; } = [];
+
+    private bool _attachmentsTouched;
     public ObservableCollection<SoundOption> SoundOptions { get; } = [];
 
     public const string CustomRecurrence = "__custom__";
@@ -224,11 +230,20 @@ public sealed partial class EventEditViewModel : ViewModelBase
     [ObservableProperty] public partial bool GuestsCanInvite { get; set; }
     [ObservableProperty] public partial bool GuestsCanSeeList { get; set; }
     [ObservableProperty] public partial string NewAttendee { get; set; } = "";
+    [ObservableProperty] public partial string NewAttachmentUrl { get; set; } = "";
+    [ObservableProperty] public partial string NewAttachmentTitle { get; set; } = "";
+    /// <summary>Why the address in the boxes was not added; shown under the boxes.</summary>
+    [ObservableProperty] public partial string AttachmentError { get; set; } = "";
     [ObservableProperty] public partial string Error { get; set; } = "";
+
+    /// <summary>Typing another address makes the reason of the last refusal obsolete.</summary>
+    partial void OnNewAttachmentUrlChanged(string value) => AttachmentError = "";
 
     public bool IsTimed => !IsAllDay;
     public bool HasMeetLink => !string.IsNullOrEmpty(MeetLink);
     public bool HasAttendees => Attendees.Count > 0;
+    public bool HasAttachments => Attachments.Count > 0;
+    public bool CanAddAttachment => Attachments.Count < AttachmentLink.MaxCount;
     public bool CanAddReminder => Reminders.Count < 5;
 
     partial void OnRecurrenceChanged(ChoiceOption<string?> value)
@@ -342,12 +357,44 @@ public sealed partial class EventEditViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasAttendees));
     }
 
+    [RelayCommand]
+    private void AddAttachment()
+    {
+        AttachmentError = "";
+        if (string.IsNullOrWhiteSpace(NewAttachmentUrl)) return;
+        var attachment = AttachmentLink.Create(NewAttachmentUrl, NewAttachmentTitle);
+        if (attachment is null) { AttachmentError = L.T("edit.error_attachment", NewAttachmentUrl.Trim()); return; }
+        if (Attachments.Count >= AttachmentLink.MaxCount) { AttachmentError = L.T("edit.error_attachments_max", AttachmentLink.MaxCount); return; }
+        if (!Attachments.Any(x => x.Url == attachment.Url))
+        {
+            Attachments.Add(attachment);
+            _attachmentsTouched = true;
+        }
+
+        NewAttachmentUrl = "";
+        NewAttachmentTitle = "";
+        OnPropertyChanged(nameof(HasAttachments));
+        OnPropertyChanged(nameof(CanAddAttachment));
+    }
+
+    [RelayCommand]
+    private void RemoveAttachment(EventAttachment attachment)
+    {
+        Attachments.Remove(attachment);
+        _attachmentsTouched = true;
+        OnPropertyChanged(nameof(HasAttachments));
+        OnPropertyChanged(nameof(CanAddAttachment));
+    }
+
     /// <summary>Builds the edited event, or returns null and sets <see cref="Error"/> when the input is invalid.</summary>
     public CalendarEvent? TryBuild()
     {
         Error = "";
         if (!string.IsNullOrWhiteSpace(NewAttendee)) AddAttendee();
         if (Error.Length > 0) return null;
+        AttachmentError = "";
+        if (!string.IsNullOrWhiteSpace(NewAttachmentUrl)) AddAttachment();
+        if (AttachmentError.Length > 0) { Error = AttachmentError; return null; }
         if (SelectedCalendar is null) { Error = L.T("edit.error_calendar"); return null; }
         if (StartDate is null || EndDate is null) { Error = L.T("edit.error_dates"); return null; }
 
@@ -376,6 +423,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
             Start = start,
             End = end,
             Attendees = Attendees.Select(a => new EventAttendee(a.Email, a.IsOptional)).ToList(),
+            Attachments = _original.Attachments is null && !_attachmentsTouched ? null : Attachments.ToList(),
             Reminders = Reminders.Select(r => r.ToModel()).ToList(),
             Recurrence = Recurrence.Value,
             ColorHex = EventColor.Hex,

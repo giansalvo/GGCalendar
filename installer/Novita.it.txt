@@ -6,3 +6,4 @@
   - La ricerca guarda il testo che vedi.
   - La descrizione ha un limite di 8192 caratteri.
   - Alla prima apertura dopo un'installazione o un aggiornamento compare per 5 secondi una schermata iniziale con le informazioni sull'app.
+  - Gli eventi possono avere allegati (link https a file, anche di Google Drive): si aggiungono nella finestra dell'evento, si vedono nella scheda, viaggiano con Google Calendar e nei file .ics e si trovano con la ricerca.

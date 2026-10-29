@@ -92,6 +92,40 @@ public partial class EventEditWindow : Window
         if ((sender as Control)?.DataContext is AttendeeViewModel a) Vm?.RemoveAttendeeCommand.Execute(a);
     }
 
+    private void OnAttachmentKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        AddAttachment();
+        e.Handled = true;
+    }
+
+    private void OnAddAttachment(object? sender, RoutedEventArgs e) => AddAttachment();
+
+    /// <summary>Adds the attachment of the boxes and, if it was added, leaves the cursor in the box of the next one, in view.</summary>
+    private void AddAttachment()
+    {
+        Vm?.AddAttachmentCommand.Execute(null);
+        if (Vm is { AttachmentError.Length: 0 })
+        {
+            var box = this.FindControl<TextBox>("AttachmentUrlBox");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => { box?.BringIntoView(); box?.Focus(); });
+        }
+    }
+
+    private async void OnOpenAttachment(object? sender, RoutedEventArgs e)
+    {
+        // An address that comes from outside the app (Google, a file): the person sees the real one and decides.
+        if ((sender as Control)?.DataContext is not EventAttachment { CanOpen: true } attachment) return;
+        var uri = new Uri(attachment.Url);
+        var sure = await new ConfirmWindow(L.T("confirm.open_link_title"), L.T("confirm.open_link_text", uri.AbsoluteUri), L.T("confirm.open_link_button")).ShowDialog<bool>(this);
+        if (sure) await Launcher.LaunchUriAsync(uri);
+    }
+
+    private void OnRemoveAttachment(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is EventAttachment a) Vm?.RemoveAttachmentCommand.Execute(a);
+    }
+
     private void OnRemoveReminder(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ReminderItemViewModel r) Vm?.RemoveReminderCommand.Execute(r);

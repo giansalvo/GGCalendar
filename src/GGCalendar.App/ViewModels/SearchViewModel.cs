@@ -359,6 +359,7 @@ public sealed partial class SearchViewModel : ObservableObject
             SearchField.Title => "search.field_title",
             SearchField.Description => "search.field_description",
             SearchField.Location => "search.field_location",
+            SearchField.Attachments => "search.field_attachments",
             _ => "search.field_guests",
         })));
         return new SearchRow(e, time, string.IsNullOrWhiteSpace(e.Title) ? L.T("common.untitled") : e.Title, e.ColorHex ?? calendar?.ColorHex ?? "#1A73E8",

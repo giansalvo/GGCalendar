@@ -126,8 +126,25 @@ public static class GoogleEventMapper
             GuestsCanModify = Bool(e, "guestsCanModify", false),
             GuestsCanInvite = Bool(e, "guestsCanInviteOthers", true),
             GuestsCanSeeList = Bool(e, "guestsCanSeeOtherGuests", true),
+            Attachments = ReadAttachments(e),
         };
     }
+
+    /// <summary>The attachments as Google sends them; an event without the field has none (the list is known and empty).</summary>
+    private static List<EventAttachment> ReadAttachments(JsonElement e)
+    {
+        var list = new List<EventAttachment>();
+        if (!e.TryGetProperty("attachments", out var attachments) || attachments.ValueKind != JsonValueKind.Array) return list;
+        foreach (var a in attachments.EnumerateArray())
+        {
+            if (Str(a, "fileUrl") is not { Length: > 0 } url) continue;
+            list.Add(new EventAttachment(url, Str(a, "title") ?? "", NullIfEmpty(Str(a, "mimeType")), NullIfEmpty(Str(a, "fileId")), NullIfEmpty(Str(a, "iconLink"))));
+        }
+
+        return list;
+    }
+
+    private static string? NullIfEmpty(string? text) => string.IsNullOrEmpty(text) ? null : text;
 
     private static string? MeetUri(JsonElement e) =>
         e.TryGetProperty("conferenceData", out var cd) && cd.TryGetProperty("entryPoints", out var eps) && eps.ValueKind == JsonValueKind.Array
@@ -237,6 +254,17 @@ public static class GoogleEventMapper
         // null removes the color on Google in a PATCH; a color outside Google's palette is left as Google has it.
         if (ev.ColorHex is null) body["colorId"] = null;
         else if (ColorIdOfHex(ev.ColorHex) is { } colorId) body["colorId"] = colorId;
+
+        // Only when they were read: an empty list would remove the attachments that Google has. The file id and the icon are Google's own.
+        if (ev.Attachments is { } attachments)
+        {
+            body["attachments"] = new JsonArray(attachments.Take(AttachmentLink.MaxCount).Select(a =>
+            {
+                var item = new JsonObject { ["fileUrl"] = a.Url, ["title"] = a.Title };
+                if (a.MimeType is not null) item["mimeType"] = a.MimeType;
+                return (JsonNode)item;
+            }).ToArray());
+        }
 
         if (!string.IsNullOrEmpty(ev.Recurrence))
         {

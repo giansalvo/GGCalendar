@@ -327,6 +327,7 @@ public sealed class FakeGoogle : HttpMessageHandler
             var created = sent["id"]?.GetValue<string>() ?? "g" + _nextId++;
             if (_events.ContainsKey(created)) return Reply(HttpStatusCode.Conflict, ErrorBody(HttpStatusCode.Conflict, "duplicate")); // an id is never reused, not even after a deletion
             var stored = new JsonObject { ["id"] = created };
+            PrepareAttachments(sent, query["supportsAttachments"] == "true");
             Merge(stored, sent);
             Store(created, stored);
             if (LoseNextInsertAnswer)
@@ -353,12 +354,57 @@ public sealed class FakeGoogle : HttpMessageHandler
             if (request.Headers.TryGetValues("If-Match", out var match) && match.First() != (string?)current.Body["etag"])
                 return Reply(HttpStatusCode.PreconditionFailed, "{}");
             OnPatch?.Invoke(id);
-            Merge(current.Body, JsonNode.Parse(body!)!.AsObject());
+            var patch = JsonNode.Parse(body!)!.AsObject();
+            PrepareAttachments(patch, query["supportsAttachments"] == "true");
+            Merge(current.Body, patch);
             Store(id, current.Body);
             return Reply(HttpStatusCode.OK, current.Body.ToJsonString());
         }
 
         return Reply(HttpStatusCode.MethodNotAllowed, "{}");
+    }
+
+    /// <summary>
+    /// What Google does with the attachments: without supportsAttachments=true the field is ignored; with it the list is replaced
+    /// (an empty list removes them), at most 25 are kept without saying so, and each one gets the icon and, for a file of Drive, its id.
+    /// </summary>
+    private static void PrepareAttachments(JsonObject sent, bool supported)
+    {
+        if (!sent.ContainsKey("attachments")) return;
+        if (!supported || sent["attachments"] is not JsonArray list)
+        {
+            sent.Remove("attachments");
+            return;
+        }
+
+        var kept = new JsonArray();
+        foreach (var item in list.Take(25))
+        {
+            var a = item!.AsObject();
+            var url = a["fileUrl"]?.GetValue<string>() ?? "";
+            var copy = new JsonObject { ["fileUrl"] = url, ["title"] = a["title"]?.GetValue<string>() ?? "" };
+            if (a["mimeType"] is { } mime) copy["mimeType"] = mime.GetValue<string>();
+            copy["iconLink"] = "";
+            var drive = System.Text.RegularExpressions.Regex.Match(url, @"drive\.google\.com/(?:open\?id=|file/d/)([\w-]+)");
+            if (drive.Success) copy["fileId"] = drive.Groups[1].Value;
+            kept.Add(copy);
+        }
+
+        sent["attachments"] = kept.Count == 0 ? null : kept; // an empty list removes the field, as on Google
+    }
+
+    /// <summary>The attachments of an event as Google holds them; null when it has none.</summary>
+    public JsonArray? AttachmentsOf(string id) => _events[id].Body["attachments"]?.AsArray();
+
+    /// <summary>Puts attachments on an event from the Google side (as the web page of Calendar does) and makes it look changed.</summary>
+    public void SetAttachments(string id, params (string Url, string Title)[] attachments)
+    {
+        var list = new JsonArray();
+        foreach (var (url, title) in attachments) list.Add(new JsonObject { ["fileUrl"] = url, ["title"] = title });
+        var sent = new JsonObject { ["attachments"] = list };
+        PrepareAttachments(sent, true);
+        _events[id].Body["attachments"] = sent["attachments"]?.DeepClone();
+        Store(id, _events[id].Body);
     }
 
     /// <summary>Batches received: each is one request that carries several calls.</summary>

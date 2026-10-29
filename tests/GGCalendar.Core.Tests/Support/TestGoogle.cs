@@ -99,6 +99,13 @@ public sealed class TestGoogle : IDisposable
     public Task<JsonElement> PatchAsync(string remoteId, JsonObject fields) =>
         SendAsync(HttpMethod.Patch, $"{_events}/{Uri.EscapeDataString(remoteId)}", fields);
 
+    /// <summary>Sets the attachments of an event as the web page of Calendar does (supportsAttachments=true); an empty list removes them.</summary>
+    public Task<JsonElement> SetAttachmentsAsync(string remoteId, params (string Url, string Title)[] attachments) =>
+        SendAsync(HttpMethod.Patch, $"{_events}/{Uri.EscapeDataString(remoteId)}?supportsAttachments=true", new JsonObject
+        {
+            ["attachments"] = new JsonArray(attachments.Select(a => (JsonNode)new JsonObject { ["fileUrl"] = a.Url, ["title"] = a.Title }).ToArray()),
+        });
+
     public Task DeleteAsync(string remoteId) => SendAsync(HttpMethod.Delete, $"{_events}/{Uri.EscapeDataString(remoteId)}");
 
     /// <summary>Deletes every event of the test calendar whose title starts with the test prefix (left by an interrupted run). Returns how many.</summary>

@@ -20,7 +20,15 @@ public static class EventContent
         && a.Availability == b.Availability
         && a.Visibility == b.Visibility
         && string.Equals(a.ColorHex, b.ColorHex, StringComparison.OrdinalIgnoreCase)
-        && a.IsCancelled == b.IsCancelled;
+        && a.IsCancelled == b.IsCancelled
+        && SameAttachments(a, b);
+
+    /// <summary>Equal when both lists are the same links with the same titles (the order does not matter); a list that was never read (null) says nothing, so it is the same as any other.</summary>
+    private static bool SameAttachments(CalendarEvent a, CalendarEvent b) =>
+        a.Attachments is null || b.Attachments is null || Links(a).SetEquals(Links(b));
+
+    private static HashSet<string> Links(CalendarEvent e) =>
+        (e.Attachments ?? []).Select(x => x.Url + "|" + x.Title).ToHashSet(StringComparer.Ordinal);
 
     private static HashSet<string> Guests(CalendarEvent e, string? ignore) =>
         e.Attendees.Where(x => !x.Email.Equals(ignore, StringComparison.OrdinalIgnoreCase))

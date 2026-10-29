@@ -6,3 +6,4 @@
   - La recherche regarde le texte que vous voyez.
   - La description est limitée à 8192 caractères.
   - Au premier lancement après une installation ou une mise à jour, un écran de démarrage avec les informations sur l'application s'affiche pendant 5 secondes.
+  - Les événements peuvent avoir des pièces jointes (liens https vers des fichiers, aussi de Google Drive) : on les ajoute dans la fenêtre de l'événement, on les voit dans la fiche, elles voyagent avec Google Agenda et dans les fichiers .ics et la recherche les trouve.

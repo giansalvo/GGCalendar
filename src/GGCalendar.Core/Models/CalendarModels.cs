@@ -144,6 +144,12 @@ public sealed record CalendarEvent(
     /// <summary>Whether invitation emails are sent to the attendees when the event is saved.</summary>
     public bool SendInvites { get; init; } = true;
 
+    /// <summary>
+    /// The attachments (links). Null means "not read yet" (an event synced before the attachments were read): the sync then does not send the
+    /// field, because an empty list would remove the ones that Google has. Empty means "none".
+    /// </summary>
+    public IReadOnlyList<EventAttachment>? Attachments { get; init; }
+
     public bool GuestsCanModify { get; init; }
     public bool GuestsCanInvite { get; init; }
     public bool GuestsCanSeeList { get; init; } = true;

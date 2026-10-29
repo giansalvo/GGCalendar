@@ -1,6 +1,7 @@
 ﻿<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
+        xmlns:models="using:GGCalendar.Core.Models"
         x:Class="GGCalendar.App.Views.EventEditWindow"
         x:DataType="vm:EventEditViewModel"
         Icon="/Assets/GGCalendar.ico"
@@ -180,6 +181,42 @@
                         <ComboBox ItemsSource="{Binding AvailabilityOptions}" SelectedItem="{Binding Availability}" MinWidth="140" DisplayMemberBinding="{ReflectionBinding Label}" />
                         <ComboBox ItemsSource="{Binding VisibilityOptions}" SelectedItem="{Binding Visibility}" MinWidth="200" DisplayMemberBinding="{ReflectionBinding Label}" />
                     </StackPanel>
+
+                    <!-- Attachments: a row for each one (the name opens it), then a row to add another (not shown at the limit) -->
+                    <Grid ColumnDefinitions="28,*">
+                        <TextBlock Classes="icon" Text="📎" VerticalAlignment="Top" Margin="0,6,0,0" />
+                        <StackPanel Grid.Column="1" Spacing="6" MaxWidth="640" HorizontalAlignment="Stretch">
+                            <ItemsControl ItemsSource="{Binding Attachments}" AutomationProperties.AutomationId="Edit.Attachments">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:EventAttachment">
+                                        <Border Background="#14888888" CornerRadius="6" Padding="10,4,4,4" Margin="0,0,0,6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel>
+                                                    <Button Classes="link" Padding="0" HorizontalAlignment="Left" Click="OnOpenAttachment" ToolTip.Tip="{Binding Url}"
+                                                            AutomationProperties.AutomationId="Edit.Attachment.Open">
+                                                        <TextBlock Text="{Binding DisplayName}" TextDecorations="Underline" TextTrimming="CharacterEllipsis" />
+                                                    </Button>
+                                                    <TextBlock Classes="hint" Text="{Binding Url}" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="✕" Background="Transparent" Click="OnRemoveAttachment" AutomationProperties.AutomationId="Edit.Attachment.Remove"
+                                                        ToolTip.Tip="{loc:T common.remove}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Grid ColumnDefinitions="2*,*,Auto" IsVisible="{Binding CanAddAttachment}">
+                                <TextBox Name="AttachmentUrlBox" Text="{Binding NewAttachmentUrl}" PlaceholderText="{loc:T edit.attachment_url}" KeyDown="OnAttachmentKeyDown"
+                                         AutomationProperties.AutomationId="Edit.AttachmentUrl" />
+                                <TextBox Grid.Column="1" Text="{Binding NewAttachmentTitle}" PlaceholderText="{loc:T edit.attachment_title}" Margin="6,0,0,0" KeyDown="OnAttachmentKeyDown"
+                                         AutomationProperties.AutomationId="Edit.AttachmentTitle" />
+                                <Button Grid.Column="2" Content="＋" Margin="6,0,0,0" Click="OnAddAttachment" ToolTip.Tip="{loc:T edit.add_attachment}"
+                                        AutomationProperties.AutomationId="Edit.AttachmentAdd" />
+                            </Grid>
+                            <TextBlock Text="{Binding AttachmentError}" Foreground="#D93025" TextWrapping="Wrap" AutomationProperties.AutomationId="Edit.AttachmentError"
+                                       IsVisible="{Binding AttachmentError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Description -->
                     <Grid ColumnDefinitions="28,*">

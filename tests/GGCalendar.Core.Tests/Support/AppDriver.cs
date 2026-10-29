@@ -27,6 +27,8 @@ public sealed record EventSpec(string Title)
     public DateTime? LastDay { get; init; }
     /// <summary>Replaces the standard reminders when set.</summary>
     public IReadOnlyList<EventReminder>? Reminders { get; init; }
+    /// <summary>Links added in the attachments section of the editor (address and title).</summary>
+    public IReadOnlyList<(string Url, string Title)>? Attachments { get; init; }
 }
 
 /// <summary>
@@ -218,6 +220,14 @@ public static class AppDriver
         {
             editor.Reminders.Clear();
             foreach (var r in reminders) editor.Reminders.Add(new ReminderItemViewModel(r, editor.SoundOptions));
+        }
+
+        foreach (var (url, attachmentTitle) in spec.Attachments ?? [])
+        {
+            editor.NewAttachmentUrl = url;
+            editor.NewAttachmentTitle = attachmentTitle;
+            editor.AddAttachmentCommand.Execute(null);
+            Assert.Equal("", editor.Error);
         }
 
         if (spec.ColorHex is { } hex)

@@ -295,12 +295,13 @@ public class IcsEngineTests
 
     [Fact]
     [Trait("TestCase", "T77")]
-    public void T77_AttachmentsAndCategoriesAreIgnoredAndReported()
+    public void T77_AnHttpsAttachmentIsReadAndCategoriesAreIgnoredAndReported()
     {
         var feed = Analyze("ggcal_attach");
 
-        Assert.Single(feed.Events);
-        Assert.True(feed.Report.Has(IcsIssueCode.AttachIgnored));
+        // The link of the attachment (https) is kept; the categories are not supported and the person is told.
+        Assert.Equal(["https://example.com/documento.pdf"], Assert.Single(feed.Events).Attachments!.Select(a => a.Url));
+        Assert.False(feed.Report.Has(IcsIssueCode.AttachIgnored));
         Assert.True(feed.Report.Has(IcsIssueCode.CategoriesIgnored));
     }
 

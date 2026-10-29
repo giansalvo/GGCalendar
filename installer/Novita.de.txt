@@ -6,3 +6,4 @@
   - Die Suche betrachtet den sichtbaren Text.
   - Die Beschreibung ist auf 8192 Zeichen begrenzt.
   - Beim ersten Start nach einer Installation oder einem Update erscheint 5 Sekunden lang ein Startbildschirm mit den Informationen zur App.
+  - Termine können Anhänge haben (https-Links zu Dateien, auch von Google Drive): Sie werden im Terminfenster hinzugefügt, in der Terminkarte angezeigt, reisen mit Google Kalender und in .ics-Dateien und die Suche findet sie.

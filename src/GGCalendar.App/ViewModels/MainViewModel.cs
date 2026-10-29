@@ -644,6 +644,7 @@ public sealed partial class MainViewModel : ViewModelBase
             GuestsCanModify = Settings.DefaultGuestsCanModify,
             GuestsCanInvite = Settings.DefaultGuestsCanInvite,
             GuestsCanSeeList = Settings.DefaultGuestsCanSeeList,
+            Attachments = [],
         };
     }
 
