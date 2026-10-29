@@ -22,7 +22,8 @@
 
 - Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht; Wochenenden ausblendbar
 - Termine per Ziehen erstellen, verschieben und in der Größe ändern, auch zwischen verschiedenen Kalendern
-- Übersichtskarte beim Klick auf einen Termin (bearbeiten, löschen, E-Mail an die Gäste, exportieren, an Meet teilnehmen); Doppelklick zum Bearbeiten
+- Übersichtskarte beim Klick auf einen Termin (bearbeiten, löschen, teilen, an Meet teilnehmen); Doppelklick zum Bearbeiten
+- Einen Termin über seine Karte teilen: WhatsApp, Telegram, E-Mail (Titel als Betreff, Text im Nachrichtentext), E-Mail an die Gäste (nur wenn es welche gibt), `.ics`-Datei auf der Festplatte, Zwischenablage und die anderen Apps von Windows (Text und `.ics`-Datei)
 - Wiederkehrende Termine, mit Bearbeiten oder Löschen eines einzelnen Termins, der folgenden oder der ganzen Serie
 - Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 2 Minuten) und Schlummerfunktion, auch nach einem Neustart erhalten
 - Liste der Wecker (Symbol neben der Lupe): die gerade klingelnden und die in den nächsten 60 Tagen anstehenden, mit der verbleibenden Zeit; Sie können sie ausschalten, abbrechen (nur auf diesem Computer) oder den Termin öffnen. Wecker klingeln einzeln nacheinander und nur bei geöffnetem GGCalendar; Erinnerungen ausgeblendeter Kalender klingeln nicht (verschobene Wecker schon)

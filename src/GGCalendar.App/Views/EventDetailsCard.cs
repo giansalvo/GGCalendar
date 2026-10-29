@@ -6,10 +6,15 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Recurrence;
 using GGCalendar.Core.Localization;
+using GGCalendar.Core.Sharing;
 
 namespace GGCalendar.App.Views;
 
@@ -24,8 +29,12 @@ public sealed class EventDetailsCard : Border
 
     public event Action? EditRequested;
     public event Action? DeleteRequested;
-    public event Action? MailRequested;
-    public event Action? ExportRequested;
+
+    /// <summary>A way of sharing was chosen in the row that opens over the share button (issue #45).</summary>
+    public event Action<ShareTarget>? ShareRequested;
+
+    /// <summary>The mouse (or the keyboard) is on a way of sharing: the key of the text saying what it does, for the status bar; null when it leaves.</summary>
+    public event Action<string?>? ShareHint;
     public event Action? JoinMeetRequested;
     public event Action? CloseRequested;
 
@@ -57,15 +66,7 @@ public sealed class EventDetailsCard : Border
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2 };
         if (!readOnly) actions.Children.Add(IconButton("", L.T("details.edit"), fg, () => EditRequested?.Invoke()));
         if (!readOnly) actions.Children.Add(IconButton("", L.T("edit.delete_event"), fg, () => DeleteRequested?.Invoke()));
-        if (ev.Attendees.Count > 0) actions.Children.Add(IconButton("", L.T("details.mail"), fg, () => MailRequested?.Invoke()));
-        if (!readOnly)
-        {
-            var more = IconButton("", L.T("details.more"), fg, null);
-            var export = new MenuItem { Header = L.T("details.export") };
-            export.Click += (_, _) => ExportRequested?.Invoke();
-            more.Flyout = new MenuFlyout { Items = { export } };
-            actions.Children.Add(more);
-        }
+        actions.Children.Add(ShareButton(fg, ev.Attendees.Count > 0));
         actions.Children.Add(IconButton("", L.T("common.close"), fg, () => CloseRequested?.Invoke()));
 
         var body = new StackPanel { Spacing = 14, Margin = new Thickness(0, 6, 0, 0) };
@@ -162,6 +163,96 @@ public sealed class EventDetailsCard : Border
         content.Children.Add(actions);
         content.Children.Add(body);
         Child = content;
+    }
+
+    /// <summary>The share button; it opens a row of ways to share over itself (WhatsApp, Telegram, email, disk, clipboard, other apps).</summary>
+    private Button ShareButton(IBrush fg, bool hasGuests)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        row.Children.Add(ShareChoice(ShareTarget.WhatsApp, "WhatsApp", "share.hint.whatsapp", BrandImage("whatsapp")));
+        row.Children.Add(ShareChoice(ShareTarget.Telegram, "Telegram", "share.hint.telegram", BrandImage("telegram")));
+        row.Children.Add(ShareChoice(ShareTarget.Mail, "Email", "share.hint.mail", Glyph("", "#1A73E8")));
+        // Only an event with guests: the same mail, to them. The icon has people next to the envelope, so that the two are not taken for each other.
+        if (hasGuests) row.Children.Add(ShareChoice(ShareTarget.MailGuests, "Guests", "share.hint.mail_guests", GuestsGlyph()));
+        row.Children.Add(ShareChoice(ShareTarget.Disk, "Disk", "share.hint.disk", Glyph("", "#C26401")));
+        row.Children.Add(ShareChoice(ShareTarget.Clipboard, "Clipboard", "share.hint.clipboard", Glyph("", "#7A4FC9")));
+        row.Children.Add(ShareChoice(ShareTarget.Apps, "Apps", "share.hint.apps", Glyph("", "#5F6368")));
+
+        var flyout = new Flyout { Placement = PlacementMode.Top, Content = row, ShowMode = FlyoutShowMode.Standard };
+        _shareFlyout = flyout;
+        var button = new Button
+        {
+            Content = ShareGlyph(fg),
+            Width = 38, Height = 38, Padding = new Thickness(0), CornerRadius = new CornerRadius(19),
+            Background = Brushes.Transparent,
+            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+            Flyout = flyout,
+        };
+        ToolTip.SetTip(button, L.T("details.share"));
+        Avalonia.Automation.AutomationProperties.SetAutomationId(button, "Details.Share");
+        Avalonia.Automation.AutomationProperties.SetName(button, L.T("details.share"));
+        return button;
+    }
+
+    private Flyout? _shareFlyout;
+
+    private Button ShareChoice(ShareTarget target, string name, string hintKey, Control icon)
+    {
+        var button = new Button
+        {
+            Content = icon, Width = 40, Height = 40, Padding = new Thickness(0), CornerRadius = new CornerRadius(20),
+            Background = Brushes.Transparent,
+            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(button, "Share." + target);
+        Avalonia.Automation.AutomationProperties.SetName(button, name);
+        // No tooltip: it hides the other icons. What the icon does is written in the status bar while the pointer is over it.
+        button.PointerEntered += (_, _) => ShareHint?.Invoke(hintKey);
+        button.PointerExited += (_, _) => ShareHint?.Invoke(null);
+        button.GotFocus += (_, _) => ShareHint?.Invoke(hintKey);
+        button.LostFocus += (_, _) => ShareHint?.Invoke(null);
+        button.Click += (_, _) =>
+        {
+            ShareHint?.Invoke(null);
+            _shareFlyout?.Hide();
+            ShareRequested?.Invoke(target);
+        };
+        return button;
+    }
+
+    private static Image BrandImage(string name) => new()
+    {
+        Width = 24, Height = 24,
+        Source = new Bitmap(AssetLoader.Open(new Uri($"avares://GGCalendar.App/Assets/Brand/{name}.png"))),
+    };
+
+    private static Grid GuestsGlyph()
+    {
+        var blue = new SolidColorBrush(Color.Parse("#1A73E8"));
+        var grid = new Grid { Width = 28, Height = 24 };
+        grid.Children.Add(new TextBlock { Text = "\uE715", FontFamily = new FontFamily(IconFont), FontSize = 20, Foreground = blue, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+        grid.Children.Add(new TextBlock { Text = "\uE716", FontFamily = new FontFamily(IconFont), FontSize = 13, Foreground = blue, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom });
+        return grid;
+    }
+
+    private static TextBlock Glyph(string glyph, string color) => new()
+    {
+        Text = glyph, FontFamily = new FontFamily(IconFont), FontSize = 20, Foreground = new SolidColorBrush(Color.Parse(color)),
+        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    /// <summary>The usual sign of sharing: three dots joined by two lines that open from one of them.</summary>
+    private static Canvas ShareGlyph(IBrush brush)
+    {
+        var canvas = new Canvas { Width = 18, Height = 18 };
+        void Line(double x1, double y1, double x2, double y2) => canvas.Children.Add(new Line { StartPoint = new Point(x1, y1), EndPoint = new Point(x2, y2), Stroke = brush, StrokeThickness = 1.3 });
+        void Dot(double cx, double cy) => canvas.Children.Add(new Ellipse { Width = 4.4, Height = 4.4, Stroke = brush, StrokeThickness = 1.3, [Canvas.LeftProperty] = cx - 2.2, [Canvas.TopProperty] = cy - 2.2 });
+        Line(5.7, 8.1, 12.3, 4.6);
+        Line(5.7, 9.9, 12.3, 13.4);
+        Dot(13.5, 3.7);
+        Dot(4.5, 9);
+        Dot(13.5, 14.3);
+        return canvas;
     }
 
     private static Grid Row(Control icon, Control content)

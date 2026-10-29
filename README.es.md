@@ -22,7 +22,8 @@
 
 - Vistas de día, semana, 6 días, mes, año y programa; los fines de semana se pueden ocultar
 - Crear, mover y redimensionar eventos arrastrando, también entre calendarios distintos
-- Ficha resumen al hacer clic en un evento (editar, eliminar, escribir a los invitados, exportar, unirse a Meet); doble clic para editarlo
+- Ficha resumen al hacer clic en un evento (editar, eliminar, compartir, unirse a Meet); doble clic para editarlo
+- Compartir un evento desde su ficha: WhatsApp, Telegram, correo (título como asunto, texto en el cuerpo), correo a los invitados (solo si hay), archivo `.ics` en el disco, portapapeles y las otras aplicaciones de Windows (texto y archivo `.ics`)
 - Eventos recurrentes, con edición o eliminación de una sola repetición, de las siguientes o de toda la serie
 - Recordatorios con notificación, alarma sonora (hasta que la apagas, como máximo 2 minutos) y posposición, conservados también tras un reinicio
 - Lista de las alarmas (icono junto a la lupa): las que suenan y las de los próximos 60 días, con el tiempo que falta; puedes apagarlas, cancelarlas (solo en este equipo) o abrir el evento. Las alarmas suenan una a una y solo con GGCalendar abierto; los recordatorios de calendarios ocultos no suenan (las alarmas pospuestas sí)
