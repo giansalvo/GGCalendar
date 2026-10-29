@@ -38,7 +38,8 @@ public sealed record EventSpec(string Title)
 public static class AppDriver
 {
     public const string TestAccount = "carta.andrea.2000@gmail.com";
-    public const string TestCalendarId = TestAccount + "|" + TestAccount;
+    /// <summary>The main calendar of the test account. The tests never put events in it: they work in the calendar of <see cref="TestCalendarId"/>.</summary>
+    public const string PrimaryCalendarId = TestAccount + "|" + TestAccount;
     public const string TestPrefix = "[TEST GGCAL]";
     public const string CollectionName = "RealApp";
 
@@ -46,6 +47,51 @@ public static class AppDriver
 
     // One id per test session, so the events of a session can be told from those of an interrupted one.
     private static readonly string SessionId = Guid.NewGuid().ToString("N")[..6];
+
+    // The calendar of the tests
+
+    /// <summary>
+    /// The id on Google of the calendar the tests work in: one calendar "[TEST GGCAL] session" made when the first real test starts
+    /// and deleted when the run ends (<see cref="DeleteTestCalendarAsync"/>), so that cleaning up the test account is deleting it.
+    /// </summary>
+    public static string? TestCalendarRemoteId { get; private set; }
+
+    /// <summary>The id in the app of the calendar the tests work in (it exists once a test has started, see <see cref="InAppAsync"/>).</summary>
+    public static string TestCalendarId => TestCalendarRemoteId is { } id
+        ? TestAccount + "|" + id
+        : throw new InvalidOperationException("Il calendario di prova non è ancora stato creato: serve un test che parta da InAppAsync.");
+
+    /// <summary>Makes the calendar of the tests on Google, after removing those an interrupted run left. Does nothing if it is there.</summary>
+    public static async Task EnsureTestCalendarAsync()
+    {
+        if (TestCalendarRemoteId is not null) return;
+        using var google = await TestGoogle.ConnectAsync();
+        await google.DeleteLeftoverCalendarsAsync();
+        TestCalendarRemoteId = await google.CreateCalendarAsync($"{TestPrefix} {SessionId}");
+    }
+
+    /// <summary>Deletes the calendar of the tests with all its events (at the end of the run). Does nothing if there is none.</summary>
+    public static async Task DeleteTestCalendarAsync()
+    {
+        if (TestCalendarRemoteId is not { } id) return;
+        using var google = await TestGoogle.ConnectAsync();
+        await google.DeleteCalendarAsync(id);
+        TestCalendarRemoteId = null;
+    }
+
+    /// <summary>Makes the calendar of the tests and waits for the app to have it (the account list of Google may take a moment to show it).</summary>
+    private static async Task EnsureTestCalendarInAppAsync(MainWindow window)
+    {
+        await EnsureTestCalendarAsync();
+        var vm = Vm(window);
+        for (var attempt = 0; attempt < 4 && vm.Calendars.All(c => c.Id != TestCalendarId); attempt++)
+        {
+            if (attempt > 0) await PauseAsync(TimeSpan.FromSeconds(3));
+            await SyncAsync(window);
+        }
+
+        await WaitForAsync(() => vm.Calendars.Any(c => c.Id == TestCalendarId) ? vm : null, "il calendario [TEST GGCAL] dei test", SyncTimeout);
+    }
 
     /// <summary>A title for the n-th event of a test that needs many: the prefix, the session and a number.</summary>
     public static string NewTitle(int number) => $"{TestPrefix} {SessionId} {number:D3}";
@@ -72,7 +118,7 @@ public static class AppDriver
     }
 
     /// <summary>
-    /// Runs a test on the real app: opens it, removes what an earlier run left, runs <paramref name="test"/>, and always
+    /// Runs a test on the real app: opens it, makes sure the calendar of the tests is there, removes what an earlier run left, runs <paramref name="test"/>, and always
     /// cleans up and closes the app (also after a reopen) when it ends.
     /// </summary>
     public static Task InAppAsync(Func<MainWindow, Task> test) => HeadlessApp.RunAsync(async () =>
@@ -85,6 +131,7 @@ public static class AppDriver
         try
         {
             await WaitForReadyAsync(window);
+            await EnsureTestCalendarInAppAsync(window);
             await CleanUpAsync(window);
             await test(window);
         }
@@ -149,7 +196,7 @@ public static class AppDriver
         {
             if (!vm.IsSyncing && vm.SyncIsError)
                 throw new XunitException($"La prima sincronizzazione dell'account di prova è fallita ({vm.SyncStatus}). Se l'account è stato scollegato o il suo accesso revocato, ricollegalo nell'app installata e rilancia i test.");
-            return !vm.IsSyncing && vm.Calendars.Any(c => c.Id == TestCalendarId) ? vm : null;
+            return !vm.IsSyncing && vm.Calendars.Any(c => c.Id == PrimaryCalendarId) ? vm : null;
         }, "il calendario dell'account di prova (prima sincronizzazione)", SyncTimeout);
     }
 
@@ -388,14 +435,15 @@ public static class AppDriver
     // Cleanup
 
     /// <summary>
-    /// Removes what the tests created: in the app and, with a final check, on Google. Events with the test prefix in the test
-    /// account's main calendar only; local test calendars (their name starts with the prefix) are deleted too.
+    /// Removes what the tests created: in the app and, with a final check, on Google. Events with the test prefix in the calendar
+    /// of the tests (and in the primary one, where older runs worked); local test calendars (their name starts with the prefix)
+    /// and Google test calendars of an interrupted run are deleted too, but not the calendar of this run.
     /// </summary>
     public static async Task CleanUpAsync(MainWindow window)
     {
         var vm = Vm(window);
         await WaitForQuietAsync(window);
-        var leftovers = vm.AllEvents.Where(e => e.CalendarId == TestCalendarId && e.SeriesMasterId is null
+        var leftovers = vm.AllEvents.Where(e => (e.CalendarId == PrimaryCalendarId || (TestCalendarRemoteId is not null && e.CalendarId == TestCalendarId)) && e.SeriesMasterId is null
             && e.Title.StartsWith(TestPrefix, StringComparison.Ordinal)).ToList();
         foreach (var ev in leftovers) vm.DeleteEvent(ev);
         foreach (var cal in vm.Calendars.Where(c => c.IsLocal && c.Name.StartsWith(TestPrefix, StringComparison.Ordinal)).ToList())

@@ -21,7 +21,8 @@ public class SyncLimitRealGoogleTests(ITestOutputHelper output)
         var settings = new SettingsStore().Load();
         var config = GoogleClientConfig.Resolve(settings.GoogleClientId, settings.GoogleClientSecret);
         var store = new CalendarStore(":memory:");
-        var calendar = GoogleSyncService.LocalCalendarId(AppDriver.TestAccount, AppDriver.TestAccount);
+        await AppDriver.EnsureTestCalendarAsync();
+        var calendar = GoogleSyncService.LocalCalendarId(AppDriver.TestAccount, AppDriver.TestCalendarRemoteId!);
         store.UpsertCalendar(new CalendarInfo(calendar, AppDriver.TestAccount, "Prova", "#1A73E8"));
         var service = new GoogleSyncService(store, new GoogleAccountStore(), new HttpClient()) { PushPace = TimeSpan.Zero }; // as fast as possible: if Google slows us down the sending must wait and go on
         service.Configure(config);

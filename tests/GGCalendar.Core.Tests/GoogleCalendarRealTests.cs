@@ -63,7 +63,7 @@ public class GoogleCalendarRealTests
         Assert.Equal(2, await google.CountEventsAsync(remoteId!));
 
         // The primary calendar of the account is grey, the new one is not.
-        var primary = vm.Calendars.First(c => c.Id == TestCalendarId);
+        var primary = vm.Calendars.First(c => c.Id == PrimaryCalendarId);
         Assert.False(primary.CanDeleteFromGoogle);
         Assert.Equal(true, primary.IsOwner);
 
@@ -90,6 +90,7 @@ public class GoogleCalendarRealTests
     public async Task NoCalendarOfTheTestsIsLeftOnTheTestAccount()
     {
         using var google = await TestGoogle.ConnectAsync();
-        Assert.DoesNotContain(await google.ListCalendarsAsync(), c => c.Name.StartsWith(TestPrefix, StringComparison.Ordinal));
+        // The calendar of the tests themselves (made once per run, deleted when the run ends) is the only one allowed.
+        Assert.DoesNotContain(await google.ListCalendarsAsync(), c => c.Name.StartsWith(TestPrefix, StringComparison.Ordinal) && c.Id != TestCalendarRemoteId);
     }
 }
