@@ -584,13 +584,14 @@ public sealed partial class MainViewModel : ViewModelBase
         Reload();
     }
 
-    public void AddEvent(CalendarEvent ev)
+    /// <param name="seenOnGoogle">For the first edit of one occurrence of a series: the occurrence as the person saw it. Before the edit is sent it is compared with Google's instance (see <see cref="OutboxItem.Base"/>).</param>
+    public void AddEvent(CalendarEvent ev, CalendarEvent? seenOnGoogle = null)
     {
         if (IsReadOnly(ev)) return;
         _allEvents.Add(ev);
         _store.UpsertEvent(ev);
         Changed();
-        if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev));
+        if (IsRemote(ev.CalendarId)) Queue(() => _store.Enqueue(ev.Id, ev.CalendarId, OutboxOperation.Create, ev, seenOnGoogle));
         Refresh();
     }
 
@@ -788,6 +789,18 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (scope == SeriesScope.This)
         {
+            // Google's instance of this occurrence has no version the app knows: what the person saw (the occurrence before this edit, as an
+            // instance has it: no rule, no excluded dates) travels with the change, to tell whether Google changed it meanwhile.
+            var seen = occurrence with
+            {
+                CalendarId = master.CalendarId,
+                Recurrence = null,
+                ExcludedStarts = [],
+                SeriesMasterId = master.Id,
+                OriginalStart = occurrence.Start,
+                IsCancelled = false,
+                OccurrenceIndex = null,
+            };
             AddEvent(edited with
             {
                 Id = Guid.NewGuid().ToString("N"),
@@ -798,7 +811,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 OriginalStart = occurrence.Start,
                 IsCancelled = false,
                 OccurrenceIndex = null,
-            });
+            }, seen);
             return;
         }
 

@@ -719,6 +719,21 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                         {
                             // Patch only the version we last saw; a modified occurrence's instance id has no known version.
                             var baseEtag = target == current.RemoteId ? current.Etag : null;
+                            if (baseEtag is null && target != current.RemoteId && CalendarStore.ReadBase(item) is { } seen)
+                            {
+                                // First edit of one occurrence: read Google's instance and compare it with the occurrence the person saw. If it changed,
+                                // Google wins and the edit is kept as a copy; if not, the patch goes with the version just read.
+                                var (instance, instanceEtag) = await GetRemoteAsync(client, item, target, snapshot.SeriesMasterId, calendars, ct);
+                                if (instance is null || !EventContent.Same(instance, seen, ignoreGuest: AccountOf(item.CalendarId)))
+                                {
+                                    conflicts.Add(ResolveConflict(item, target, instance, instanceEtag));
+                                    conflicted.Add(item.EventId);
+                                    continue;
+                                }
+
+                                baseEtag = instanceEtag;
+                            }
+
                             JsonElement? patched = null;
                             try
                             {
