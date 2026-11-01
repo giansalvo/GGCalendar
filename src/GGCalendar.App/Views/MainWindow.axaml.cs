@@ -96,6 +96,7 @@ public partial class MainWindow : Window
                 };
                 _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now + ReminderScheduler.Window, visibleOnly: false), isVisible: vm.IsCalendarVisible, now: ReminderClock) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
+                vm.DayShown += ShowDayInMiniCalendar;
                 vm.EventsChanged += _scheduler.Invalidate;
                 vm.CalendarVisibilityChanged += _scheduler.VisibilityChanged;
                 SetUpAlarms(vm);
@@ -617,6 +618,14 @@ public partial class MainWindow : Window
         MiniCalendar.DisplayMode = CalendarMode.Month;
         MiniCalendar.DisplayDate = shown;
     }
+
+    /// <summary>The small calendar shows the month of the day (as days, not months or years); it does not follow a selected day by itself.
+    /// Posted, so that it does not run inside the click of the calendar that has just chosen the day.</summary>
+    private void ShowDayInMiniCalendar(DateTime day) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        MiniCalendar.DisplayMode = CalendarMode.Month;
+        MiniCalendar.DisplayDate = day;
+    });
 
     private void CloseDetails()
     {
