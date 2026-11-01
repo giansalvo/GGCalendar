@@ -157,6 +157,92 @@ public sealed class FakeGoogle : HttpMessageHandler
         return id;
     }
 
+    // Series: the instances of a repeating event. As on Google, an instance nobody changed is not stored (it is read from the series,
+    // with a version that changes when the series changes); the first change to it, from the app or from a test, stores it.
+
+    private static readonly System.Text.RegularExpressions.Regex InstanceName = new(@"^(?<master>.+)_(?<stamp>\d{8}T\d{6}Z)$");
+
+    /// <summary>Puts a daily series of <paramref name="count"/> occurrences of one hour on Google.</summary>
+    public string SeedSeries(string summary, DateTime utcStart, int count = 3)
+    {
+        var id = Seed(summary, utcStart);
+        _events[id].Body["recurrence"] = new JsonArray($"RRULE:FREQ=DAILY;COUNT={count}");
+        Store(id, _events[id].Body);
+        return id;
+    }
+
+    /// <summary>The id Google gives to the occurrence of a series that starts at <paramref name="utcStart"/>.</summary>
+    public static string InstanceId(string masterId, DateTime utcStart) =>
+        masterId + "_" + DateTime.SpecifyKind(utcStart, DateTimeKind.Utc).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>The instance as Google would give it now (stored, or read from the series); null when there is none.</summary>
+    private JsonObject? InstanceNow(string id)
+    {
+        if (_events.TryGetValue(id, out var stored)) return stored.Deleted ? null : stored.Body;
+        var match = InstanceName.Match(id);
+        if (!match.Success || !_events.TryGetValue(match.Groups["master"].Value, out var master) || master.Deleted
+            || master.Body["recurrence"] is null) return null;
+        var start = DateTime.ParseExact(match.Groups["stamp"].Value, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+        var first = DateTime.Parse(master.Body["start"]!["dateTime"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+        var last = DateTime.Parse(master.Body["end"]!["dateTime"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+        var body = (JsonObject)master.Body.DeepClone();
+        body.Remove("recurrence");
+        body["id"] = id;
+        body["start"] = new JsonObject { ["dateTime"] = Iso(start) };
+        body["end"] = new JsonObject { ["dateTime"] = Iso(start + (last - first)) };
+        body["recurringEventId"] = match.Groups["master"].Value;
+        body["originalStartTime"] = new JsonObject { ["dateTime"] = Iso(start) };
+        body["etag"] = $"\"i{master.Version}\""; // a change to the series changes the version of its instances
+        return body;
+    }
+
+    /// <summary>The title of one occurrence is changed on Google (from the web page, or another device).</summary>
+    public void SetInstanceSummary(string masterId, DateTime utcStart, string summary)
+    {
+        var id = InstanceId(masterId, utcStart);
+        var body = InstanceNow(id) ?? throw new InvalidOperationException("Non esiste: " + id);
+        body["summary"] = summary;
+        Store(id, body);
+    }
+
+    /// <summary>One occurrence is deleted on Google: it stays as a cancelled instance.</summary>
+    public void CancelInstance(string masterId, DateTime utcStart)
+    {
+        var id = InstanceId(masterId, utcStart);
+        var body = InstanceNow(id) ?? throw new InvalidOperationException("Non esiste: " + id);
+        Store(id, new JsonObject
+        {
+            ["id"] = id, ["status"] = "cancelled", ["recurringEventId"] = masterId,
+            ["originalStartTime"] = body["originalStartTime"]!.DeepClone(),
+        });
+    }
+
+    /// <summary>The version of one occurrence changes without any visible change (a Meet, a guest's reply).</summary>
+    public void TouchInstance(string masterId, DateTime utcStart)
+    {
+        var id = InstanceId(masterId, utcStart);
+        Store(id, InstanceNow(id) ?? throw new InvalidOperationException("Non esiste: " + id));
+    }
+
+    /// <summary>The title of an occurrence as Google has it now; null when there is no such occurrence.</summary>
+    public string? InstanceSummary(string masterId, DateTime utcStart) => InstanceNow(InstanceId(masterId, utcStart))?["summary"]?.GetValue<string>();
+
+    /// <summary>True when the occurrence has been changed (stored apart from its series).</summary>
+    public bool InstanceIsStored(string masterId, DateTime utcStart) => _events.TryGetValue(InstanceId(masterId, utcStart), out var e) && !e.Deleted;
+
+    /// <summary>The attachments of an occurrence are changed on Google.</summary>
+    public void SetInstanceAttachments(string masterId, DateTime utcStart, params (string Url, string Title)[] attachments)
+    {
+        var id = InstanceId(masterId, utcStart);
+        var body = InstanceNow(id) ?? throw new InvalidOperationException("Non esiste: " + id);
+        var list = new JsonArray();
+        foreach (var (url, title) in attachments) list.Add(new JsonObject { ["fileUrl"] = url, ["title"] = title });
+        var sent = new JsonObject { ["attachments"] = list };
+        PrepareAttachments(sent, true);
+        body["attachments"] = sent["attachments"]?.DeepClone();
+        Store(id, body);
+    }
+
     /// <summary>Changes the version (etag) of an event without changing what the user sees, as Google does for a Meet or a guest reply.</summary>
     public void Touch(string id) => Store(id, _events[id].Body);
 
@@ -337,6 +423,23 @@ public sealed class FakeGoogle : HttpMessageHandler
             }
 
             return Reply(HttpStatusCode.OK, stored.ToJsonString());
+        }
+
+        if (id is not null && !_events.ContainsKey(id) && InstanceNow(id) is { } instance)
+        {
+            // An occurrence nobody changed: read it from the series; the first patch stores it.
+            if (request.Method == HttpMethod.Get) return Reply(HttpStatusCode.OK, instance.ToJsonString());
+            if (request.Method == HttpMethod.Patch)
+            {
+                if (request.Headers.TryGetValues("If-Match", out var seen) && seen.First() != (string?)instance["etag"])
+                    return Reply(HttpStatusCode.PreconditionFailed, "{}");
+                OnPatch?.Invoke(id);
+                var sentPatch = JsonNode.Parse(body!)!.AsObject();
+                PrepareAttachments(sentPatch, query["supportsAttachments"] == "true");
+                Merge(instance, sentPatch);
+                Store(id, instance);
+                return Reply(HttpStatusCode.OK, instance.ToJsonString());
+            }
         }
 
         if (id is null || !_events.TryGetValue(id, out var current) || current.Deleted)

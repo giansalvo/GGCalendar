@@ -14,7 +14,8 @@ public sealed record RemoteEvent(CalendarEvent Event, string RemoteId, string? E
 
 /// <summary>
 /// A local change not yet pushed to the remote provider. <paramref name="Base"/> is the event as it was before the change
-/// (for updates), used to tell a real remote edit from a version change made by the provider itself.
+/// (for updates), used to tell a real remote edit from a version change made by the provider itself. The creation of the first
+/// edit of one occurrence of a series carries the occurrence as it was seen, because the instance on Google has no known version.
 /// </summary>
 /// <param name="CreatedAt">When the change was queued (UTC).</param>
 public sealed record OutboxItem(long Seq, string EventId, string CalendarId, OutboxOperation Operation, string? Payload, string? Base = null, DateTime? CreatedAt = null);
@@ -381,7 +382,7 @@ public sealed class CalendarStore
 
     // Outbox
 
-    /// <param name="baseVersion">For updates: the event before the change (see <see cref="OutboxItem.Base"/>).</param>
+    /// <param name="baseVersion">For updates (and the first edit of an occurrence): the event before the change (see <see cref="OutboxItem.Base"/>).</param>
     public long Enqueue(string eventId, string calendarId, OutboxOperation operation, CalendarEvent? snapshot = null, CalendarEvent? baseVersion = null) =>
         WithConnection(c =>
         {
