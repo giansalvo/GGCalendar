@@ -398,7 +398,11 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Search.CloseAndClear();
         Refresh();
+        if (value is { } day) DayShown?.Invoke(day);
     }
+
+    /// <summary>Raised when the small calendar must show the month of a day: on every change of the selected day, and always on Today (even when the day does not change).</summary>
+    public event Action<DateTime>? DayShown;
 
     partial void OnSettingsChanged(AppSettings value)
     {
@@ -661,7 +665,14 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // Moving through the days ends a search and empties its box: the view of the period reached is shown.
-    [RelayCommand] private void Today() { Search.CloseAndClear(); SelectedDate = DateTime.Today; }
+    [RelayCommand]
+    private void Today()
+    {
+        Search.CloseAndClear();
+        var already = SelectedDate == DateTime.Today;
+        SelectedDate = DateTime.Today;
+        if (already) DayShown?.Invoke(DateTime.Today); // no change was raised, but the small calendar may be on another month
+    }
     [RelayCommand] private void Previous() { Search.CloseAndClear(); Step(-1); }
     [RelayCommand] private void Next() { Search.CloseAndClear(); Step(1); }
 
