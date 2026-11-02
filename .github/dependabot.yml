@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # NuGet: the projects in src/ and tests/ (versions are written in each .csproj).
+  # Minor and patch updates come together in one PR; a major update (for example Avalonia 12 -> 13) gets its own PR,
+  # so that a change of API does not hold back the small updates. No automatic merge: every PR goes through the CI.
+  - package-ecosystem: "nuget"
+    directories:
+      - "/src/*"
+      - "/tests/*"
+    schedule:
+      interval: "monthly"
+    groups:
+      nuget-minor-patch:
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      nuget-major:
+        update-types: ["major"]
+        patterns: ["*"]
+
+  # GitHub Actions used by the CI (.github/workflows).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
