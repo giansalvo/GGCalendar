@@ -233,6 +233,7 @@ public class SubscriptionUiTests
 
     [Fact]
     [Trait("TestCase", "T158")]
+    [Trait("TestCase", "T210")]
     public Task T158_ASubscribedCalendarHasItsOwnMenuAndNoImportExportOrDelete() => InSubscribedAppAsync(
         new FakeSite().Serve("/public.ics", Ics("Lezione", DateTime.Today.AddDays(1))), async window =>
     {
