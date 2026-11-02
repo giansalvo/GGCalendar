@@ -197,9 +197,19 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
     public void Reload()
     {
-        Apply(Load());
-        Trace($"Reload() applicato: ora la lista ha {_calendars.Count} calendari ({_calendars.Count(c => c.IsSubscription)} di abbonamento)");
+        var id = Interlocked.Increment(ref _reloadIds);
+        var data = Load();
+        // A reload that started before this one and is still reading must not put its older data back afterwards.
+        _lastAppliedReload = id;
+        Apply(data);
+        Trace($"Reload() #{id} applicato: ora la lista ha {_calendars.Count} calendari ({_calendars.Count(c => c.IsSubscription)} di abbonamento)");
     }
+
+    // The newest reload (by the moment it started) whose data is on screen: an older one that finishes later is dropped, not applied.
+    private int _lastAppliedReload;
+
+    /// <summary>For the tests: called on the reading thread of every <see cref="ReloadAsync"/>, after it has read and before it applies, with the number of the reload.</summary>
+    public Action<int>? AfterReadHook { get; set; }
 
     /// <summary>Like <see cref="Reload"/>, but reads the store off the UI thread; retried if the user edits meanwhile.</summary>
     /// <param name="caller">Who asked (filled in by the compiler): kept in the trace of the reloads.</param>
@@ -213,7 +223,12 @@ public sealed partial class MainViewModel : ViewModelBase
             while (true)
             {
                 var before = _changeCount;
-                var data = await Task.Run(Load);
+                var data = await Task.Run(() =>
+                {
+                    var read = Load();
+                    AfterReadHook?.Invoke(id);
+                    return read;
+                });
                 var orphans = data.Calendars.Count(c => SubscriptionRecord.IsSubscriptionId(c.Id) && !data.Subscriptions.ContainsKey(c.Id));
                 Trace($"#{id} letto: {data.Calendars.Count} calendari ({data.Calendars.Count(c => SubscriptionRecord.IsSubscriptionId(c.Id))} di abbonamento), {data.Subscriptions.Count} abbonamenti, {data.Events.Count} eventi"
                     + (orphans > 0 ? $"; LETTURA INCOERENTE: {orphans} calendari di abbonamento senza abbonamento (letti in momenti diversi)" : ""));
@@ -223,6 +238,13 @@ public sealed partial class MainViewModel : ViewModelBase
                     continue;
                 }
 
+                if (id < _lastAppliedReload)
+                {
+                    Trace($"#{id} scartato: la ricarica #{_lastAppliedReload}, partita dopo, è già applicata");
+                    return;
+                }
+
+                _lastAppliedReload = id;
                 Apply(data);
                 Trace($"#{id} applicato: ora la lista ha {_calendars.Count} calendari ({_calendars.Count(c => c.IsSubscription)} di abbonamento)");
                 return;
@@ -261,7 +283,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
     private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) Load()
     {
-        var infos = _store.GetCalendars();
+        // One snapshot of the three tables: read one after the other, a calendar removed in between could show up without its subscription.
+        var (infos, events, subscriptions) = _store.GetSnapshot();
         if (infos.Count == 0)
         {
             // First run: a local calendar so the app is usable before any account is connected.
@@ -270,7 +293,7 @@ public sealed partial class MainViewModel : ViewModelBase
             infos = [local];
         }
 
-        return (infos, _store.GetAllEvents(), _store.GetSubscriptions().ToDictionary(r => r.CalendarId));
+        return (infos, events, subscriptions.ToDictionary(r => r.CalendarId));
     }
 
     private void Apply((IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) data)
