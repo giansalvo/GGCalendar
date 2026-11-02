@@ -137,23 +137,9 @@ public class AttachmentsUnreadTests
     [Trait("TestCase", "T351")]
     public void TheMessageIsInEveryLanguage()
     {
-        var language = L.Language;
-        try
-        {
-            var texts = new HashSet<string>();
-            foreach (var code in new[] { "it", "en", "de", "es", "fr" })
-            {
-                L.Apply(code);
-                var text = L.T("edit.attachments_unread");
-                Assert.NotEqual("edit.attachments_unread", text);
-                texts.Add(text);
-            }
-
-            Assert.Equal(5, texts.Count);
-        }
-        finally
-        {
-            L.Apply(language);
-        }
+        // Read from the tables, not through the language of the app: other tests change it while this one runs.
+        var texts = new[] { "it", "en", "de", "es", "fr" }.Select(code => L.Texts(code)["edit.attachments_unread"]).ToList();
+        Assert.All(texts, text => Assert.False(string.IsNullOrWhiteSpace(text)));
+        Assert.Equal(5, texts.Distinct().Count());
     }
 }
