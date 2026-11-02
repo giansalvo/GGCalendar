@@ -108,10 +108,31 @@ public static class AppDriver
     /// <summary>The window of the app that is open now (after a reopen, the new one).</summary>
     public static MainWindow? CurrentWindow => _current;
 
+    // True while a test with the real Google runs (InAppAsync). Only then does the app use the Google accounts linked in the test folder: every other test
+    // opens the app on a Google that has no account, because the sync of a real account starts with the window and goes on while the test acts, reloading the
+    // lists under its feet (a context menu that finds no line, a card that loses the focus, calendars of Google that the test did not expect).
+    private static bool _realGoogle;
+
+    // The accounts file of the Google without accounts: it is never created.
+    private static readonly string NoAccountsFile = Path.Combine(Path.GetTempPath(), "ggcal-no-google-accounts.json");
+
     public static MainWindow OpenApp()
     {
         GGCalendar.Core.Localization.L.Apply(new SettingsStore().Load().Language);
-        var window = new MainWindow { DataContext = new MainViewModel(new CalendarStore()) };
+        // A test that sets its own MainWindow.GoogleFactory (the fake Google) keeps it; the window reads the factory when it is made, so it is put back at once.
+        var quiet = !_realGoogle && MainWindow.GoogleFactory is null;
+        if (quiet) MainWindow.GoogleFactory = () => new GGCalendar.App.Services.GoogleSyncService(
+            new CalendarStore(), new GGCalendar.Providers.Google.GoogleAccountStore(NoAccountsFile), new HttpClient(new FakeGoogle()));
+        MainWindow window;
+        try
+        {
+            window = new MainWindow { DataContext = new MainViewModel(new CalendarStore()) };
+        }
+        finally
+        {
+            if (quiet) MainWindow.GoogleFactory = null;
+        }
+
         window.Show();
         Dispatcher.UIThread.RunJobs();
         _current = window;
@@ -128,6 +149,7 @@ public static class AppDriver
         // settings of the test folder are put back as they were when the test ends.
         var settingsFile = new SettingsStore().FilePath;
         var originalSettings = File.Exists(settingsFile) ? File.ReadAllBytes(settingsFile) : null;
+        _realGoogle = true;
         var window = OpenApp();
         try
         {
@@ -147,6 +169,7 @@ public static class AppDriver
             {
                 last.Close();
                 _current = null;
+                _realGoogle = false;
                 if (originalSettings is not null) File.WriteAllBytes(settingsFile, originalSettings);
             }
         }
@@ -258,19 +281,79 @@ public static class AppDriver
                 }
             }
 
-            if (DateTime.UtcNow > until) throw new XunitException(WhyTheMenuDoesNotOpen(window, tries, found, detached, replaced, lastIsOpen));
+            if (DateTime.UtcNow > until) throw new XunitException(WhyTheMenuDoesNotOpen(window, tries, found, detached, replaced, lastIsOpen, findOwner));
             Thread.Sleep(100);
         }
     }
 
     // What a menu that never opens leaves to see: whether the control was there, whether it was in the window, and what the reloads of the list did meanwhile.
-    private static string WhyTheMenuDoesNotOpen(MainWindow window, int tries, int found, int detached, int replaced, bool? lastIsOpen)
+    private static string WhyTheMenuDoesNotOpen(MainWindow window, int tries, int found, int detached, int replaced, bool? lastIsOpen, Func<Control?> findOwner)
     {
         var vm = Vm(window);
         var rows = window.GetVisualDescendants().OfType<Border>().Count(b => b.DataContext is CalendarItemViewModel);
-        return $"Il menu contestuale non si apre. Tentativi {tries}: controllo trovato {found} volte, fuori dalla finestra {detached}, sostituito durante l'apertura {replaced}, "
+        var message = $"Il menu contestuale non si apre. Tentativi {tries}: controllo trovato {found} volte, fuori dalla finestra {detached}, sostituito durante l'apertura {replaced}, "
             + $"ultimo IsOpen {(lastIsOpen is null ? "mai letto" : lastIsOpen.ToString())}. Calendari nel modello {vm.Calendars.Count}, righe disegnate {rows}. "
-            + "Ricariche (le ultime): " + string.Join(" | ", vm.ReloadTrace.TakeLast(12));
+            + WindowReport(window) + " "
+            + "Ricariche (le ultime): " + string.Join(" | ", vm.ReloadTrace.TakeLast(12)) + ". ";
+        // Last, and only to tell: a layout pass is forced to see whether the line was only waiting for it (the test still fails, whatever the answer).
+        return message + ProbeAfterLayout(window, findOwner);
+    }
+
+    /// <summary>
+    /// What the window and the list of the calendars look like, for the message of a test that fails on something that should be drawn: whether the layout
+    /// is up to date, how big the window and the list are, the groups of the accounts (open or closed, how many calendars), how many controls the lists made
+    /// and how long the dispatcher takes to run its jobs now.
+    /// </summary>
+    public static string WindowReport(MainWindow window)
+    {
+        var vm = Vm(window);
+        static string Layout(Avalonia.Layout.Layoutable c) =>
+            $"misura {(c.IsMeasureValid ? "valida" : "NON valida")}, disposizione {(c.IsArrangeValid ? "valida" : "NON valida")}, {c.Bounds.Width:F0}x{c.Bounds.Height:F0}, visibile {c.IsVisible}/{c.IsEffectivelyVisible}";
+        var report = new System.Text.StringBuilder($"Finestra: {Layout(window)}, finestre aperte {window.OwnedWindows.Count}, eventi nel modello {vm.AllEvents.Count}, "
+            + $"controlli nell'albero {window.GetVisualDescendants().Count()}. ");
+        var accounts = window.GetVisualDescendants().OfType<ItemsControl>().FirstOrDefault(l => l.ItemsSource is IEnumerable<AccountGroup>);
+        if (accounts is null)
+        {
+            report.Append("Lista degli account: non trovata nell'albero. ");
+        }
+        else
+        {
+            report.Append($"Lista degli account: {accounts.ItemCount} gruppi, {accounts.ItemsPanelRoot?.Children.Count ?? -1} contenitori, {Layout(accounts)}. ");
+            foreach (var group in vm.Accounts)
+                report.Append($"[{group.AccountName}: {(group.IsExpanded ? "aperto" : "chiuso")}, {group.Calendars.Count} calendari] ");
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Dispatcher.UIThread.RunJobs();
+        report.Append($"RunJobs {clock.ElapsedMilliseconds} ms.");
+        return report.ToString();
+    }
+
+    /// <summary>Forces a layout pass and says whether the control that <paramref name="findOwner"/> looks for is there afterwards.</summary>
+    private static string ProbeAfterLayout(MainWindow window, Func<Control?> findOwner)
+    {
+        try
+        {
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            return findOwner() is null
+                ? "Dopo un UpdateLayout forzato la riga non c'è ancora."
+                : "Dopo un UpdateLayout forzato la riga COMPARE: il layout non era stato eseguito.";
+        }
+        catch (Exception ex)
+        {
+            return "UpdateLayout ha dato " + ex.GetType().Name + ": " + ex.Message;
+        }
+    }
+
+    /// <summary>The Google calendars the window and the data store hold, for a test that expects none (or some): the other tests share the store.</summary>
+    public static string GoogleReport(MainWindow window)
+    {
+        var vm = Vm(window);
+        var inModel = string.Join(", ", vm.Calendars.Where(c => c.IsGoogle).Select(c => c.Id));
+        var inStore = string.Join(", ", new CalendarStore().GetCalendars().Where(c => GGCalendar.App.Services.GoogleSyncService.IsGoogleCalendar(c.Id)).Select(c => c.Id));
+        return $"Calendari Google nel modello [{inModel}], nel negozio [{inStore}], GoogleFactory {(MainWindow.GoogleFactory is null ? "non impostato" : "impostato")}, "
+            + "ricariche: " + string.Join(" | ", vm.ReloadTrace.TakeLast(8));
     }
 
     /// <summary>The line of a calendar in the list (found by id: a reload makes new items), or null while it is not drawn.</summary>
