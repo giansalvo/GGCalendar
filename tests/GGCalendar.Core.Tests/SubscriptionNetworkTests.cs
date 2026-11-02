@@ -78,7 +78,9 @@ public class SubscriptionNetworkTests(ITestOutputHelper output)
         Assert.NotNull(preview.Preview!.LastModified);
         var (calendar, _) = service.Add(preview.Preview, "Prova", "#123456", SubscriptionRange.All);
         var result = await service.RefreshAsync(calendar!.Id);
-        Assert.Equal(RefreshOutcome.NotModified, result.Outcome);
+        // The site is not ours to control (issue #64): when it fails, say why (network, 403, 429, 5xx...) and what the app sent.
+        Assert.True(result.Outcome == RefreshOutcome.NotModified,
+            $"{result.Outcome}, problem {result.Problem?.ToString() ?? "-"}, last-modified sent {preview.Preview.LastModified}, etag sent {preview.Preview.ETag ?? "-"}, at {DateTime.Now:HH:mm:ss}");
         Assert.NotEmpty(store.GetAllEvents());
     }
 
