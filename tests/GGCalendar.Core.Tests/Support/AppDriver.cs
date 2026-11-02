@@ -41,6 +41,16 @@ public static class AppDriver
     public const string TestAccount = "carta.andrea.2000@gmail.com";
     /// <summary>The main calendar of the test account. The tests never put events in it: they work in the calendar of <see cref="TestCalendarId"/>.</summary>
     public const string PrimaryCalendarId = TestAccount + "|" + TestAccount;
+
+    /// <summary>The second test account: only for the tests that need two accounts (moving an event from one to the other, T30 and T31). It must be linked to the app of the tests.</summary>
+    public const string SecondTestAccount = "giansalvo.gusinu@gmail.com";
+    public const string SecondPrimaryCalendarId = SecondTestAccount + "|" + SecondTestAccount;
+
+    /// <summary>The main calendar of a test account (the tests never put events in it).</summary>
+    public static string PrimaryCalendarIdOf(string account) => account + "|" + account;
+
+    /// <summary>The test accounts that are linked to the app of the tests: the first one always, the second one only when it was linked.</summary>
+    public static IEnumerable<string> ConnectedTestAccounts => new[] { TestAccount, SecondTestAccount }.Where(TestGoogle.IsConnected);
     public const string TestPrefix = "[TEST GGCAL]";
     public const string CollectionName = "RealApp";
 
@@ -55,43 +65,76 @@ public static class AppDriver
     /// The id on Google of the calendar the tests work in: one calendar "[TEST GGCAL] session" made when the first real test starts
     /// and deleted when the run ends (<see cref="DeleteTestCalendarAsync"/>), so that cleaning up the test account is deleting it.
     /// </summary>
-    public static string? TestCalendarRemoteId { get; private set; }
+    public static string? TestCalendarRemoteId => TestCalendarRemoteIdOf(TestAccount);
+
+    // One calendar per test account that a test has used: the first one for every real test, the second one only when a test asks for it.
+    private static readonly Dictionary<string, string> TestCalendars = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The id on Google of the calendar the tests work in on <paramref name="account"/>; null until it is made.</summary>
+    public static string? TestCalendarRemoteIdOf(string account) => TestCalendars.GetValueOrDefault(account);
 
     /// <summary>The id in the app of the calendar the tests work in (it exists once a test has started, see <see cref="InAppAsync"/>).</summary>
-    public static string TestCalendarId => TestCalendarRemoteId is { } id
-        ? TestAccount + "|" + id
-        : throw new InvalidOperationException("Il calendario di prova non è ancora stato creato: serve un test che parta da InAppAsync.");
+    public static string TestCalendarId => TestCalendarIdOf(TestAccount);
+
+    /// <summary>The id in the app of the calendar the tests work in on <paramref name="account"/> (for the second account, once <see cref="EnsureAccountReadyAsync"/> has run).</summary>
+    public static string TestCalendarIdOf(string account) => TestCalendarRemoteIdOf(account) is { } id
+        ? account + "|" + id
+        : throw new InvalidOperationException($"Il calendario di prova di {account} non è ancora stato creato: serve un test che parta da InAppAsync (e, per il secondo account, EnsureAccountReadyAsync).");
 
     /// <summary>Makes the calendar of the tests on Google, after removing those an interrupted run left. Does nothing if it is there.</summary>
-    public static async Task EnsureTestCalendarAsync()
+    public static async Task EnsureTestCalendarAsync(string account = TestAccount)
     {
-        if (TestCalendarRemoteId is not null) return;
-        using var google = await TestGoogle.ConnectAsync();
+        if (TestCalendarRemoteIdOf(account) is not null) return;
+        using var google = await TestGoogle.ConnectAsync(account);
         await google.DeleteLeftoverCalendarsAsync();
-        TestCalendarRemoteId = await google.CreateCalendarAsync($"{TestPrefix} {SessionId}");
+        TestCalendars[account] = await google.CreateCalendarAsync($"{TestPrefix} {SessionId}");
     }
 
-    /// <summary>Deletes the calendar of the tests with all its events (at the end of the run). Does nothing if there is none.</summary>
+    /// <summary>Deletes the calendars of the tests with all their events (at the end of the run), on every account that has one. Does nothing if there is none.</summary>
     public static async Task DeleteTestCalendarAsync()
     {
-        if (TestCalendarRemoteId is not { } id) return;
-        using var google = await TestGoogle.ConnectAsync();
-        await google.DeleteCalendarAsync(id);
-        TestCalendarRemoteId = null;
+        Exception? first = null;
+        foreach (var (account, id) in TestCalendars.ToList())
+        {
+            try
+            {
+                using var google = await TestGoogle.ConnectAsync(account);
+                await google.DeleteCalendarAsync(id);
+                TestCalendars.Remove(account);
+            }
+            catch (Exception ex)
+            {
+                first ??= ex; // the other accounts are cleaned all the same
+            }
+        }
+
+        if (first is not null) throw first;
     }
 
     /// <summary>Makes the calendar of the tests and waits for the app to have it (the account list of Google may take a moment to show it).</summary>
-    private static async Task EnsureTestCalendarInAppAsync(MainWindow window)
+    private static async Task EnsureTestCalendarInAppAsync(MainWindow window, string account = TestAccount)
     {
-        await EnsureTestCalendarAsync();
+        await EnsureTestCalendarAsync(account);
         var vm = Vm(window);
-        for (var attempt = 0; attempt < 4 && vm.Calendars.All(c => c.Id != TestCalendarId); attempt++)
+        var calendarId = TestCalendarIdOf(account);
+        for (var attempt = 0; attempt < 4 && vm.Calendars.All(c => c.Id != calendarId); attempt++)
         {
             if (attempt > 0) await PauseAsync(TimeSpan.FromSeconds(3));
             await SyncAsync(window);
         }
 
-        await WaitForAsync(() => vm.Calendars.Any(c => c.Id == TestCalendarId) ? vm : null, "il calendario [TEST GGCAL] dei test", SyncTimeout);
+        await WaitForAsync(() => vm.Calendars.Any(c => c.Id == calendarId) ? vm : null, $"il calendario [TEST GGCAL] dei test di {account}", SyncTimeout);
+    }
+
+    /// <summary>
+    /// For a test that needs the second test account: checks that it is linked to the app of the tests and makes its calendar of the tests (deleted at the end of the run).
+    /// The first account needs no call: <see cref="InAppAsync"/> does it.
+    /// </summary>
+    public static async Task EnsureAccountReadyAsync(MainWindow window, string account)
+    {
+        if (!TestGoogle.IsConnected(account))
+            throw new XunitException($"L'account di prova {account} non è collegato all'app dei test: va collegato una volta dalle impostazioni (cartella GGCalendarTests).");
+        await EnsureTestCalendarInAppAsync(window, account);
     }
 
     /// <summary>A title for the n-th event of a test that needs many: the prefix, the session and a number.</summary>
@@ -503,6 +546,18 @@ public static class AppDriver
         await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura della finestra");
     }
 
+    /// <summary>In the open editor of an event, chooses another calendar and presses "Salva": the event moves there.</summary>
+    public static async Task MoveFromEditorAsync(MainWindow window, EventEditWindow dialog, string calendarId)
+    {
+        var editor = (EventEditViewModel)dialog.DataContext!;
+        var calendars = dialog.GetVisualDescendants().OfType<ComboBox>().First(c => c.ItemsSource is IReadOnlyList<CalendarItemViewModel>);
+        calendars.SelectedItem = editor.Calendars.FirstOrDefault(c => c.Id == calendarId)
+            ?? throw new XunitException($"Il calendario {calendarId} non è nell'app.");
+        Assert.Equal(calendarId, editor.SelectedCalendar?.Id);
+        Click(FindButton(dialog, "Edit.Save"));
+        await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura dell'editor");
+    }
+
     /// <summary>The trash button of the editor; for a repeating event the app then asks which events to delete.</summary>
     public static async Task DeleteFromEditorAsync(MainWindow window, EventEditWindow dialog, SeriesScope? scope = null)
     {
@@ -589,7 +644,8 @@ public static class AppDriver
     {
         var vm = Vm(window);
         await WaitForQuietAsync(window);
-        var leftovers = vm.AllEvents.Where(e => (e.CalendarId == PrimaryCalendarId || (TestCalendarRemoteId is not null && e.CalendarId == TestCalendarId)) && e.SeriesMasterId is null
+        var accounts = ConnectedTestAccounts.ToList();
+        var leftovers = vm.AllEvents.Where(e => accounts.Any(a => e.CalendarId == PrimaryCalendarIdOf(a) || (TestCalendarRemoteIdOf(a) is not null && e.CalendarId == TestCalendarIdOf(a))) && e.SeriesMasterId is null
             && e.Title.StartsWith(TestPrefix, StringComparison.Ordinal)).ToList();
         foreach (var ev in leftovers) vm.DeleteEvent(ev);
         foreach (var cal in vm.Calendars.Where(c => c.IsLocal && c.Name.StartsWith(TestPrefix, StringComparison.Ordinal)).ToList())
@@ -599,8 +655,11 @@ public static class AppDriver
             vm.DeleteEvent(ev);
         if (leftovers.Count > 0) await SyncAsync(window);
 
-        using var google = await TestGoogle.ConnectAsync();
-        if (await google.DeleteLeftoversAsync() > 0) await SyncAsync(window);
-        if (await google.DeleteLeftoverCalendarsAsync() > 0) await SyncAsync(window); // calendars made by an interrupted run
+        foreach (var account in accounts)
+        {
+            using var google = await TestGoogle.ConnectAsync(account);
+            if (await google.DeleteLeftoversAsync() > 0) await SyncAsync(window);
+            if (await google.DeleteLeftoverCalendarsAsync() > 0) await SyncAsync(window); // calendars made by an interrupted run
+        }
     }
 }

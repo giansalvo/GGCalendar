@@ -142,6 +142,10 @@ public sealed class FakeGoogle : HttpMessageHandler
 
     public int EventsIn(string calendarId) => _calendars.First(c => c.Id == calendarId).Events.Count(e => !e.Value.Deleted);
 
+    /// <summary>The events of a calendar as Google holds them now (series masters and modified occurrences, not the deleted ones), as copies.</summary>
+    public IReadOnlyList<JsonObject> EventsOfCalendar(string calendarId) =>
+        _calendars.First(c => c.Id == calendarId).Events.Where(e => !e.Value.Deleted).Select(e => (JsonObject)e.Value.Body.DeepClone()).ToList();
+
     public string Seed(string summary, DateTime utcStart, string? colorId = null, string? id = null)
     {
         id ??= "g" + _nextId++;
@@ -449,6 +453,10 @@ public sealed class FakeGoogle : HttpMessageHandler
         if (request.Method == HttpMethod.Delete)
         {
             Remove(id);
+            // As on Google, deleting a series deletes its modified occurrences too.
+            if (current.Body["recurrence"] is not null)
+                foreach (var child in _events.Where(e => !e.Value.Deleted && e.Value.Body["recurringEventId"]?.GetValue<string>() == id).Select(e => e.Key).ToList())
+                    Remove(child);
             return Reply(HttpStatusCode.NoContent, "");
         }
 

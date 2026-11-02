@@ -14,23 +14,33 @@ namespace GGCalendar.Core.Tests.Support;
 public sealed class TestGoogle : IDisposable
 {
     private readonly HttpClient _http = new();
-    /// <summary>The events of a calendar of the test account; without an id, those of the calendar the tests work in (the primary one before it exists).</summary>
-    private static string EventsOf(string? calendarId = null) =>
-        "https://www.googleapis.com/calendar/v3/calendars/" + Uri.EscapeDataString(calendarId ?? AppDriver.TestCalendarRemoteId ?? AppDriver.TestAccount) + "/events";
+    private readonly string _account;
 
-    private static string _events => EventsOf();
+    /// <summary>The events of a calendar of the account; without an id, those of the calendar the tests work in on that account (the primary one before it exists).</summary>
+    private string EventsOf(string? calendarId = null) =>
+        "https://www.googleapis.com/calendar/v3/calendars/" + Uri.EscapeDataString(calendarId ?? AppDriver.TestCalendarRemoteIdOf(_account) ?? _account) + "/events";
 
-    private TestGoogle() { }
+    private string _events => EventsOf();
 
-    public static async Task<TestGoogle> ConnectAsync()
+    private TestGoogle(string account) => _account = account;
+
+    /// <summary>The email of the test account this connection works on.</summary>
+    public string Account => _account;
+
+    /// <summary>True when the account is linked to the app of the tests (the second account is only needed by the tests that move events between accounts).</summary>
+    public static bool IsConnected(string account) =>
+        new GoogleAccountStore().Load().Any(a => a.Email.Equals(account, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Connects to a test account: the first one (<see cref="AppDriver.TestAccount"/>) unless another is asked for.</summary>
+    public static async Task<TestGoogle> ConnectAsync(string account = AppDriver.TestAccount)
     {
         var settings = new SettingsStore().Load();
         var config = GoogleClientConfig.Resolve(settings.GoogleClientId, settings.GoogleClientSecret);
-        var account = new GoogleAccountStore().Load().FirstOrDefault(a => a.Email.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"L'account di prova {AppDriver.TestAccount} non è collegato all'app.");
+        var stored = new GoogleAccountStore().Load().FirstOrDefault(a => a.Email.Equals(account, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"L'account di prova {account} non è collegato all'app dei test.");
         var tokens = await GoogleAuth.RefreshAsync(new HttpClient(), config.ClientId, config.ClientSecret,
-            GoogleAccountStore.Unprotect(account.ProtectedRefreshToken), CancellationToken.None);
-        var google = new TestGoogle();
+            GoogleAccountStore.Unprotect(stored.ProtectedRefreshToken), CancellationToken.None);
+        var google = new TestGoogle(account);
         google._http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
         return google;
     }
@@ -120,7 +130,7 @@ public sealed class TestGoogle : IDisposable
     {
         var count = 0;
         var calendars = new List<string?> { null };
-        if (AppDriver.TestCalendarRemoteId is not null) calendars.Add(AppDriver.TestAccount);
+        if (AppDriver.TestCalendarRemoteIdOf(_account) is not null) calendars.Add(_account);
         foreach (var calendar in calendars)
         {
             foreach (var item in await FindAsync(AppDriver.TestPrefix, calendar))
@@ -207,8 +217,8 @@ public sealed class TestGoogle : IDisposable
         var count = 0;
         foreach (var (id, name, role) in await ListCalendarsAsync())
         {
-            if (role != "owner" || !name.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) || id.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase)) continue;
-            if (id == AppDriver.TestCalendarRemoteId) continue;
+            if (role != "owner" || !name.StartsWith(AppDriver.TestPrefix, StringComparison.Ordinal) || id.Equals(_account, StringComparison.OrdinalIgnoreCase)) continue;
+            if (id == AppDriver.TestCalendarRemoteIdOf(_account)) continue;
             await DeleteCalendarAsync(id);
             count++;
         }

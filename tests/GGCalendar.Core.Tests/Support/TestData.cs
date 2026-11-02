@@ -34,8 +34,10 @@ public static class TestData
         // and a logout there revokes the old one on Google, so an older copy would stop working.
         var accounts = new GoogleAccountStore(Path.Combine(Folder, "google-accounts.json"));
         var installed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GGCalendar", "google-accounts.json");
-        if (new GoogleAccountStore(installed).Load().FirstOrDefault(a => a.Email.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase)) is { } testAccount)
-            accounts.Save([testAccount]);
+        // The first test account always; the second one (only for the tests with two accounts) when the installed app has it too.
+        var testAccounts = new GoogleAccountStore(installed).Load()
+            .Where(a => a.Email.Equals(AppDriver.TestAccount, StringComparison.OrdinalIgnoreCase) || a.Email.Equals(AppDriver.SecondTestAccount, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (testAccounts.Count > 0) accounts.Save(testAccounts);
 
         // The tests do not depend on the language (they find controls by AutomationId and check messages by key), and run in the one
         // of GGCALENDAR_TEST_LANGUAGE (Italian by default) so that a run always shows the same texts.
