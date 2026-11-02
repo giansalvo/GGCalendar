@@ -40,7 +40,7 @@ public class GoogleHintUiTests
         {
             await WaitForQuietAsync(window);
             var item = CreateGoogleItem(window);
-            Assert.False(Vm(window).HasGoogleAccounts);
+            Assert.False(Vm(window).HasGoogleAccounts, GoogleReport(window));
             Assert.False(item.IsEnabled);
             Assert.Equal(L.T("main.create_google_hint"), Vm(window).CreateGoogleHint);
             Assert.Equal(L.T("main.create_google_hint"), ToolTip.GetTip(item));
@@ -60,7 +60,7 @@ public class GoogleHintUiTests
     public Task T257_WithAnAccountTheItemIsActiveAndHasNoHint() => GoogleCalendarUiTests.InFakeGoogleAppAsync(new FakeGoogle(), window =>
     {
         var item = CreateGoogleItem(window);
-        Assert.True(Vm(window).HasGoogleAccounts);
+        Assert.True(Vm(window).HasGoogleAccounts, GoogleReport(window));
         Assert.True(item.IsEnabled);
         Assert.Null(Vm(window).CreateGoogleHint);
         Assert.Null(ToolTip.GetTip(item));
