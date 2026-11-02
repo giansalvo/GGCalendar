@@ -12,9 +12,9 @@ namespace GGCalendar.Core.Tests;
 /// </summary>
 public class DescriptionTextTests
 {
-    private static string Plain(string text) => DescriptionText.ToPlainText(text);
+    private static string Plain(string? text) => DescriptionText.ToPlainText(text);
 
-    private static IReadOnlyList<DescriptionRun> Runs(string text) => DescriptionText.Parse(text);
+    private static IReadOnlyList<DescriptionRun> Runs(string? text) => DescriptionText.Parse(text);
 
     private static DescriptionStyle StyleOf(string text, string word) => Runs(text).First(r => r.Text.Contains(word, StringComparison.Ordinal)).Style;
 

@@ -42,8 +42,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
                 Sounds.Add(new SoundOption(L.T("sound.windows", Path.GetFileNameWithoutExtension(f)), f));
         }
 
-        DefaultSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultReminderSound) ?? AddCustomSound(s.DefaultReminderSound);
-        AlarmSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultAlarmSound) ?? AddCustomSound(s.DefaultAlarmSound);
+        DefaultSound = SoundFor(s.DefaultReminderSound);
+        AlarmSound = SoundFor(s.DefaultAlarmSound);
         AlarmDurationMinutes = Math.Clamp(s.AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes);
         SnoozeOption = SnoozeOptions.First(o => o.Value == s.SnoozeLength);
         DayStartHour = s.DayStartHour;
@@ -221,6 +221,16 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>How long "Snooze" puts a reminder off by default.</summary>
     [ObservableProperty] public partial ChoiceOption<int> SnoozeOption { get; set; }
 
+    /// <summary>The entry of the list for a sound of the settings; no sound (null, a hand-edited file) is shown as "(none)" and kept as it is until another is chosen.</summary>
+    private SoundOption SoundFor(string? path)
+    {
+        if (path is not null) return Sounds.FirstOrDefault(o => o.Path == path) ?? AddCustomSound(path);
+        if (Sounds.FirstOrDefault(o => o.Path is null) is { } none) return none;
+        none = new SoundOption(L.T("settings.none"), null);
+        Sounds.Insert(0, none);
+        return none;
+    }
+
     public SoundOption AddCustomSound(string path)
     {
         var existing = Sounds.FirstOrDefault(o => o.Path == path);
@@ -347,8 +357,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultEventMinutes = DefaultEventMinutes,
             NotificationsEnabled = NotificationsEnabled,
             ReminderVolumePercent = ReminderVolumePercent,
-            DefaultReminderSound = DefaultSound.Path ?? new AppSettings().DefaultReminderSound,
-            DefaultAlarmSound = AlarmSound.Path ?? new AppSettings().DefaultAlarmSound,
+            DefaultReminderSound = DefaultSound.Path,
+            DefaultAlarmSound = AlarmSound.Path,
             AlarmDurationMinutes = Math.Clamp(AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes),
             SnoozeMinutes = SnoozeOption?.Value ?? AppSettings.DefaultSnoozeMinutes,
             SnapMinutes = SnapMinutes,

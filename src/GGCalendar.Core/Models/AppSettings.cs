@@ -61,10 +61,10 @@ public sealed class AppSettings
     /// <summary>Name of the column of the second time zone (up to 6 characters); null or empty: the name of its city.</summary>
     public string? SecondaryTimeZoneLabel { get; set; }
     public bool NotificationsEnabled { get; set; } = true;
-    public string DefaultReminderSound { get; set; } = @"C:\Windows\Media\Windows Notify Calendar.wav";
+    public string? DefaultReminderSound { get; set; } = @"C:\Windows\Media\Windows Notify Calendar.wav";
 
     /// <summary>The sound of the alarms, apart from the one of the popups (issue #32): an alarm rings in a loop for minutes.</summary>
-    public string DefaultAlarmSound { get; set; } = @"C:\Windows\Media\Alarm01.wav";
+    public string? DefaultAlarmSound { get; set; } = @"C:\Windows\Media\Alarm01.wav";
 
     public const int MinAlarmMinutes = 1;
     public const int MaxAlarmMinutes = 10;

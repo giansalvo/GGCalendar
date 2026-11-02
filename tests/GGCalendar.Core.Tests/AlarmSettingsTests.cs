@@ -325,7 +325,124 @@ public class AlarmSettingsTests
             Reminders = [new EventReminder(ReminderMethod.Popup, 10), new EventReminder(ReminderMethod.Alarm, 10)],
         };
         var vm = new EventEditViewModel(ev, [new CalendarItemViewModel(new CalendarInfo("c1", "Locale", "Personale", "#1A73E8"), () => { })], false, settings);
-        Assert.Equal(["popup.wav", "alarm.wav"], vm.Reminders.Select(vm.PreviewPathOf).ToArray());
+        Assert.Equal(["popup.wav", "alarm.wav"], vm.Reminders.Select(r => vm.PreviewPathOf(r) ?? "").ToArray());
         return Task.CompletedTask;
+    });
+
+    // ---- T362: no sound (issue #59) ----
+
+    [Fact]
+    [Trait("TestCase", "T362")]
+    public void ASettingsFileWithNoSoundIsReadAsSilence()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"ggcal-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{\"DefaultReminderSound\": null, \"DefaultAlarmSound\": null}");
+            var settings = new SettingsStore(path).Load();
+            Assert.Null(settings.DefaultReminderSound);
+            Assert.Null(settings.DefaultAlarmSound);
+
+            // The settings are the sound of a reminder that has none of its own: silence, never an error.
+            Assert.Null(ReminderSounds.Choose(new EventReminder(ReminderMethod.Popup, 10), settings));
+            Assert.Null(ReminderSounds.Choose(new EventReminder(ReminderMethod.Alarm, 10), settings));
+            Assert.Null(ReminderSounds.Playable(null, isAlarm: false));
+            Assert.Null(ReminderSounds.Playable(null, isAlarm: true));
+
+            // and it stays null when written again
+            var again = new SettingsStore(path);
+            again.Save(settings);
+            Assert.Null(again.Load().DefaultReminderSound);
+            Assert.Null(again.Load().DefaultAlarmSound);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    [Trait("TestCase", "T362")]
+    public Task TheWindowShowsNoSoundAsNoneAndSavingKeepsItUntilASoundIsChosen() => HeadlessApp.RunAsync(async () =>
+    {
+        var store = new SettingsStore();
+        var original = File.Exists(store.FilePath) ? File.ReadAllBytes(store.FilePath) : null;
+        var language = L.Language;
+        MainWindow? window = null;
+        try
+        {
+            var silent = store.Load();
+            silent.DefaultReminderSound = null;
+            silent.DefaultAlarmSound = null;
+            store.Save(silent);
+            window = OpenApp();
+
+            // No sound: both lists start with "(none)", chosen; saving without touching them keeps silence.
+            var dialog = await OpenSettingsAsync(window);
+            var popup = (ComboBox)FindById(dialog, "Settings.DefaultSound");
+            var alarm = (ComboBox)FindById(dialog, "Settings.AlarmSound");
+            foreach (var box in new[] { popup, alarm })
+            {
+                Assert.Null(((SoundOption)box.SelectedItem!).Path);
+                Assert.Equal(L.T("settings.none"), ((SoundOption)box.SelectedItem!).Label);
+                Assert.Same(box.SelectedItem, ((IEnumerable<SoundOption>)box.ItemsSource!).First());
+            }
+
+            Click(FindButton(dialog, "Settings.Save"));
+            await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
+            Assert.Null(store.Load().DefaultReminderSound);
+            Assert.Null(store.Load().DefaultAlarmSound);
+
+            // A sound chosen replaces the silence; "(none)" is not offered any more when a sound is set.
+            dialog = await OpenSettingsAsync(window);
+            popup = (ComboBox)FindById(dialog, "Settings.DefaultSound");
+            popup.SelectedItem = ((IEnumerable<SoundOption>)popup.ItemsSource!).First(o => o.Path is not null);
+            Dispatcher.UIThread.RunJobs();
+            var chosen = ((SoundOption)popup.SelectedItem!).Path;
+            Click(FindButton(dialog, "Settings.Save"));
+            await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
+            Assert.Equal(chosen, store.Load().DefaultReminderSound);
+            Assert.Null(store.Load().DefaultAlarmSound); // the alarm was not touched
+
+            dialog = await OpenSettingsAsync(window);
+            popup = (ComboBox)FindById(dialog, "Settings.DefaultSound");
+            Assert.Equal(chosen, ((SoundOption)popup.SelectedItem!).Path);
+            Click(FindButton(dialog, "Settings.Cancel"));
+            await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
+        }
+        finally
+        {
+            window?.Close();
+            L.Apply(language);
+            if (original is not null) File.WriteAllBytes(store.FilePath, original);
+        }
+    });
+
+    [Fact]
+    [Trait("TestCase", "T362")]
+    public Task TheWindowDoesNotOfferNoneWhenTheSoundsAreSet() => HeadlessApp.RunAsync(async () =>
+    {
+        var store = new SettingsStore();
+        var original = File.Exists(store.FilePath) ? File.ReadAllBytes(store.FilePath) : null;
+        MainWindow? window = null;
+        try
+        {
+            var normal = store.Load();
+            normal.DefaultReminderSound ??= new AppSettings().DefaultReminderSound;
+            normal.DefaultAlarmSound ??= new AppSettings().DefaultAlarmSound;
+            store.Save(normal);
+            window = OpenApp();
+
+            var dialog = await OpenSettingsAsync(window);
+            foreach (var id in new[] { "Settings.DefaultSound", "Settings.AlarmSound" })
+                Assert.DoesNotContain(((IEnumerable<SoundOption>)((ComboBox)FindById(dialog, id)).ItemsSource!), o => o.Path is null);
+            Click(FindButton(dialog, "Settings.Cancel"));
+            await WaitForAsync(() => window.OwnedWindows.Count == 0 ? window : null, "la chiusura delle impostazioni");
+        }
+        finally
+        {
+            window?.Close();
+            if (original is not null) File.WriteAllBytes(store.FilePath, original);
+        }
     });
 }

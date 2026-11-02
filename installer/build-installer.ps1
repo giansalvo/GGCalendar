@@ -23,7 +23,9 @@ if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 dotnet publish $project -c Release -r win-x64 --self-contained true -o $publish -p:DebugType=none
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish non riuscito.' }
 
-& $iscc "/DAppVersion=$version" (Join-Path $PSScriptRoot 'GGCalendar.iss')
+# The numeric part (1.0.3) is what the version info of Setup.exe accepts; the whole text (1.0.3-RC1) is what the user sees.
+$numeric = $version -replace '-.*$', ''
+& $iscc "/DAppVersion=$version" "/DAppVersionNumeric=$numeric" (Join-Path $PSScriptRoot 'GGCalendar.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Compilazione dell''installer non riuscita.' }
 
 Get-Item (Join-Path $root "website\downloads\GGCalendar-v$version-Setup.exe")

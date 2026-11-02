@@ -48,7 +48,7 @@ public class SyncQueueTests
 
         Assert.Equal(["a", "b", "c", "m"], queue.Select(q => q.EventId).ToArray());
         Assert.Equal([QueueKind.New, QueueKind.Edited, QueueKind.Deleted, QueueKind.Moved], queue.Select(q => q.Kind).ToArray());
-        Assert.Equal(["Nuovo", "Modificato 2", "Eliminato", "Spostato"], queue.Select(q => q.Title).ToArray()); // the last version of the event, or the one kept when it was deleted
+        Assert.Equal(["Nuovo", "Modificato 2", "Eliminato", "Spostato"], queue.Select(q => q.Title ?? "").ToArray()); // the last version of the event, or the one kept when it was deleted
         Assert.Equal(2, queue[1].Edits);
         Assert.Equal(at, queue[0].Since);
         Assert.Equal((Other, Cal), (queue[3].CalendarId, queue[3].FromCalendarId)); // where it is now, where it was
