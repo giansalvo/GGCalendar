@@ -24,11 +24,7 @@ public class AccountDisconnectUiTests
     /// <summary>The menu of the header of the account, opened.</summary>
     private static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
     {
-        var header = window.GetVisualDescendants().OfType<Grid>().First(g => g.DataContext == group && g.ContextMenu is not null);
-        header.ContextMenu!.DataContext = group; // headless: the menu does not always take it before the first read
-        header.ContextMenu.Open(header);
-        Dispatcher.UIThread.RunJobs();
-        return header.ContextMenu;
+        return OpenMenu(() => AccountHeader(window, group.AccountName));
     }
 
     private static async Task<ConfirmWindow> AskAsync(MainWindow window)

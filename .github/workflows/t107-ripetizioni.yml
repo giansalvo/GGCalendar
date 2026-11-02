@@ -1,0 +1,66 @@
+name: Ripetizioni T107 (diagnosi issue #58)
+
+# TEMPORANEO: serve a capire quanto è instabile il test T107 e perché. Gira solo sul branch di studio
+# (a ogni push), su 10 macchine in parallelo: 5 libere e 5 con un carico di processi in corso. Ogni macchina
+# ripete T107 più volte e salva il risultato; i dettagli dei fallimenti (con la traccia delle ricariche
+# stampata dal test) restano come file allegati all'esecuzione.
+# DA TOGLIERE quando la #58 è chiusa.
+on:
+  push:
+    branches: [fix/test-t107-menu-contestuale]
+
+env:
+  RIPETIZIONI: 10
+
+jobs:
+  ripeti:
+    runs-on: windows-latest
+    strategy:
+      # Tutte le macchine finiscono anche se qualcuna ha fallimenti.
+      fail-fast: false
+      matrix:
+        carico: [libero, carico]
+        macchina: [1, 2, 3, 4, 5]
+    name: T107 ${{ matrix.carico }} ${{ matrix.macchina }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compila i test
+        run: dotnet build tests/GGCalendar.Core.Tests -c Release
+
+      - name: Carico di processi (solo macchine con carico)
+        if: matrix.carico == 'carico'
+        shell: pwsh
+        run: |
+          # Un processo attivo per ogni core, più altri: simula una macchina occupata.
+          # Processi indipendenti (non "job" di PowerShell, che finirebbero con il passo): restano attivi nei passi seguenti.
+          $n = [Environment]::ProcessorCount * 4
+          1..$n | ForEach-Object { Start-Process pwsh -ArgumentList '-NoProfile', '-Command', 'while ($true) { }' -WindowStyle Hidden }
+          "Avviati $n processi di carico su $([Environment]::ProcessorCount) core"
+
+      - name: Ripeti T107
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path fallimenti | Out-Null
+          $ok = 0; $ko = 0
+          for ($i = 1; $i -le [int]$env:RIPETIZIONI; $i++) {
+            $out = dotnet test tests/GGCalendar.Core.Tests -c Release --no-build --filter "FullyQualifiedName~T107_TheAddress" 2>&1 | Out-String
+            if ($out -match "Passed!|Superato!") { $ok++; "$i OK" }
+            else { $ko++; "$i FALLITO"; $out | Set-Content "fallimenti/esecuzione-$i.txt" }
+          }
+          "RISULTATO ${{ matrix.carico }} ${{ matrix.macchina }}: ok=$ok ko=$ko su $env:RIPETIZIONI"
+          "### ${{ matrix.carico }} ${{ matrix.macchina }}: ok=$ok ko=$ko" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          # Il flusso resta verde anche con fallimenti: il risultato è nel riepilogo, i dettagli negli allegati.
+          exit 0
+
+      - name: Allega i dettagli dei fallimenti
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fallimenti-${{ matrix.carico }}-${{ matrix.macchina }}
+          path: fallimenti
+          if-no-files-found: ignore
