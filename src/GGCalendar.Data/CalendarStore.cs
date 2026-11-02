@@ -154,13 +154,26 @@ public sealed class CalendarStore
 
     // Calendars
 
-    public IReadOnlyList<CalendarInfo> GetCalendars() => WithConnection(c =>
+    public IReadOnlyList<CalendarInfo> GetCalendars() => WithConnection(ReadCalendars);
+
+    private static IReadOnlyList<CalendarInfo> ReadCalendars(SqliteConnection c)
     {
         using var cmd = Command(c, "SELECT id, account_name, name, color, is_visible, is_owner FROM calendars ORDER BY account_name, sort_order, name", []);
         using var r = cmd.ExecuteReader();
         var list = new List<CalendarInfo>();
         while (r.Read()) list.Add(new CalendarInfo(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetInt32(4) != 0, r.IsDBNull(5) ? null : r.GetInt32(5) != 0));
         return list;
+    }
+
+    /// <summary>
+    /// Calendars, events and subscriptions as they were at one instant: read in one transaction, so a change made meanwhile
+    /// (for example a subscription removed with its calendar) is either all in or all out, never half.
+    /// </summary>
+    public (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyList<SubscriptionRecord> Subscriptions) GetSnapshot() => WithConnection(c =>
+    {
+        // The in-memory database of the tests is one connection shared by every caller: a transaction on it would clash with theirs.
+        using var tx = _keepAlive is null ? c.BeginTransaction() : null;
+        return (ReadCalendars(c), ReadEvents(c, "SELECT data FROM events ORDER BY start_at", []), ReadSubscriptions(c));
     });
 
     public void UpsertCalendar(CalendarInfo calendar) => WithConnection(c => Run(c, """
@@ -200,14 +213,16 @@ public sealed class CalendarStore
 
     private static string? WriteDate(DateTime? d) => d?.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 
-    public IReadOnlyList<SubscriptionRecord> GetSubscriptions() => WithConnection(c =>
+    public IReadOnlyList<SubscriptionRecord> GetSubscriptions() => WithConnection(ReadSubscriptions);
+
+    private static IReadOnlyList<SubscriptionRecord> ReadSubscriptions(SqliteConnection c)
     {
         using var cmd = Command(c, $"SELECT {SubscriptionColumns} FROM subscriptions ORDER BY calendar_id", []);
         using var r = cmd.ExecuteReader();
         var list = new List<SubscriptionRecord>();
         while (r.Read()) list.Add(ReadSubscription(r));
         return list;
-    });
+    }
 
     public SubscriptionRecord? GetSubscription(string calendarId) => WithConnection(c =>
     {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -194,19 +195,58 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>Re-reads calendars and events from the store (after a sync or when accounts change).</summary>
-    public void Reload() => Apply(Load());
+    public void Reload()
+    {
+        var id = Interlocked.Increment(ref _reloadIds);
+        var data = Load();
+        // A reload that started before this one and is still reading must not put its older data back afterwards.
+        _lastAppliedReload = id;
+        Apply(data);
+        Trace($"Reload() #{id} applicato: ora la lista ha {_calendars.Count} calendari ({_calendars.Count(c => c.IsSubscription)} di abbonamento)");
+    }
+
+    // The newest reload (by the moment it started) whose data is on screen: an older one that finishes later is dropped, not applied.
+    private int _lastAppliedReload;
+
+    /// <summary>For the tests: called on the reading thread of every <see cref="ReloadAsync"/>, after it has read and before it applies, with the number of the reload.</summary>
+    public Action<int>? AfterReadHook { get; set; }
 
     /// <summary>Like <see cref="Reload"/>, but reads the store off the UI thread; retried if the user edits meanwhile.</summary>
-    public async Task ReloadAsync()
+    /// <param name="caller">Who asked (filled in by the compiler): kept in the trace of the reloads.</param>
+    /// <param name="line">The line of the request (filled in by the compiler).</param>
+    public async Task ReloadAsync([CallerMemberName] string? caller = null, [CallerLineNumber] int line = 0)
     {
+        var id = Interlocked.Increment(ref _reloadIds);
+        Trace($"#{id} parte da {caller}:{line} (modifiche locali {_changeCount})");
         try
         {
             while (true)
             {
                 var before = _changeCount;
-                var data = await Task.Run(Load);
-                if (before != _changeCount) continue;
+                var data = await Task.Run(() =>
+                {
+                    var read = Load();
+                    AfterReadHook?.Invoke(id);
+                    return read;
+                });
+                var orphans = data.Calendars.Count(c => SubscriptionRecord.IsSubscriptionId(c.Id) && !data.Subscriptions.ContainsKey(c.Id));
+                Trace($"#{id} letto: {data.Calendars.Count} calendari ({data.Calendars.Count(c => SubscriptionRecord.IsSubscriptionId(c.Id))} di abbonamento), {data.Subscriptions.Count} abbonamenti, {data.Events.Count} eventi"
+                    + (orphans > 0 ? $"; LETTURA INCOERENTE: {orphans} calendari di abbonamento senza abbonamento (letti in momenti diversi)" : ""));
+                if (before != _changeCount)
+                {
+                    Trace($"#{id} dati vecchi (modifiche locali {before} -> {_changeCount}): rilegge");
+                    continue;
+                }
+
+                if (id < _lastAppliedReload)
+                {
+                    Trace($"#{id} scartato: la ricarica #{_lastAppliedReload}, partita dopo, è già applicata");
+                    return;
+                }
+
+                _lastAppliedReload = id;
                 Apply(data);
+                Trace($"#{id} applicato: ora la lista ha {_calendars.Count} calendari ({_calendars.Count(c => c.IsSubscription)} di abbonamento)");
                 return;
             }
         }
@@ -214,8 +254,28 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             // Callers fire this without awaiting (or from async void handlers): a failure would vanish and leave the lists stale.
             LastReloadError = ex;
+            Trace($"#{id} errore: {ex.GetType().Name}");
             Console.Error.WriteLine($"ReloadAsync failed: {ex}");
         }
+    }
+
+    // A short trace of the reloads (which started, what they read, which one was applied last): when a list does not refresh, the order tells why.
+    private int _reloadIds;
+    private readonly Queue<string> _reloadTrace = new();
+
+    private void Trace(string line)
+    {
+        lock (_reloadTrace)
+        {
+            _reloadTrace.Enqueue($"{DateTime.Now:HH:mm:ss.fff} [thread {Environment.CurrentManagedThreadId}] {line}");
+            while (_reloadTrace.Count > 40) _reloadTrace.Dequeue();
+        }
+    }
+
+    /// <summary>The last steps of the reloads, oldest first (for the diagnosis of a list that is not up to date).</summary>
+    public IReadOnlyList<string> ReloadTrace
+    {
+        get { lock (_reloadTrace) return _reloadTrace.ToList(); }
     }
 
     /// <summary>The last failure of <see cref="ReloadAsync"/>, kept to diagnose a list that did not refresh.</summary>
@@ -223,7 +283,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
     private (IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) Load()
     {
-        var infos = _store.GetCalendars();
+        // One snapshot of the three tables: read one after the other, a calendar removed in between could show up without its subscription.
+        var (infos, events, subscriptions) = _store.GetSnapshot();
         if (infos.Count == 0)
         {
             // First run: a local calendar so the app is usable before any account is connected.
@@ -232,7 +293,7 @@ public sealed partial class MainViewModel : ViewModelBase
             infos = [local];
         }
 
-        return (infos, _store.GetAllEvents(), _store.GetSubscriptions().ToDictionary(r => r.CalendarId));
+        return (infos, events, subscriptions.ToDictionary(r => r.CalendarId));
     }
 
     private void Apply((IReadOnlyList<CalendarInfo> Calendars, IReadOnlyList<CalendarEvent> Events, IReadOnlyDictionary<string, SubscriptionRecord> Subscriptions) data)

@@ -77,20 +77,12 @@ public class GoogleCalendarUiTests
     /// <summary>The menu of the calendar, opened.</summary>
     internal static ContextMenu OpenCalendarMenu(MainWindow window, CalendarItemViewModel calendar)
     {
-        var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext is CalendarItemViewModel c && c.Id == calendar.Id && b.ContextMenu is not null); // by id: a reload makes new items
-        holder.ContextMenu!.DataContext = holder.DataContext; // the menu takes it from the control it opens on; headless, not always before the first read
-        holder.ContextMenu.Open(holder);
-        Dispatcher.UIThread.RunJobs();
-        return holder.ContextMenu;
+        return OpenMenu(() => CalendarRow(window, calendar.Id));
     }
 
     internal static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
     {
-        var header = window.GetVisualDescendants().OfType<Grid>().First(g => g.DataContext == group && g.ContextMenu is not null);
-        header.ContextMenu!.DataContext = group;
-        header.ContextMenu.Open(header);
-        Dispatcher.UIThread.RunJobs();
-        return header.ContextMenu;
+        return OpenMenu(() => AccountHeader(window, group.AccountName));
     }
 
     internal static CalendarItemViewModel Calendar(MainWindow window, string localId) => Vm(window).Calendars.First(c => c.Id == localId);

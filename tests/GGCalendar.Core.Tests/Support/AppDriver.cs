@@ -222,6 +222,45 @@ public static class AppDriver
         root.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetAutomationId(c) == automationId)
         ?? throw new XunitException($"Controllo {automationId} non trovato nella finestra.");
 
+    /// <summary>
+    /// Opens the context menu of the control that <paramref name="findOwner"/> finds and returns it once it is really open. A list that is drawn again after a
+    /// reload replaces its controls: one found a moment ago may be gone (its menu then refuses to open on it), and a menu asked to open is not always open
+    /// at once. So the control is found again at every try, until the menu is open, for at most 15 seconds (a menu that never opens is a failure with its own message).
+    /// </summary>
+    public static ContextMenu OpenMenu(Func<Control?> findOwner, Func<Control, object?>? dataContextOf = null)
+    {
+        var until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (true)
+        {
+            if (findOwner() is { ContextMenu: { } menu } owner && TopLevel.GetTopLevel(owner) is not null)
+            {
+                menu.DataContext = dataContextOf?.Invoke(owner) ?? owner.DataContext; // the menu takes it from the control it opens on; headless, not always before the first read
+                try
+                {
+                    if (!menu.IsOpen) menu.Open(owner);
+                }
+                catch (ArgumentException)
+                {
+                    // the control was replaced by a reload between finding it and opening the menu: find it again
+                }
+
+                Dispatcher.UIThread.RunJobs();
+                if (menu.IsOpen) return menu;
+            }
+
+            if (DateTime.UtcNow > until) throw new XunitException("Il menu contestuale non si apre.");
+            Thread.Sleep(100);
+        }
+    }
+
+    /// <summary>The line of a calendar in the list (found by id: a reload makes new items), or null while it is not drawn.</summary>
+    public static Border? CalendarRow(MainWindow window, string calendarId) =>
+        window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext is CalendarItemViewModel c && c.Id == calendarId && b.ContextMenu is not null);
+
+    /// <summary>The header of an account in the list (found by name), or null while it is not drawn.</summary>
+    public static Grid? AccountHeader(MainWindow window, string accountName) =>
+        window.GetVisualDescendants().OfType<Grid>().FirstOrDefault(g => g.DataContext is AccountGroup a && a.AccountName == accountName && g.ContextMenu is not null);
+
     public static void Click(Button button)
     {
         Assert.True(button.IsEnabled, "Il pulsante è disattivato.");

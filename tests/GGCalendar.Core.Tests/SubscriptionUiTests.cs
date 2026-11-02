@@ -113,12 +113,10 @@ public class SubscriptionUiTests
         Assert.Equal(L.T("main.public_calendars"), group.DisplayName);
 
         // The menu of the header of the group offers the same entry.
-        var header = window.GetVisualDescendants().OfType<Grid>().First(g => g.DataContext == group && g.ContextMenu is not null);
-        header.ContextMenu!.Open(header);
-        Dispatcher.UIThread.RunJobs();
-        var ids = header.ContextMenu.Items.OfType<MenuItem>().Where(i => i.IsVisible)
+        var headerMenu = OpenMenu(() => AccountHeader(window, group.AccountName));
+        var ids = headerMenu.Items.OfType<MenuItem>().Where(i => i.IsVisible)
             .Select(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i)).ToList();
-        header.ContextMenu.Close();
+        headerMenu.Close();
         Assert.Contains("Menu.AddPublicCalendar", ids);
     });
 
@@ -212,12 +210,9 @@ public class SubscriptionUiTests
 
     private static async Task<List<string>> MenuOfAsync(MainWindow window, CalendarItemViewModel calendar)
     {
-        // The list is drawn again after a reload: the line of the calendar may not be there yet.
-        var holder = await WaitForAsync(() => window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.DataContext is CalendarItemViewModel c && c.Id == calendar.Id && b.ContextMenu is not null), "la riga del calendario"); // by id: a reload makes new items
-        // The menu takes its data context from the control it opens on; headless, that does not always happen before the first read.
-        holder.ContextMenu!.DataContext = holder.DataContext;
-        holder.ContextMenu.Open(holder);
-        List<string> Read() => holder.ContextMenu.Items.OfType<MenuItem>().Where(i => i.IsVisible)
+        // The list is drawn again after a reload: the line of the calendar may not be there yet, or be replaced; the menu is opened on the one there is.
+        var menu = OpenMenu(() => CalendarRow(window, calendar.Id));
+        List<string> Read() => menu.Items.OfType<MenuItem>().Where(i => i.IsVisible)
             .Select(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) is { Length: > 0 } id ? id : i.Header?.ToString() ?? "").ToList();
 
         // The bindings of the items are applied a moment after the menu opens: read until the list stops changing.
@@ -230,14 +225,15 @@ public class SubscriptionUiTests
             last = now;
         }
 
-        holder.ContextMenu.Close();
-        await WaitForAsync(() => holder.ContextMenu.IsOpen ? null : holder, "la chiusura del menu");
+        menu.Close();
+        await WaitForAsync(() => menu.IsOpen ? null : menu, "la chiusura del menu");
         await PauseAsync(TimeSpan.FromMilliseconds(150));
         return last;
     }
 
     [Fact]
     [Trait("TestCase", "T158")]
+    [Trait("TestCase", "T210")]
     public Task T158_ASubscribedCalendarHasItsOwnMenuAndNoImportExportOrDelete() => InSubscribedAppAsync(
         new FakeSite().Serve("/public.ics", Ics("Lezione", DateTime.Today.AddDays(1))), async window =>
     {
@@ -262,10 +258,8 @@ public class SubscriptionUiTests
         var subscribed = await SubscribeAsync(window);
         Assert.DoesNotContain(Url, subscribed.Name);
 
-        var holder = window.GetVisualDescendants().OfType<Border>().First(b => b.DataContext == subscribed && b.ContextMenu is not null);
-        holder.ContextMenu!.Open(holder);
-        Dispatcher.UIThread.RunJobs();
-        holder.ContextMenu.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubShowUrl")
+        var menu = OpenMenu(() => CalendarRow(window, subscribed.Id));
+        menu.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubShowUrl")
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
         var shown = await WaitForAsync(() => window.OwnedWindows.OfType<SubscriptionUrlWindow>().FirstOrDefault(), "la finestra con l'indirizzo");
         Assert.Equal(Url, ((TextBox)FindById(shown, "SubUrl.Text")).Text);
@@ -275,7 +269,8 @@ public class SubscriptionUiTests
         // The database holds it only encrypted.
         Assert.DoesNotContain("calendar.example.com", new CalendarStore().GetSubscription(subscribed.Id)!.EncryptedUrl);
 
-        holder.ContextMenu.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubRemove")
+        menu = OpenMenu(() => CalendarRow(window, subscribed.Id)); // the first click closed it, and the list may have been drawn again: open it again before the second
+        menu.Items.OfType<MenuItem>().First(i => Avalonia.Automation.AutomationProperties.GetAutomationId(i) == "Menu.SubRemove")
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
         var confirm = await WaitForAsync(() => window.OwnedWindows.OfType<ConfirmWindow>().FirstOrDefault(), "la conferma");
         Click(FindButton(confirm, "Dialog.Ok"));
@@ -289,7 +284,7 @@ public class SubscriptionUiTests
             var open = string.Join(", ", window.OwnedWindows.Select(w => w.GetType().Name));
             var subs = string.Join(", ", Vm(window).Calendars.Where(c => c.IsSubscription).Select(c => c.Name));
             var inDb = new CalendarStore().GetSubscriptions().Count;
-            throw new Xunit.Sdk.XunitException($"{ex.Message} Finestre aperte: [{open}]; abbonamenti in lista: [{subs}]; nel database: {inDb}; errore di ricarica: {Vm(window).LastReloadError?.ToString() ?? "nessuno"}.");
+            throw new Xunit.Sdk.XunitException($"{ex.Message} Finestre aperte: [{open}]; abbonamenti in lista: [{subs}]; nel database: {inDb}; errore di ricarica: {Vm(window).LastReloadError?.ToString() ?? "nessuno"}.{Environment.NewLine}Ricariche (dal più vecchio):{Environment.NewLine}{string.Join(Environment.NewLine, Vm(window).ReloadTrace)}");
         }
         Assert.Empty(new CalendarStore().GetSubscriptions());
         Assert.DoesNotContain(new CalendarStore().GetAllEvents(), e => e.CalendarId == subscribed.Id);
