@@ -569,7 +569,7 @@ public partial class MainWindow : Window
 
     private void OnAgendaItemTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
-        if (sender is Control { DataContext: AgendaItem item } row) ShowDetails(item.Event, row, null);
+        if (sender is Control { DataContext: AgendaItem item } row) ShowDetailsOfLine(item.Event, row, AgendaList);
     }
 
     // ---------- Event details (single click) ----------
@@ -609,6 +609,16 @@ public partial class MainWindow : Window
         DetailsPopup.Child = card;
         DetailsPopup.IsOpen = true;
         card.Focus();
+    }
+
+    /// <summary>
+    /// Shows the card beside a line of a list. The lines are made again on every reload and a popup closes when the control it is placed on leaves the
+    /// window, so the card is placed on the list (which stays) at the rectangle of the line.
+    /// </summary>
+    private void ShowDetailsOfLine(CalendarEvent ev, Control line, Control list)
+    {
+        var origin = Avalonia.VisualExtensions.TranslatePoint(line, default, list);
+        ShowDetails(ev, list, origin is { } p ? new Avalonia.Rect(p, line.Bounds.Size) : null);
     }
 
     /// <summary>The language changed: what is drawn by hand shows the new names of months and days, and the card of an event is closed (it is made again when opened).</summary>
@@ -752,7 +762,7 @@ public partial class MainWindow : Window
     /// <summary>A click on a result shows the card of the event beside the line, like a click on an event in the views.</summary>
     private void OnSearchRowTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
-        if (sender is Control { DataContext: SearchRow row } line) ShowDetails(row.Event, line, null);
+        if (sender is Control { DataContext: SearchRow row } line) ShowDetailsOfLine(row.Event, line, SearchResults);
     }
 
     private async void OnSearchRowDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
@@ -788,6 +798,8 @@ public partial class MainWindow : Window
     private void OnShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
     {
         if (Vm is { } v && e.Key == Avalonia.Input.Key.F && e.KeyModifiers == Avalonia.Input.KeyModifiers.Control) { OpenSearch(); e.Handled = true; return; }
+        // The card first: when the focus is not on it, Esc must still close the card and leave the search as it is.
+        if (e.Key == Avalonia.Input.Key.Escape && DetailsPopup.IsOpen) { CloseDetails(); e.Handled = true; return; }
         if (Vm is { } v2 && e.Key == Avalonia.Input.Key.Escape && v2.Search.IsOpen) { v2.Search.Close(); e.Handled = true; return; }
         if (Vm is not { } vm || e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Source is TextBox) return;
         var mode = e.Key switch
