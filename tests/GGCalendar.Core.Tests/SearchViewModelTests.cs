@@ -28,7 +28,8 @@ public class SearchViewModelTests
 
     private static string[] Titles(MainViewModel vm) => vm.Search.Result.Hits.Select(h => h.Event.Title).Distinct().Order().ToArray();
 
-    [Fact] // T168
+    [Fact]
+    [Trait("TestCase", "T168")]
     public void ScopeDefaultsToTheCalendarsShown_AndHiddenOnesAreSelectable()
     {
         var (vm, store) = Rig(("a", "Uno"), ("b", "Due"));
@@ -53,7 +54,8 @@ public class SearchViewModelTests
         Assert.Equal(["Alfa nel secondo"], Titles(vm));
     }
 
-    [Fact] // T168
+    [Fact]
+    [Trait("TestCase", "T168")]
     public void ScopeLabelFollowsTheChoice()
     {
         var (vm, _) = Rig(("a", "Uno"), ("b", "Due"), ("c", "Tre"));
@@ -68,7 +70,9 @@ public class SearchViewModelTests
         Assert.Equal(L.T("search.scope_many", 2), vm.Search.ScopeLabel);
     }
 
-    [Fact] // T168: with "all", a calendar that is added is searched too; with a choice of calendars it is not
+    [Fact]
+    // with "all", a calendar that is added is searched too; with a choice of calendars it is not
+    [Trait("TestCase", "T168")]
     public void ANewCalendarIsInAllButNotInAChoice()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -89,7 +93,8 @@ public class SearchViewModelTests
         Assert.Empty(Titles(vm));
     }
 
-    [Fact] // T173
+    [Fact]
+    [Trait("TestCase", "T173")]
     public void MessagesFollowTheState()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -116,7 +121,10 @@ public class SearchViewModelTests
         Assert.Empty(vm.Search.Groups);
     }
 
-    [Fact] // T177, T181: "Search" in the panel writes its boxes into the line; plain words stay
+    [Fact]
+    // "Search" in the panel writes its boxes into the line; plain words stay
+    [Trait("TestCase", "T177")]
+    [Trait("TestCase", "T181")]
     public void SubmitWritesThePanelIntoTheLine()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -139,7 +147,9 @@ public class SearchViewModelTests
         Assert.Equal(["Prova uno"], Titles(vm)); // "what" looks in title and description only: not in the location of e3
     }
 
-    [Fact] // T181: the boxes of the panel show what the line says
+    [Fact]
+    // the boxes of the panel show what the line says
+    [Trait("TestCase", "T181")]
     public void ThePanelShowsTheLine()
     {
         var (vm, _) = Rig(("a", "Uno"));
@@ -154,7 +164,9 @@ public class SearchViewModelTests
         Assert.Null(vm.Search.ToDate);
     }
 
-    [Fact] // T181: Cancel drops what was typed in the panel, the line stays
+    [Fact]
+    // Cancel drops what was typed in the panel, the line stays
+    [Trait("TestCase", "T181")]
     public void CancelKeepsTheLine()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -174,7 +186,9 @@ public class SearchViewModelTests
         Assert.True(vm.Search.ShowResults);
     }
 
-    [Fact] // T181: the first day goes into the line only when it is not the one of the view
+    [Fact]
+    // the first day goes into the line only when it is not the one of the view
+    [Trait("TestCase", "T181")]
     public void TheFirstDayIsWrittenOnlyWhenItIsNotTheDefault()
     {
         var (vm, _) = Rig(("a", "Uno"));
@@ -192,7 +206,9 @@ public class SearchViewModelTests
         Assert.Equal($"what:alfa from:{from:yyyy-MM-dd} to:{from.AddDays(28):yyyy-MM-dd}", vm.Search.Text);
     }
 
-    [Fact] // T181: the keywords on the line work as the boxes of the panel did
+    [Fact]
+    // the keywords on the line work as the boxes of the panel did
+    [Trait("TestCase", "T181")]
     public void KeywordsAreSearched()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -226,7 +242,9 @@ public class SearchViewModelTests
         Assert.Equal(L.N("search.count", 2), vm.Search.Summary);
     }
 
-    [Fact] // T181: a keyword without a value, or an unknown one, does not break anything
+    [Fact]
+    // a keyword without a value, or an unknown one, does not break anything
+    [Trait("TestCase", "T181")]
     public void IncompleteKeywordsAreHarmless()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -241,7 +259,9 @@ public class SearchViewModelTests
         Assert.Equal(["Alfa"], Titles(vm)); // the bad day is left out
     }
 
-    [Theory] // T178: where the search starts depends on the view
+    [Theory]
+    // where the search starts depends on the view
+    [Trait("TestCase", "T178")]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -265,7 +285,9 @@ public class SearchViewModelTests
         Assert.Equal(expected, vm.Search.FromDate);
     }
 
-    [Fact] // T177: "Search" in the detailed panel shows the results: the panel folds
+    [Fact]
+    // "Search" in the detailed panel shows the results: the panel folds
+    [Trait("TestCase", "T177")]
     public void SubmitSearchesAndFoldsThePanel()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -281,7 +303,8 @@ public class SearchViewModelTests
         Assert.Equal(["Alfa"], Titles(vm));
     }
 
-    [Fact] // T178
+    [Fact]
+    [Trait("TestCase", "T178")]
     public void EndDateBeforeStartDateIsTold()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -293,7 +316,9 @@ public class SearchViewModelTests
         Assert.Empty(vm.Search.Groups);
     }
 
-    [Fact] // T173: more lines than the limit
+    [Fact]
+    // more lines than the limit
+    [Trait("TestCase", "T173")]
     public void LinesAreCutAtTheLimit_AndTheNoteIsShown()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -310,7 +335,9 @@ public class SearchViewModelTests
         Assert.Equal("", vm.Search.TruncatedNote);
     }
 
-    [Fact] // T170: the texts of the lines
+    [Fact]
+    // the texts of the lines
+    [Trait("TestCase", "T170")]
     public void LinesTellTheTimeAndTheDayOfAnEventOfSeveralDays()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -338,7 +365,9 @@ public class SearchViewModelTests
         Assert.Equal(L.T("common.all_day"), vm.Search.Groups.Single().Rows.Single().Time);
     }
 
-    [Fact] // T174: 12-hour clock
+    [Fact]
+    // 12-hour clock
+    [Trait("TestCase", "T174")]
     public void TheClockOfTheSettingsIsUsed()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -350,7 +379,9 @@ public class SearchViewModelTests
         Assert.StartsWith("9:05", vm.Search.Groups.Single().Rows.Single().Time);
     }
 
-    [Fact] // T172: a change of the events is shown at once
+    [Fact]
+    // a change of the events is shown at once
+    [Trait("TestCase", "T172")]
     public void ResultsFollowTheEvents()
     {
         var (vm, store) = Rig(("a", "Uno"));
@@ -370,7 +401,8 @@ public class SearchViewModelTests
 
     // ---- what is kept (T179) ----
 
-    [Fact] // T179
+    [Fact]
+    [Trait("TestCase", "T179")]
     public void TheChoiceIsWrittenAndReadBack()
     {
         var (vm, _) = Rig(("a", "Uno"), ("b", "Due"), ("c", "Tre"));
@@ -392,7 +424,8 @@ public class SearchViewModelTests
         Assert.Equal(["a", "c"], other.Search.Calendars.Where(o => o.IsSelected).Select(o => o.Id).Order());
     }
 
-    [Fact] // T179
+    [Fact]
+    [Trait("TestCase", "T179")]
     public void CalendarsThatAreGoneAreDropped_AndAnEmptyChoiceFallsBackToTheActiveOnes()
     {
         var (vm, _) = Rig(("a", "Uno"), ("b", "Due"));
@@ -406,7 +439,9 @@ public class SearchViewModelTests
         Assert.Equal(0, vm.Search.Scope);
     }
 
-    [Fact] // T179: a settings file written before the search existed
+    [Fact]
+    // a settings file written before the search existed
+    [Trait("TestCase", "T179")]
     public void AnOldSettingsFileHasNoChoice()
     {
         var path = Path.Combine(Path.GetTempPath(), "ggcal-set-" + Guid.NewGuid().ToString("N") + ".json");

@@ -24,7 +24,8 @@ public class GoogleCalendarTests
 
     // ---- the role is kept ----
 
-    [Fact] // T195
+    [Fact]
+    [Trait("TestCase", "T195")]
     public async Task SyncKeepsWhoOwnsEachCalendar()
     {
         using var rig = new SyncRig();
@@ -40,7 +41,9 @@ public class GoogleCalendarTests
         Assert.False(calendars[Local(shared)].IsOwner); // a writer is not the owner
     }
 
-    [Fact] // T195: a database of the version before the role has none until the next sync
+    [Fact]
+    // a database of the version before the role has none until the next sync
+    [Trait("TestCase", "T195")]
     public async Task OldDatabaseHasUnknownRoleUntilTheNextSync()
     {
         var path = Path.Combine(Path.GetTempPath(), "ggcal-role-" + Guid.NewGuid().ToString("N") + ".db");
@@ -75,7 +78,8 @@ public class GoogleCalendarTests
 
     // ---- creating ----
 
-    [Fact] // T182
+    [Fact]
+    [Trait("TestCase", "T182")]
     public async Task CreatedCalendarIsOnGoogleAndHereWithNameColourAndRole()
     {
         using var rig = new SyncRig();
@@ -105,7 +109,9 @@ public class GoogleCalendarTests
         Assert.True(stored.IsVisible);
     }
 
-    [Fact] // T182: the next sync finds it already and does not add it twice
+    [Fact]
+    // the next sync finds it already and does not add it twice
+    [Trait("TestCase", "T182")]
     public async Task NextSyncDoesNotDuplicateTheCreatedCalendar()
     {
         using var rig = new SyncRig();
@@ -117,7 +123,9 @@ public class GoogleCalendarTests
         Assert.Equal("#8E24AA", rig.Store.GetCalendars().Single(c => c.Id == info.Id).ColorHex);
     }
 
-    [Fact] // T182: an event can be made in it and goes to Google
+    [Fact]
+    // an event can be made in it and goes to Google
+    [Trait("TestCase", "T182")]
     public async Task AnEventInTheCreatedCalendarGoesToGoogle()
     {
         using var rig = new SyncRig();
@@ -129,7 +137,8 @@ public class GoogleCalendarTests
         Assert.Equal(1, rig.Google.EventsIn(remote));
     }
 
-    [Fact] // T183
+    [Fact]
+    [Trait("TestCase", "T183")]
     public async Task EmptyNameIsRefusedWithoutAskingGoogle()
     {
         using var rig = new SyncRig();
@@ -143,7 +152,8 @@ public class GoogleCalendarTests
         Assert.Empty(rig.Google.Requests);
     }
 
-    [Fact] // T183
+    [Fact]
+    [Trait("TestCase", "T183")]
     public async Task NameWithSpecialCharactersAndTooLongNameAreSent()
     {
         using var rig = new SyncRig();
@@ -156,7 +166,9 @@ public class GoogleCalendarTests
         Assert.Equal(GoogleSyncService.MaxCalendarName, cut.Name.Length);
     }
 
-    [Fact] // T183: the text colour follows the background
+    [Fact]
+    // the text colour follows the background
+    [Trait("TestCase", "T183")]
     public async Task TextColourIsReadableOnTheBackground()
     {
         using var rig = new SyncRig();
@@ -165,7 +177,8 @@ public class GoogleCalendarTests
         Assert.Equal(["#FFFFFF", "#000000"], rig.Google.ColorPatches.Select(p => (string)JsonNode.Parse(p.Body)!["foregroundColor"]!).ToArray());
     }
 
-    [Fact] // T184
+    [Fact]
+    [Trait("TestCase", "T184")]
     public async Task NoNetworkCreatesNothing()
     {
         using var rig = new SyncRig();
@@ -176,7 +189,8 @@ public class GoogleCalendarTests
         Assert.Empty(rig.Google.CreatedBodies);
     }
 
-    [Theory] // T184
+    [Theory]
+    [Trait("TestCase", "T184")]
     [InlineData(403, "rateLimitExceeded", GoogleCalendarProblem.RateLimited)]
     [InlineData(403, "quotaExceeded", GoogleCalendarProblem.RateLimited)]
     [InlineData(429, "rateLimitExceeded", GoogleCalendarProblem.RateLimited)]
@@ -194,7 +208,9 @@ public class GoogleCalendarTests
         Assert.Single(rig.Google.CalendarIds); // nothing on Google either
     }
 
-    [Fact] // T184: the calendar is made but its colour is refused: it is kept
+    [Fact]
+    // the calendar is made but its colour is refused: it is kept
+    [Trait("TestCase", "T184")]
     public async Task AColourThatIsRefusedDoesNotLoseTheCalendar()
     {
         using var rig = new SyncRig();
@@ -210,7 +226,8 @@ public class GoogleCalendarTests
         Assert.Equal("#0B8043", rig.Store.GetCalendars().Single(c => c.Id == second.Id).ColorHex); // the colour asked for, until the next sync
     }
 
-    [Fact] // T184
+    [Fact]
+    [Trait("TestCase", "T184")]
     public async Task UnknownAccountIsRefused()
     {
         using var rig = new SyncRig();
@@ -220,7 +237,9 @@ public class GoogleCalendarTests
 
     // ---- deleting ----
 
-    [Fact] // T185, T190
+    [Fact]
+    [Trait("TestCase", "T185")]
+    [Trait("TestCase", "T190")]
     public async Task DeletingACalendarIsOneRequestWhateverTheNumberOfEvents()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -241,7 +260,9 @@ public class GoogleCalendarTests
         Assert.Null(rig.Store.GetSyncToken(localId));
     }
 
-    [Fact] // T185: the other calendars are not touched
+    [Fact]
+    // the other calendars are not touched
+    [Trait("TestCase", "T185")]
     public async Task OtherCalendarsKeepTheirEventsAndQueue()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -260,7 +281,9 @@ public class GoogleCalendarTests
         Assert.Contains(rig.Store.GetPending(), p => p.EventId == "keep"); // the queue of the others is intact
     }
 
-    [Fact] // T186: the changes waiting for the deleted calendar go with it
+    [Fact]
+    // the changes waiting for the deleted calendar go with it
+    [Trait("TestCase", "T186")]
     public async Task WaitingChangesOfTheCalendarAreDiscarded()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -280,7 +303,8 @@ public class GoogleCalendarTests
         Assert.Equal(0, after.Pending);
     }
 
-    [Fact] // T187
+    [Fact]
+    [Trait("TestCase", "T187")]
     public async Task ThePrimaryCalendarIsRefusedWithoutAskingGoogle()
     {
         using var rig = new SyncRig();
@@ -294,7 +318,8 @@ public class GoogleCalendarTests
         Assert.Contains(rig.Store.GetCalendars(), c => c.Id == FakeGoogle.LocalCalendarId);
     }
 
-    [Fact] // T188
+    [Fact]
+    [Trait("TestCase", "T188")]
     public async Task ACalendarThePersonDoesNotOwnIsRefusedWithoutAskingGoogle()
     {
         using var rig = new SyncRig();
@@ -307,7 +332,9 @@ public class GoogleCalendarTests
         Assert.Contains(rig.Store.GetCalendars(), c => c.Id == Local(holidays));
     }
 
-    [Fact] // T195: the role is not known (before the first sync): refused as well
+    [Fact]
+    // the role is not known (before the first sync): refused as well
+    [Trait("TestCase", "T195")]
     public async Task UnknownRoleIsRefused()
     {
         using var rig = new SyncRig();
@@ -316,7 +343,9 @@ public class GoogleCalendarTests
         Assert.Equal(GoogleCalendarProblem.NotOwner, ex.Problem);
     }
 
-    [Fact] // T185: already deleted elsewhere is not an error
+    [Fact]
+    // already deleted elsewhere is not an error
+    [Trait("TestCase", "T185")]
     public async Task ACalendarAlreadyGoneOnGoogleIsCleanedHere()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -330,7 +359,9 @@ public class GoogleCalendarTests
         Assert.DoesNotContain(rig.Store.GetCalendars(), c => c.Id == localId);
     }
 
-    [Fact] // T184: no network or a refusal: nothing is deleted
+    [Fact]
+    // no network or a refusal: nothing is deleted
+    [Trait("TestCase", "T184")]
     public async Task FailuresDeleteNothing()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -354,7 +385,9 @@ public class GoogleCalendarTests
 
     // ---- with the sync ----
 
-    [Fact] // T191: the creation or the deletion waits for a sync that is running
+    [Fact]
+    // the creation or the deletion waits for a sync that is running
+    [Trait("TestCase", "T191")]
     public async Task DeletionWaitsForARunningSync()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -369,7 +402,8 @@ public class GoogleCalendarTests
         Assert.False(rig.Google.HasCalendar(remote));
     }
 
-    [Fact] // T191
+    [Fact]
+    [Trait("TestCase", "T191")]
     public async Task CreationWaitsForARunningSyncAndCanBeCancelledWhileWaiting()
     {
         using var rig = new SyncRig();
@@ -381,7 +415,9 @@ public class GoogleCalendarTests
         Assert.Equal(1, rig.Service.Gate.CurrentCount); // the gate is free again
     }
 
-    [Fact] // T191: a sync does not start while a calendar is being deleted
+    [Fact]
+    // a sync does not start while a calendar is being deleted
+    [Trait("TestCase", "T191")]
     public async Task SyncIsSkippedWhileTheGateIsHeld()
     {
         using var rig = new SyncRig();
@@ -390,7 +426,9 @@ public class GoogleCalendarTests
         rig.Service.Gate.Release();
     }
 
-    [Fact] // T192: Google deleted it but this PC kept it (closed in between): the next sync cleans
+    [Fact]
+    // Google deleted it but this PC kept it (closed in between): the next sync cleans
+    [Trait("TestCase", "T192")]
     public async Task NextSyncCleansWhatGoogleDeleted()
     {
         var (rig, remote, localId) = await RigWithOwnedCalendarAsync();
@@ -408,7 +446,9 @@ public class GoogleCalendarTests
         Assert.DoesNotContain(rig.Store.GetAllEvents(), e => e.CalendarId == localId);
     }
 
-    [Fact] // T192: Google created it but this PC did not save it: the next sync adds it
+    [Fact]
+    // Google created it but this PC did not save it: the next sync adds it
+    [Trait("TestCase", "T192")]
     public async Task NextSyncAddsWhatGoogleCreated()
     {
         using var rig = new SyncRig();
@@ -421,7 +461,8 @@ public class GoogleCalendarTests
 
     // ---- messages ----
 
-    [Fact] // T194
+    [Fact]
+    [Trait("TestCase", "T194")]
     public void EveryProblemHasItsMessageInEveryLanguage()
     {
         foreach (var language in new[] { "it", "en", "fr", "de", "es" })

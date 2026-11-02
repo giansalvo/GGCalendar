@@ -25,7 +25,8 @@ public class CalendarEditTests
 
     // ---- the colours ----
 
-    [Fact] // T206
+    [Fact]
+    [Trait("TestCase", "T206")]
     public void TheTwentyFourColoursAreDistinctValidAndTheQuickOnesAreAmongThem()
     {
         Assert.Equal(24, CalendarColors.All.Count);
@@ -37,7 +38,8 @@ public class CalendarEditTests
         Assert.Equal(CalendarColors.Quick, MainViewModel.CalendarPalette);
     }
 
-    [Theory] // T206
+    [Theory]
+    [Trait("TestCase", "T206")]
     [InlineData("#abcdef", "#ABCDEF")]
     [InlineData("#ABCDEF", "#ABCDEF")]
     [InlineData("abcdef", null)]
@@ -47,7 +49,8 @@ public class CalendarEditTests
     [InlineData(null, null)]
     public void NormalizeWritesCapitalsAndRefusesWhatIsNotAColour(string? text, string? expected) => Assert.Equal(expected, CalendarColors.Normalize(text));
 
-    [Fact] // T206
+    [Fact]
+    [Trait("TestCase", "T206")]
     public void TextColourIsBlackOrWhiteByTheBrightnessForEveryColour()
     {
         Assert.All(CalendarColors.All, c => Assert.Contains(CalendarColors.TextFor(c), new[] { "#000000", "#FFFFFF" }));
@@ -59,7 +62,8 @@ public class CalendarEditTests
 
     // ---- a calendar of this PC ----
 
-    [Fact] // T196
+    [Fact]
+    [Trait("TestCase", "T196")]
     public void LocalCalendarKeepsNameAndColourAndKeepsBeingVisible()
     {
         var store = new CalendarStore(":memory:");
@@ -75,7 +79,8 @@ public class CalendarEditTests
         Assert.Equal("#FA573C", vm.CalendarColors["local-a"]); // what the views use for the events of the calendar
     }
 
-    [Fact] // T196
+    [Fact]
+    [Trait("TestCase", "T196")]
     public void LocalEditRefusesEmptyNameAndWhatIsNotLocal()
     {
         var store = new CalendarStore(":memory:");
@@ -96,7 +101,11 @@ public class CalendarEditTests
 
     // ---- who can change what ----
 
-    [Fact] // T197, T199, T200, T201
+    [Fact]
+    [Trait("TestCase", "T197")]
+    [Trait("TestCase", "T199")]
+    [Trait("TestCase", "T200")]
+    [Trait("TestCase", "T201")]
     public void CalendarItemSaysWhatCanBeChanged()
     {
         var store = new CalendarStore(":memory:");
@@ -125,7 +134,8 @@ public class CalendarEditTests
 
     // ---- Google: the colour ----
 
-    [Fact] // T197
+    [Fact]
+    [Trait("TestCase", "T197")]
     public async Task ColourOfAnOwnedCalendarIsOneRequestAndTheNameIsNotTouched()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -150,7 +160,9 @@ public class CalendarEditTests
         Assert.Equal(("Lavoro", "#A47AE2", true), (stored.Name, stored.ColorHex, stored.IsOwner));
     }
 
-    [Fact] // T197: a colour of another palette still works
+    [Fact]
+    // a colour of another palette still works
+    [Trait("TestCase", "T197")]
     public async Task AColourOutsideThePaletteGetsAReadableText()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -159,7 +171,9 @@ public class CalendarEditTests
         Assert.Equal("#FFFFFF", (string?)JsonNode.Parse(rig.Google.ColorPatches.Single().Body)!["foregroundColor"]);
     }
 
-    [Fact] // T204: Google gives the new colour back at the next sync, the edit is not undone
+    [Fact]
+    // Google gives the new colour back at the next sync, the edit is not undone
+    [Trait("TestCase", "T204")]
     public async Task NextSyncKeepsTheEdit()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro");
@@ -172,7 +186,8 @@ public class CalendarEditTests
 
     // ---- Google: the name ----
 
-    [Fact] // T198
+    [Fact]
+    [Trait("TestCase", "T198")]
     public async Task RenamingAnOwnedCalendarRenamesItAndClearsThePersonalName()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro");
@@ -200,7 +215,8 @@ public class CalendarEditTests
         Assert.Equal("Studio", rig.Store.GetCalendars().Single(c => c.Id == localId).Name); // and the sync agrees
     }
 
-    [Fact] // T198
+    [Fact]
+    [Trait("TestCase", "T198")]
     public async Task NameAndColourTogetherAreTwoRequestsAndBothAreSet()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro");
@@ -217,7 +233,9 @@ public class CalendarEditTests
         Assert.Equal(("Studio", "#FA573C"), (stored.Name, stored.ColorHex));
     }
 
-    [Fact] // T198: names with special characters, and a long one
+    [Fact]
+    // names with special characters, and a long one
+    [Trait("TestCase", "T198")]
     public async Task SpecialAndLongNames()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -229,7 +247,9 @@ public class CalendarEditTests
         Assert.Equal(GoogleSyncService.MaxCalendarName, rig.Store.GetCalendars().Single(c => c.Id == localId).Name.Length);
     }
 
-    [Fact] // T198: nothing changed, nothing asked
+    [Fact]
+    // nothing changed, nothing asked
+    [Trait("TestCase", "T198")]
     public async Task NoChangeIsNoRequest()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro", "#9FE1E7");
@@ -242,7 +262,9 @@ public class CalendarEditTests
         Assert.Equal("Lavoro", nothing.Calendar.Name);
     }
 
-    [Fact] // T198, T205
+    [Fact]
+    [Trait("TestCase", "T198")]
+    [Trait("TestCase", "T205")]
     public async Task EmptyNameAndBadColourAreRefusedWithoutAskingGoogle()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -257,7 +279,8 @@ public class CalendarEditTests
 
     // ---- Google: the primary calendar, the calendars of others, a role not known ----
 
-    [Fact] // T200
+    [Fact]
+    [Trait("TestCase", "T200")]
     public async Task PrimaryCalendarKeepsItsNameButTakesAColour()
     {
         using var rig = new SyncRig();
@@ -277,7 +300,8 @@ public class CalendarEditTests
         Assert.Equal("#4986E7", rig.Store.GetCalendars().Single(c => c.Id == FakeGoogle.LocalCalendarId).ColorHex);
     }
 
-    [Fact] // T199
+    [Fact]
+    [Trait("TestCase", "T199")]
     public async Task CalendarOfSomeoneElseKeepsItsNameButTakesAColour()
     {
         using var rig = new SyncRig();
@@ -296,7 +320,8 @@ public class CalendarEditTests
         Assert.Equal("#16A765", rig.Store.GetCalendars().Single(c => c.Id == Local(holidays)).ColorHex);
     }
 
-    [Fact] // T201
+    [Fact]
+    [Trait("TestCase", "T201")]
     public async Task UnknownRoleAllowsOnlyTheColour()
     {
         using var rig = new SyncRig();
@@ -310,7 +335,8 @@ public class CalendarEditTests
 
     // ---- errors: nothing changes ----
 
-    [Fact] // T202
+    [Fact]
+    [Trait("TestCase", "T202")]
     public async Task NoNetworkChangesNothing()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro", "#9FE1E7");
@@ -322,7 +348,8 @@ public class CalendarEditTests
         Assert.Equal(("Lavoro", "#9FE1E7"), (stored.Name, stored.ColorHex));
     }
 
-    [Theory] // T202
+    [Theory]
+    [Trait("TestCase", "T202")]
     [InlineData(403, "rateLimitExceeded", GoogleCalendarProblem.RateLimited)]
     [InlineData(429, "rateLimitExceeded", GoogleCalendarProblem.RateLimited)]
     [InlineData(403, "forbidden", GoogleCalendarProblem.NotAllowed)]
@@ -341,7 +368,9 @@ public class CalendarEditTests
         Assert.Equal("Lavoro", rig.Google.CalendarSummary(remote)); // the first request was the one that failed
     }
 
-    [Fact] // T202: only the colour, and Google refuses it
+    [Fact]
+    // only the colour, and Google refuses it
+    [Trait("TestCase", "T202")]
     public async Task ColourRefusedLeavesTheOldOne()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro", "#9FE1E7");
@@ -352,7 +381,9 @@ public class CalendarEditTests
         Assert.Equal("#9FE1E7", rig.Google.CalendarColor(remote));
     }
 
-    [Fact] // T202: the owner is not the owner any more (changed on Google meanwhile)
+    [Fact]
+    // the owner is not the owner any more (changed on Google meanwhile)
+    [Trait("TestCase", "T202")]
     public async Task RenameRefusedByGoogleBecauseOfTheRoleChangesNothing()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro");
@@ -366,7 +397,8 @@ public class CalendarEditTests
 
     // ---- a result in part ----
 
-    [Fact] // T203
+    [Fact]
+    [Trait("TestCase", "T203")]
     public async Task NameDoneAndColourRefusedKeepsTheNameAndSaysWhy()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro", "#9FE1E7");
@@ -389,7 +421,8 @@ public class CalendarEditTests
 
     // ---- with the sync ----
 
-    [Fact] // T204
+    [Fact]
+    [Trait("TestCase", "T204")]
     public async Task EditWaitsForARunningSync()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -404,7 +437,9 @@ public class CalendarEditTests
         Assert.Equal("Studio", rig.Google.CalendarSummary(remote));
     }
 
-    [Fact] // T204: a cancel while it waits
+    [Fact]
+    // a cancel while it waits
+    [Trait("TestCase", "T204")]
     public async Task EditCanBeCancelledWhileItWaits()
     {
         var (rig, remote, localId) = await OwnedAsync();
@@ -416,7 +451,9 @@ public class CalendarEditTests
         Assert.Equal("Lavoro", rig.Google.CalendarSummary(remote));
     }
 
-    [Fact] // T207: events keep their own colour; the others follow the calendar
+    [Fact]
+    // events keep their own colour; the others follow the calendar
+    [Trait("TestCase", "T207")]
     public async Task EventsWithoutTheirOwnColourFollowTheCalendar()
     {
         var (rig, remote, localId) = await OwnedAsync("Lavoro", "#9FE1E7");

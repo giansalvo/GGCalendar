@@ -177,7 +177,9 @@ public class SubscriptionTests
         Assert.Equal(SubscriptionProblem.Timeout, (await service.PreviewAsync(Host + "/slow")).Problem);
     }
 
-    [Fact] // T155 (cancel)
+    [Fact]
+    // (cancel)
+    [Trait("TestCase", "T155")]
     public async Task CancellingStopsTheRequest()
     {
         var site = new FakeSite().Route("/slow", async (_, ct) =>
@@ -240,7 +242,8 @@ public class SubscriptionTests
 
     // ---- limits ----
 
-    [Fact] // T104
+    [Fact]
+    [Trait("TestCase", "T104")]
     public async Task SameAddressOnlyOnceAndAtMostTenSubscriptions()
     {
         var site = new FakeSite();
@@ -254,7 +257,8 @@ public class SubscriptionTests
         Assert.Equal(SubscriptionProblem.TooManySubscriptions, (await service.PreviewAsync(Host + "/c10")).Problem);
     }
 
-    [Fact] // T105
+    [Fact]
+    [Trait("TestCase", "T105")]
     public async Task MoreThan5000EventsIsRefusedWithoutSavingAnything()
     {
         var events = Enumerable.Range(0, 5001).Select(i => ("u" + i, "E" + i, "20260310T090000")).ToArray();
@@ -267,7 +271,9 @@ public class SubscriptionTests
         Assert.Empty(store.GetCalendars());
     }
 
-    [Fact] // T105: the limit counts the events after the range
+    [Fact]
+    // the limit counts the events after the range
+    [Trait("TestCase", "T105")]
     public async Task LimitCountsEventsInsideTheRange()
     {
         var events = Enumerable.Range(0, 5100).Select(i => ("u" + i, "E" + i, i < 100 ? "20260310T090000" : "20300310T090000")).ToArray();
@@ -280,7 +286,8 @@ public class SubscriptionTests
 
     // ---- save, refresh ----
 
-    [Fact] // T103
+    [Fact]
+    [Trait("TestCase", "T103")]
     public async Task CalendarGetsChosenNameColourAndRange()
     {
         var site = new FakeSite().Serve("/a.ics", Ics(("u1", "Uno", "20260310T090000"), ("u2", "Due", "20260610T090000"), ("u3", "Tre", "20261010T090000")));
@@ -298,7 +305,8 @@ public class SubscriptionTests
         Assert.Equal(range, store.GetSubscription(calendar.Id)!.Range);
     }
 
-    [Fact] // T107
+    [Fact]
+    [Trait("TestCase", "T107")]
     public async Task AddressIsStoredEncryptedAndRemovalDeletesEverything()
     {
         var (service, store, _, _) = Rig(new FakeSite().Serve("/" + Secret + "/a.ics", Ics(("u1", "Uno", "20260310T090000"))));
@@ -312,7 +320,9 @@ public class SubscriptionTests
         Assert.Empty(store.GetSubscriptions());
     }
 
-    [Fact] // T107 with the real encryption of Windows
+    [Fact]
+    // with the real encryption of Windows
+    [Trait("TestCase", "T107")]
     public async Task RealEncryptionHidesTheAddress()
     {
         var site = new FakeSite().Serve("/" + Secret + "/a.ics", Ics(("u1", "Uno", "20260310T090000")));
@@ -325,7 +335,8 @@ public class SubscriptionTests
         Assert.Equal(Host + "/" + Secret + "/a.ics", service.GetUrl(calendar.Id));
     }
 
-    [Fact] // T100
+    [Fact]
+    [Trait("TestCase", "T100")]
     public async Task RefreshAppliesAddedChangedAndRemovedEvents()
     {
         string body = Ics(("u1", "Uno", "20260310T090000"), ("u2", "Due", "20260311T090000"), ("u3", "Tre", "20260312T090000"));
@@ -360,7 +371,8 @@ public class SubscriptionTests
         Assert.Single(store.GetAllEvents());
     }
 
-    [Fact] // T108
+    [Fact]
+    [Trait("TestCase", "T108")]
     public async Task ETagGives304AndADifferentETagWithTheSameContentChangesNothing()
     {
         var body = Ics(("u1", "Uno", "20260310T090000"));
@@ -384,7 +396,9 @@ public class SubscriptionTests
         Assert.Equal("\"v2\"", store.GetSubscription(calendar.Id)!.ETag);
     }
 
-    [Fact] // T157: no ETag, no date: the hash recognises the same file
+    [Fact]
+    // no ETag, no date: the hash recognises the same file
+    [Trait("TestCase", "T157")]
     public async Task SameContentWithoutValidatorsIsRecognisedByHash()
     {
         var site = new FakeSite().Serve("/a.ics", Ics(("u1", "Uno", "20260310T090000")));
@@ -401,7 +415,9 @@ public class SubscriptionTests
         Assert.Equal(clock.Now, second.LastFetchedUtc); // the time of the last check moves
     }
 
-    [Fact] // T157: the feeds of Google change DTSTAMP and the order of the events at every download
+    [Fact]
+    // the feeds of Google change DTSTAMP and the order of the events at every download
+    [Trait("TestCase", "T157")]
     public async Task SameCalendarWithAnotherOrderAndTimestampIsTheSameContent()
     {
         string Feed(bool reversed, string stamp)
@@ -428,7 +444,8 @@ public class SubscriptionTests
         Assert.Equal(RefreshOutcome.Updated, (await service.RefreshAsync(calendar.Id)).Outcome);
     }
 
-    [Fact] // T101
+    [Fact]
+    [Trait("TestCase", "T101")]
     public async Task FailedRefreshKeepsEventsAndTellsTheReason()
     {
         var failing = false;
@@ -450,7 +467,9 @@ public class SubscriptionTests
         Assert.Null(store.GetSubscription(calendar.Id)!.LastError);
     }
 
-    [Fact] // T101: a refresh that returns a file too large or not a calendar keeps what is there
+    [Fact]
+    // a refresh that returns a file too large or not a calendar keeps what is there
+    [Trait("TestCase", "T101")]
     public async Task BadFileOnRefreshKeepsEvents()
     {
         var body = Ics(("u1", "Uno", "20260310T090000"));
@@ -463,7 +482,9 @@ public class SubscriptionTests
         Assert.Single(store.GetAllEvents());
     }
 
-    [Fact] // T102 and T160
+    [Fact]
+    [Trait("TestCase", "T102")]
+    [Trait("TestCase", "T160")]
     public async Task DueSubscriptionsAreRefreshedAtTheIntervalWithATolerance()
     {
         var site = new FakeSite().Serve("/a.ics", Ics(("u1", "Uno", "20260310T090000"))).Serve("/b.ics", Ics(("u2", "Due", "20260311T090000")));
@@ -485,7 +506,9 @@ public class SubscriptionTests
         Assert.Equal(2, store.GetSubscriptions().Count);
     }
 
-    [Fact] // T160: tolerance is at most 2 minutes
+    [Fact]
+    // tolerance is at most 2 minutes
+    [Trait("TestCase", "T160")]
     public async Task ToleranceIsAtMostTwoMinutes()
     {
         var site = new FakeSite().Serve("/a.ics", Ics(("u1", "Uno", "20260310T090000")));
@@ -497,7 +520,9 @@ public class SubscriptionTests
         Assert.Single(await service.RefreshDueAsync(TimeSpan.FromHours(24)));
     }
 
-    [Fact] // T160: without a network the other subscriptions are not tried
+    [Fact]
+    // without a network the other subscriptions are not tried
+    [Trait("TestCase", "T160")]
     public async Task NoNetworkStopsTheRound()
     {
         var site = new FakeSite()
@@ -531,7 +556,8 @@ public class SubscriptionTests
         Assert.Equal("Nuovo nome", store.GetCalendars().Single().Name);
     }
 
-    [Fact] // T162
+    [Fact]
+    [Trait("TestCase", "T162")]
     public async Task DataSurvivesReopeningTheDatabase()
     {
         var path = Path.Combine(Path.GetTempPath(), "ggcal-sub-" + Guid.NewGuid().ToString("N") + ".db");
@@ -563,7 +589,8 @@ public class SubscriptionTests
     private static CalendarEvent Ev(string id, DateTime start, int days = 1, string? rule = null) =>
         new(id, "c", id, start, start.AddDays(days), IsAllDay: true) { Recurrence = rule };
 
-    [Fact] // T103
+    [Fact]
+    [Trait("TestCase", "T103")]
     public void RangeKeepsEventsWithAnyDayInside()
     {
         var events = new[]
@@ -579,7 +606,8 @@ public class SubscriptionTests
         Assert.Equal(["ends-after", "inside", "last-day", "starts-before"], kept);
     }
 
-    [Fact] // T103
+    [Fact]
+    [Trait("TestCase", "T103")]
     public void EmptySideIsUnlimitedAndSeriesAreKeptIfAnyOccurrenceIsInside()
     {
         var weekly = Ev("weekly", new DateTime(2026, 1, 5), 1, "FREQ=WEEKLY;COUNT=10"); // until March
@@ -593,7 +621,9 @@ public class SubscriptionTests
         Assert.Equal(3, SubscriptionRange.All.Filter(all).Count);
     }
 
-    [Fact] // T103: modified occurrences follow their series
+    [Fact]
+    // modified occurrences follow their series
+    [Trait("TestCase", "T103")]
     public void ModifiedOccurrencesFollowTheirSeries()
     {
         var series = Ev("s", new DateTime(2026, 1, 5), 1, "FREQ=WEEKLY;COUNT=4");
@@ -631,7 +661,8 @@ public class SubscriptionTests
         Assert.All(snap.Events, e => Assert.Empty(e.Reminders)); // no reminders for a read-only calendar
     }
 
-    [Fact] // T163
+    [Fact]
+    [Trait("TestCase", "T163")]
     public void TimesInOtherZonesAreShownInThePcZone()
     {
         var zone = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");

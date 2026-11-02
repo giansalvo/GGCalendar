@@ -54,8 +54,8 @@ public class MiniCalendarUiTests
         Assert.Equal(day.Month, mini.DisplayDate.Month);
     }
 
-    // T332
     [Fact]
+    [Trait("TestCase", "T332")]
     public Task Today_after_browsing_the_small_calendar_shows_the_current_month() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -70,8 +70,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T332
     [Theory]
+    [Trait("TestCase", "T332")]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -88,8 +88,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T333
     [Fact]
+    [Trait("TestCase", "T333")]
     public Task The_arrows_move_the_small_calendar_to_the_month_of_the_new_day() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -110,8 +110,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T333
     [Fact]
+    [Trait("TestCase", "T333")]
     public Task A_day_shown_from_the_year_view_moves_the_small_calendar() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -123,8 +123,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T334
     [Fact]
+    [Trait("TestCase", "T334")]
     public Task A_day_chosen_in_the_small_calendar_keeps_its_month() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -137,8 +137,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T334
     [Fact]
+    [Trait("TestCase", "T334")]
     public Task Today_brings_back_the_small_calendar_zoomed_on_the_years() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -155,8 +155,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T335
     [Fact]
+    [Trait("TestCase", "T335")]
     public Task Today_with_the_search_open_closes_it_and_shows_the_current_month() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);
@@ -171,8 +171,8 @@ public class MiniCalendarUiTests
         return Task.CompletedTask;
     });
 
-    // T335
     [Fact]
+    [Trait("TestCase", "T335")]
     public Task A_change_of_language_keeps_the_month_of_the_small_calendar() => InMiniAppAsync((window, mini) =>
     {
         var vm = Vm(window);

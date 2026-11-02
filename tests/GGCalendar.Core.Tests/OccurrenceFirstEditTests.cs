@@ -48,7 +48,6 @@ public class OccurrenceFirstEditTests
         public void Dispose() => Rig.Dispose();
     }
 
-    // T337
     [Fact]
     [Trait("TestCase", "T337")]
     public async Task T337_AnInstanceChangedOnGoogleKeepsGoogleAndSavesTheEditAsACopy()
@@ -70,7 +69,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Rig.Store.GetPending());
     }
 
-    // T338
     [Fact]
     [Trait("TestCase", "T338")]
     public async Task T338_AnInstanceNobodyChangedIsPatchedWithItsVersionAndTheNextEditIsProtected()
@@ -101,7 +99,6 @@ public class OccurrenceFirstEditTests
         Assert.DoesNotContain(scene.Rig.Google.Requests, r => r.StartsWith("GET") && r.Contains(instance));
     }
 
-    // T339
     [Fact]
     [Trait("TestCase", "T339")]
     public async Task T339_AVersionChangeMadeByGoogleAloneIsNotAConflict()
@@ -120,7 +117,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Copies());
     }
 
-    // T340
     [Fact]
     [Trait("TestCase", "T340")]
     public async Task T340_AnOccurrenceDeletedOnGoogleKeepsTheEditAsACopy()
@@ -138,7 +134,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Rig.Store.GetPending());
     }
 
-    // T341
     [Fact]
     [Trait("TestCase", "T341")]
     public async Task T341_ASeriesDeletedOnGoogleKeepsTheEditAsACopyWithoutAnError()
@@ -155,7 +150,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Rig.Store.GetPending());
     }
 
-    // T342
     [Fact]
     [Trait("TestCase", "T342")]
     public async Task T342_ASeriesChangedOnGoogleIsAConflictForItsFirstEditedOccurrence()
@@ -172,7 +166,6 @@ public class OccurrenceFirstEditTests
         Assert.Equal("Titolo locale" + Suffix, Assert.Single(scene.Copies()).Title);
     }
 
-    // T343
     [Fact]
     [Trait("TestCase", "T343")]
     public async Task T343_TwoEditsOfTheSameOccurrenceBeforeTheSyncMakeOneCopy()
@@ -191,7 +184,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Rig.Store.GetPending());
     }
 
-    // T344
     [Fact]
     [Trait("TestCase", "T344")]
     public async Task T344_AttachmentsAddedOnGoogleAreNotLost()
@@ -208,7 +200,6 @@ public class OccurrenceFirstEditTests
         Assert.Single(scene.Rig.Google.AttachmentsOf(FakeGoogle.InstanceId(scene.Master, Scene.UtcOf(1)))!);
     }
 
-    // T345
     [Fact]
     [Trait("TestCase", "T345")]
     public async Task T345_DraggingAnOccurrenceIsProtectedLikeAnEdit()
@@ -226,7 +217,6 @@ public class OccurrenceFirstEditTests
         Assert.Equal(occurrence.Start.AddHours(3), copy.Start); // the move is kept in the copy
     }
 
-    // T345
     [Fact]
     [Trait("TestCase", "T345")]
     public async Task T345_DraggingAnOccurrenceNobodyChangedMovesItWithoutConflict()
@@ -242,7 +232,6 @@ public class OccurrenceFirstEditTests
         Assert.Equal(1, scene.Rig.Google.Ids.Count(id => id.Contains('_'))); // the occurrence is now stored apart
     }
 
-    // T346
     [Fact]
     [Trait("TestCase", "T346")]
     public async Task T346_AnEditFollowedByADragBeforeTheSyncMakesOneCopy()
@@ -263,7 +252,6 @@ public class OccurrenceFirstEditTests
         Assert.Empty(scene.Rig.Store.GetPending());
     }
 
-    // T347
     [Fact]
     [Trait("TestCase", "T347")]
     public async Task T347_ARowQueuedByAnOlderVersionWithoutTheSeenOccurrenceIsSentAsBefore()
@@ -285,7 +273,6 @@ public class OccurrenceFirstEditTests
         Assert.Equal("Titolo locale", scene.Rig.Google.InstanceSummary(scene.Master, Scene.UtcOf(1)));
     }
 
-    // T348
     [Fact]
     [Trait("TestCase", "T348")]
     public async Task T348_OnlyTheEditOfOneOccurrenceCarriesTheSeenOccurrence()
@@ -307,7 +294,6 @@ public class OccurrenceFirstEditTests
         Assert.All(scene.Rig.Store.GetPending().Where(p => p.Operation == OutboxOperation.Create), p => Assert.Null(p.Base));
     }
 
-    // T349
     [Fact]
     [Trait("TestCase", "T349")]
     public async Task T349_CancellingTheQueuedEditBringsTheOccurrenceBack()
