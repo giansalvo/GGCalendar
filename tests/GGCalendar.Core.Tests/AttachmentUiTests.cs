@@ -158,7 +158,7 @@ public class AttachmentUiTests
         try
         {
             var editor = (EventEditViewModel)dialog.DataContext!;
-            Assert.Single(dialog.GetVisualDescendants().OfType<Button>().Where(b => AutomationIdOf(b) == "Edit.Attachment.Remove"));
+            Assert.Single(dialog.GetVisualDescendants().OfType<Button>(), b => AutomationIdOf(b) == "Edit.Attachment.Remove");
 
             Text(dialog, "Edit.AttachmentUrl").Text = Image;
             Click(FindButton(dialog, "Edit.AttachmentAdd"));
@@ -309,7 +309,7 @@ public class AttachmentUiTests
     public Task TheCardListsTheAttachmentsByTitle() => InCardAsync(
         Ev([new EventAttachment(Image, "Il logo"), new EventAttachment(Feeds + "ggcal_basic.ics", "ggcal_basic.ics")]), card =>
         {
-            Assert.Single(card.GetVisualDescendants().OfType<StackPanel>().Where(p => AutomationIdOf(p) == "Details.Attachments"));
+            Assert.Single(card.GetVisualDescendants().OfType<StackPanel>(), p => AutomationIdOf(p) == "Details.Attachments");
             var links = Links(card);
             Assert.Equal(2, links.Count);
             Assert.Equal(["Il logo", "ggcal_basic.ics"], links.Select(b => ((TextBlock)b.Content!).Text));

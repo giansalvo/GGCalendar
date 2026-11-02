@@ -343,7 +343,7 @@ public class SubscriptionUiTests
 
         Assert.NotNull(card);
         Assert.Equal(2, card.GetVisualDescendants().OfType<Button>().Count()); // Share and Close: no Edit, no Delete
-        Assert.Single(card.GetVisualDescendants().OfType<Button>().Where(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) == "Details.Share"));
+        Assert.Single(card.GetVisualDescendants().OfType<Button>(), b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) == "Details.Share");
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
         DoubleClick(window, await FindInAgendaAsync(window, "Pubblico lezione", DateTime.Today.AddDays(1))); // the line is found again: the list may have been drawn anew

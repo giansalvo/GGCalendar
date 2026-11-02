@@ -350,7 +350,7 @@ public class GoogleCalendarUiTests
 
             await WaitForAsync(() => vm.Calendars.All(c => c.Id != Local(mine)) ? vm : null, "la scomparsa del calendario");
             Assert.Equal([mine], fake.DeletedCalendars);
-            Assert.Single(fake.Requests.Where(r => r.StartsWith("DELETE ")));
+            Assert.Single(fake.Requests, r => r.StartsWith("DELETE "));
             Assert.DoesNotContain(vm.AllEvents, e => e.CalendarId == Local(mine));
             Assert.Equal(0, new CalendarStore().GetPending().Count(p => p.CalendarId == Local(mine)));
             Assert.Equal("status.gcal_deleted", vm.Status!.Key);

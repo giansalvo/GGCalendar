@@ -199,7 +199,7 @@ public class AccountDisconnectUiTests
             Assert.Contains(L.N("account.disconnect_pending", 1), TextOf(confirm));
             await AnswerAsync(window, confirm, true);
             await WaitForAsync(() => vm.Status?.Is("settings.disconnected_not_revoked") == true ? vm : null, "il messaggio", SyncTimeout);
-            Assert.Empty(new CalendarStore().GetPending().Where(p => p.CalendarId == FakeGoogle.LocalCalendarId));
+            Assert.DoesNotContain(new CalendarStore().GetPending(), p => p.CalendarId == FakeGoogle.LocalCalendarId);
             Assert.DoesNotContain(vm.AllEvents, e => e.Title == "Non inviato");
         });
     }

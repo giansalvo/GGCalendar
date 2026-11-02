@@ -389,7 +389,7 @@ public class SyncQueueUiTests
             var confirm = await AskedAsync(queue);
 
             Assert.Contains(L.N("queue.confirm_group", 1, vm.Calendars.First(c => c.Id == FakeGoogle.LocalCalendarId).Name), Texts(confirm)); // one event is waiting, not three
-            Assert.Equal(1, InWindow(queue, "Queue.Row").Count); // and the list says the same
+            Assert.Single(InWindow(queue, "Queue.Row")); // and the list says the same
             await AnswerAsync(queue, confirm, true);
             await WaitForAsync(() => InWindow(queue, "Queue.Row").Count == 0 && queue.IsEnabled ? queue : null, "l'annullamento");
 

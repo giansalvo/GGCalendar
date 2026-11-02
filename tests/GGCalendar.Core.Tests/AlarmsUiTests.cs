@@ -200,7 +200,7 @@ public class AlarmsUiTests
         Assert.Equal(3, remaining.Count);
         Assert.Equal(AlarmsViewModel.Remaining(TimeSpan.FromHours(5) - TimeSpan.FromMinutes(30)), remaining[0]);
         Assert.Contains(L.T("alarms.section_coming"), panel.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text));
-        Assert.Empty(InList(panel, "Alarms.StopAll").OfType<Button>().Where(b => b.IsVisible)); // nothing rings
+        Assert.DoesNotContain(InList(panel, "Alarms.StopAll").OfType<Button>(), b => b.IsVisible); // nothing rings
     });
 
     [Fact]
@@ -253,7 +253,7 @@ public class AlarmsUiTests
         Assert.Contains(Vm(window).AllEvents, e => e.Id == ev.Id); // the event is still in the calendar
 
         FireAt(window, TimeSpan.FromMinutes(40)); // and the alarm does not ring
-        Assert.Empty(Toasts().Where(t => ShowsTitle(t, ev.Title)));
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, ev.Title));
     });
 
     // ---- T216: shown and hidden calendars ----
@@ -291,7 +291,7 @@ public class AlarmsUiTests
 
         FireAt(window, TimeSpan.FromMinutes(31));
 
-        Assert.Empty(Toasts().Where(t => ShowsTitle(t, Word + " muta")));
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, Word + " muta"));
         Assert.Empty(window.Ringer.Items);
         await Task.CompletedTask;
     });
@@ -381,7 +381,7 @@ public class AlarmsUiTests
         Press(InList(panel, "Alarms.StopAll").Single());
 
         Assert.Empty(window.Ringer.Items);
-        Assert.Empty(Toasts().Where(t => ShowsTitle(t, Word + " primo") || ShowsTitle(t, Word + " secondo")));
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, Word + " primo") || ShowsTitle(t, Word + " secondo"));
         Assert.Empty(Rows(panel));
         Assert.False(AlarmsButton(window).IsEnabled);
     });
@@ -598,7 +598,7 @@ public class AlarmsUiTests
 
         var popup = Toasts().Single(t => ShowsTitle(t, Word + " popup predefinito"));
         Assert.Equal(L.T("reminder.snooze", 15), FindButton(popup, "Reminder.Snooze").Content);
-        Assert.Empty(popup.GetVisualDescendants().OfType<Button>().Where(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b)?.StartsWith("Reminder.SnoozeChoice.") == true));
+        Assert.DoesNotContain(popup.GetVisualDescendants().OfType<Button>(), b => Avalonia.Automation.AutomationProperties.GetAutomationId(b)?.StartsWith("Reminder.SnoozeChoice.") == true);
         var alarm = Toasts().Single(t => ShowsTitle(t, Word + " sveglia predefinita"));
         Assert.Equal(L.T("reminder.snooze", 15), FindButton(alarm, "Reminder.Snooze").Content);
 
@@ -607,7 +607,7 @@ public class AlarmsUiTests
         await WaitForAsync(() => Toasts().Any(t => ShowsTitle(t, Word + " popup predefinito") || ShowsTitle(t, Word + " sveglia predefinita")) ? null : window, "la chiusura delle notifiche");
 
         FireAt(window, TimeSpan.FromMinutes(14));
-        Assert.Empty(Toasts().Where(t => ShowsTitle(t, Word + " popup predefinito") || ShowsTitle(t, Word + " sveglia predefinita")));
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, Word + " popup predefinito") || ShowsTitle(t, Word + " sveglia predefinita"));
         FireAt(window, TimeSpan.FromMinutes(1));
         Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " popup predefinito"));
         Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " sveglia predefinita"));
