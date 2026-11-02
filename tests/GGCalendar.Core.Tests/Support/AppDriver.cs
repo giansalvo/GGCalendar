@@ -258,6 +258,9 @@ public static class AppDriver
         while (true)
         {
             tries++;
+            // A list drawn again after a reload can wait for a layout pass, and RunJobs does not run one: without it the line is not there at all
+            // (seen on the CI, issue #70: model with the calendar, lists "valid", no lines, and the line appears after a forced layout).
+            window.UpdateLayout();
             if (findOwner() is { ContextMenu: { } menu } owner)
             {
                 found++;
