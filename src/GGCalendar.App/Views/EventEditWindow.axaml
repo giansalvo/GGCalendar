@@ -202,6 +202,8 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <TextBlock Classes="hint" Text="{loc:T edit.attachments_unread}" TextWrapping="Wrap" IsVisible="{Binding AttachmentsUnread}"
+                                       AutomationProperties.AutomationId="Edit.AttachmentsUnread" />
                             <Grid ColumnDefinitions="2*,*,Auto" IsVisible="{Binding CanAddAttachment}">
                                 <TextBox Name="AttachmentUrlBox" Text="{Binding NewAttachmentUrl}" PlaceholderText="{loc:T edit.attachment_url}" KeyDown="OnAttachmentKeyDown"
                                          AutomationProperties.AutomationId="Edit.AttachmentUrl" />

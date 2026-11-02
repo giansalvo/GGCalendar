@@ -119,6 +119,7 @@
   "edit.add_attachment": "Add attachment",
   "edit.error_attachment": "The address of the attachment is not valid (an https link is needed): {0}",
   "edit.error_attachments_max": "An event can have {0} attachments at most.",
+  "edit.attachments_unread": "The attachments of this event have not been read yet. They will update at the next sync.",
   "edit.add_guests": "Add guests (email)",
   "edit.add_location": "Add location",
   "edit.add_meet": "Add Google Meet video conferencing",

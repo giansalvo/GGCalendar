@@ -119,6 +119,7 @@
   "edit.add_attachment": "Añadir adjunto",
   "edit.error_attachment": "La dirección del adjunto no es válida (hace falta un enlace https): {0}",
   "edit.error_attachments_max": "Un evento puede tener como máximo {0} adjuntos.",
+  "edit.attachments_unread": "Los adjuntos de este evento aún no se han leído. Se actualizarán en la próxima sincronización.",
   "edit.add_guests": "Añadir invitados (correo)",
   "edit.add_location": "Añadir ubicación",
   "edit.add_meet": "Añadir videoconferencia de Google Meet",

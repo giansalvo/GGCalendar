@@ -119,6 +119,7 @@
   "edit.add_attachment": "Anhang hinzufügen",
   "edit.error_attachment": "Die Adresse des Anhangs ist ungültig (ein https-Link ist nötig): {0}",
   "edit.error_attachments_max": "Ein Termin kann höchstens {0} Anhänge haben.",
+  "edit.attachments_unread": "Die Anhänge dieses Termins wurden noch nicht gelesen. Sie werden bei der nächsten Synchronisierung aktualisiert.",
   "edit.add_guests": "Gäste hinzufügen (E-Mail)",
   "edit.add_location": "Ort hinzufügen",
   "edit.add_meet": "Google-Meet-Videokonferenz hinzufügen",

@@ -244,7 +244,13 @@ public sealed partial class EventEditViewModel : ViewModelBase
     public bool HasMeetLink => !string.IsNullOrEmpty(MeetLink);
     public bool HasAttendees => Attendees.Count > 0;
     public bool HasAttachments => Attachments.Count > 0;
-    public bool CanAddAttachment => Attachments.Count < AttachmentLink.MaxCount;
+    public bool CanAddAttachment => !AttachmentsUnread && Attachments.Count < AttachmentLink.MaxCount;
+
+    /// <summary>
+    /// The event is on Google and its attachments were never read (it was synced before they were): a link added now would be sent alone and replace
+    /// the ones Google has, so none can be added until the next sync reads them. An event of this PC has nothing to lose, and a new one starts with none.
+    /// </summary>
+    public bool AttachmentsUnread => !IsNew && _original.Attachments is null && GoogleSyncService.IsGoogleCalendar(_original.CalendarId);
     public bool CanAddReminder => Reminders.Count < 5;
 
     partial void OnRecurrenceChanged(ChoiceOption<string?> value)
@@ -359,7 +365,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     private void AddAttachment()
     {
         AttachmentError = "";
-        if (string.IsNullOrWhiteSpace(NewAttachmentUrl)) return;
+        if (AttachmentsUnread || string.IsNullOrWhiteSpace(NewAttachmentUrl)) return;
         var attachment = AttachmentLink.Create(NewAttachmentUrl, NewAttachmentTitle);
         if (attachment is null) { AttachmentError = L.T("edit.error_attachment", NewAttachmentUrl.Trim()); return; }
         if (Attachments.Count >= AttachmentLink.MaxCount) { AttachmentError = L.T("edit.error_attachments_max", AttachmentLink.MaxCount); return; }
