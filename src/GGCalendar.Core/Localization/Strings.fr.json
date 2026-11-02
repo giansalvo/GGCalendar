@@ -119,6 +119,7 @@
   "edit.add_attachment": "Ajouter une pièce jointe",
   "edit.error_attachment": "L'adresse de la pièce jointe n'est pas valide (un lien https est nécessaire) : {0}",
   "edit.error_attachments_max": "Un événement peut avoir {0} pièces jointes au maximum.",
+  "edit.attachments_unread": "Les pièces jointes de cet événement n'ont pas encore été lues. Elles seront mises à jour à la prochaine synchronisation.",
   "edit.add_guests": "Ajouter des invités (e-mail)",
   "edit.add_location": "Ajouter un lieu",
   "edit.add_meet": "Ajouter une visioconférence Google Meet",

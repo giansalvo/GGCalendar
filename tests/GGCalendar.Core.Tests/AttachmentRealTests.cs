@@ -87,4 +87,50 @@ public class AttachmentRealTests
         await SyncAsync(window);
         Assert.Empty(await OnGoogleAsync(google, remoteId, l => l.Count == 0));
     });
+
+    [Fact]
+    [Trait("TestCase", "T354")]
+    public Task T354_AnEventWhoseAttachmentsWereNeverReadCannotGetALinkAndKeepsTheOnesOfGoogle() => InAppAsync(async window =>
+    {
+        var title = NewTitle();
+        var created = await CreateEventAsync(window, new EventSpec(title) { Attachments = [(Image, ""), (Feeds + "ggcal_basic.ics", "Calendario di prova")] });
+        var day = created.Start.Date;
+        await SyncAsync(window);
+        var remoteId = TestGoogle.RemoteIdOf(created.Id) ?? throw new Xunit.Sdk.XunitException("L'evento non è stato inviato a Google.");
+        using var google = await TestGoogle.ConnectAsync();
+        var sent = await OnGoogleAsync(google, remoteId, l => l.Count == 2);
+        Assert.Equal(2, sent.Count);
+
+        // 1. The event is stored as the version before the attachments stored it: they are unread (null).
+        var store = new GGCalendar.Data.CalendarStore();
+        store.UpsertEvent(store.GetEvent(created.Id)! with { Attachments = null });
+        Vm(window).Reload();
+        Assert.Null(store.GetEvent(created.Id)!.Attachments);
+
+        // 2. The editor says so and offers no way to add a link; the person tries anyway and changes the title.
+        var (dialog, editor) = await OpenEditorAsync(window, title, day);
+        Assert.True(editor.AttachmentsUnread);
+        Assert.False(editor.CanAddAttachment);
+        Assert.Empty(editor.Attachments);
+        editor.NewAttachmentUrl = "https://example.org/nuovo.pdf";
+        editor.AddAttachmentCommand.Execute(null);
+        Assert.Empty(editor.Attachments);
+        await RetitleAsync(window, dialog, title + " B");
+        await SyncAsync(window);
+
+        // 3. On Google the title changed and the two attachments are still there, the same ones.
+        var found = await OnGoogleAsync(google, remoteId, l => l.Count == 2);
+        Assert.Equal(sent.Select(a => a.Url).Order(), found.Select(a => a.Url).Order());
+        Assert.Equal(title + " B", (await google.GetAsync(remoteId)).GetProperty("summary").GetString());
+
+        // 4. The next syncs read them: the event is no longer unread and the editor lets a link be added.
+        for (var i = 0; i < 4 && store.GetEvent(created.Id)!.Attachments is null; i++) await SyncAsync(window);
+        Assert.Equal(2, store.GetEvent(created.Id)!.Attachments!.Count);
+        Vm(window).Reload();
+        (dialog, editor) = await OpenEditorAsync(window, title + " B", day);
+        Assert.False(editor.AttachmentsUnread);
+        Assert.True(editor.CanAddAttachment);
+        Assert.Equal(2, editor.Attachments.Count);
+        await CancelEditorAsync(window, dialog);
+    });
 }

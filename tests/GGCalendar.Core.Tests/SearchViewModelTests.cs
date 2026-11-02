@@ -185,10 +185,11 @@ public class SearchViewModelTests
         Assert.Equal("what:alfa", vm.Search.Text);
 
         vm.Search.IsAdvanced = true;
-        vm.Search.FromDate = new DateTime(2026, 11, 2);
-        vm.Search.ToDate = new DateTime(2026, 11, 30);
+        var from = vm.FirstShownDay().AddDays(2); // never the default day, whatever day the test runs
+        vm.Search.FromDate = from;
+        vm.Search.ToDate = from.AddDays(28);
         vm.Search.Submit();
-        Assert.Equal("what:alfa from:2026-11-02 to:2026-11-30", vm.Search.Text);
+        Assert.Equal($"what:alfa from:{from:yyyy-MM-dd} to:{from.AddDays(28):yyyy-MM-dd}", vm.Search.Text);
     }
 
     [Fact] // T181: the keywords on the line work as the boxes of the panel did
