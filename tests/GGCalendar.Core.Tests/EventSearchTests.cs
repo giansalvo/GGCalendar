@@ -22,7 +22,8 @@ public class EventSearchTests
 
     // ---- the text ----
 
-    [Theory] // T167
+    [Theory]
+    [Trait("TestCase", "T167")]
     [InlineData("Città", "citta")]
     [InlineData("CITTÀ", "citta")]
     [InlineData("Straße Müller", "straße muller")]
@@ -31,10 +32,12 @@ public class EventSearchTests
     [InlineData(null, "")]
     public void NormalizeLowersAndRemovesAccents(string? text, string expected) => Assert.Equal(expected, EventSearch.Normalize(text));
 
-    [Fact] // T167
+    [Fact]
+    [Trait("TestCase", "T167")]
     public void WordsAreSplitOnAnySpace() => Assert.Equal(["uno", "due", "tre"], EventSearch.Words("  Uno\tdue\n  TRE "));
 
-    [Fact] // T167
+    [Fact]
+    [Trait("TestCase", "T167")]
     public void ShortTextAlone_IsNotASearch()
     {
         var events = new[] { Ev("a", "Alfa", Today) };
@@ -46,7 +49,8 @@ public class EventSearchTests
         Assert.True(EventSearch.HasCriteria(new SearchQuery { From = Today }));
     }
 
-    [Fact] // T166
+    [Fact]
+    [Trait("TestCase", "T166")]
     public void FindsInTitleDescriptionLocationAndGuests_AndSaysWhere()
     {
         var events = new[]
@@ -65,14 +69,16 @@ public class EventSearchTests
         Assert.Equal([SearchField.Guests], r.Hits.Single(h => h.Event.Id == "g").Fields);
     }
 
-    [Fact] // T166
+    [Fact]
+    [Trait("TestCase", "T166")]
     public void SeveralFieldsAreAllReported()
     {
         var r = Find([Ev("a", "Alfa", Today, description: "progetto alfa", location: "Roma")], new SearchQuery { Text = "alfa" });
         Assert.Equal([SearchField.Title, SearchField.Description], r.Hits.Single().Fields);
     }
 
-    [Fact] // T167
+    [Fact]
+    [Trait("TestCase", "T167")]
     public void IgnoresCaseAndAccents()
     {
         var events = new[] { Ev("a", "Gita in CITTÀ", Today), Ev("b", "Altro", Today, description: "citta vecchia") };
@@ -80,7 +86,9 @@ public class EventSearchTests
         Assert.Equal(["a", "b"], Ids(Find(events, new SearchQuery { Text = "CITTA" })).Order());
     }
 
-    [Fact] // T167: every word must be found, in any field and in any order
+    [Fact]
+    // every word must be found, in any field and in any order
+    [Trait("TestCase", "T167")]
     public void SeveralWordsMustAllBeFound()
     {
         var events = new[]
@@ -95,7 +103,9 @@ public class EventSearchTests
         Assert.Empty(Ids(Find(events, new SearchQuery { Text = "alfa nonesiste" })));
     }
 
-    [Theory] // T167: nothing is a pattern
+    [Theory]
+    // nothing is a pattern
+    [Trait("TestCase", "T167")]
     [InlineData("100%")]
     [InlineData("a*b")]
     [InlineData("\"citato\"")]
@@ -117,14 +127,16 @@ public class EventSearchTests
 
     // ---- the boxes of the detailed panel ----
 
-    [Fact] // T177
+    [Fact]
+    [Trait("TestCase", "T177")]
     public void WhatLooksInTitleAndDescriptionOnly()
     {
         var events = new[] { Ev("t", "Alfa", Today), Ev("d", "x", Today, description: "alfa"), Ev("l", "x", Today, location: "alfa"), Ev("g", "x", Today, guests: "alfa@e.it") };
         Assert.Equal(["d", "t"], Ids(Find(events, new SearchQuery { What = "alfa" })).Order());
     }
 
-    [Fact] // T177
+    [Fact]
+    [Trait("TestCase", "T177")]
     public void WhoLooksInGuestsOnly()
     {
         var events = new[] { Ev("g", "x", Today, guests: "mario.rossi@example.com"), Ev("t", "mario", Today) };
@@ -132,14 +144,16 @@ public class EventSearchTests
         Assert.Equal(["g"], Ids(Find(events, new SearchQuery { Who = "mario example" })));
     }
 
-    [Fact] // T177
+    [Fact]
+    [Trait("TestCase", "T177")]
     public void WhereLooksInLocationOnly()
     {
         var events = new[] { Ev("l", "x", Today, location: "Via Roma 1"), Ev("t", "Roma", Today) };
         Assert.Equal(["l"], Ids(Find(events, new SearchQuery { Where = "roma" })));
     }
 
-    [Fact] // T177
+    [Fact]
+    [Trait("TestCase", "T177")]
     public void NotExcludesWhatIsFoundAnywhere()
     {
         var events = new[]
@@ -151,7 +165,9 @@ public class EventSearchTests
         Assert.Equal(["a", "b", "c", "d"], Ids(Find(events, new SearchQuery { Text = "riunione" })).Order());
     }
 
-    [Fact] // T177: the boxes are combined
+    [Fact]
+    // the boxes are combined
+    [Trait("TestCase", "T177")]
     public void BoxesAreCombined()
     {
         var events = new[]
@@ -167,7 +183,8 @@ public class EventSearchTests
 
     // ---- the calendars ----
 
-    [Fact] // T168
+    [Fact]
+    [Trait("TestCase", "T168")]
     public void OnlyTheChosenCalendarsAreSearched()
     {
         var events = new[] { Ev("a", "Alfa", Today, calendar: "c1"), Ev("b", "Alfa", Today, calendar: "c2"), Ev("c", "Alfa", Today, calendar: "c3") };
@@ -180,7 +197,8 @@ public class EventSearchTests
 
     // ---- the dates ----
 
-    [Fact] // T178
+    [Fact]
+    [Trait("TestCase", "T178")]
     public void DatesKeepTheEventsThatTouchTheRange()
     {
         var events = new[]
@@ -200,7 +218,8 @@ public class EventSearchTests
 
     // ---- days of an event ----
 
-    [Fact] // T170
+    [Fact]
+    [Trait("TestCase", "T170")]
     public void AnEventOfSeveralDaysIsOnEachDayItCovers()
     {
         var e = Ev("m", "Congresso", new DateTime(2026, 11, 2, 18, 0, 0), hours: 74); // until the 5th at 20:00
@@ -213,14 +232,16 @@ public class EventSearchTests
         Assert.Equal(1, r.EventCount); // one event on four lines
     }
 
-    [Fact] // T170
+    [Fact]
+    [Trait("TestCase", "T170")]
     public void AnEventEndingAtMidnightDoesNotSpillOverTheNextDay()
     {
         var e = new CalendarEvent("a", "c1", "Serata", new DateTime(2026, 11, 2, 20, 0, 0), new DateTime(2026, 11, 3, 0, 0, 0));
         Assert.Single(Find([e], new SearchQuery { Text = "serata" }).Hits);
     }
 
-    [Fact] // T170
+    [Fact]
+    [Trait("TestCase", "T170")]
     public void AllDayEventsCoverTheirDaysWithAnExclusiveEnd()
     {
         var oneDay = new CalendarEvent("a", "c1", "Festa", new DateTime(2026, 11, 2), new DateTime(2026, 11, 3), IsAllDay: true);
@@ -229,7 +250,10 @@ public class EventSearchTests
         Assert.Equal(3, Find([threeDays], new SearchQuery { Text = "ferie" }).Hits.Count);
     }
 
-    [Fact] // T170, T178: only the days inside the dates are lines
+    [Fact]
+    // only the days inside the dates are lines
+    [Trait("TestCase", "T170")]
+    [Trait("TestCase", "T178")]
     public void DaysOutsideTheDatesAreNotListed()
     {
         var e = new CalendarEvent("b", "c1", "Ferie", new DateTime(2026, 11, 2), new DateTime(2026, 11, 7), IsAllDay: true);
@@ -238,7 +262,9 @@ public class EventSearchTests
         Assert.Equal([3, 4], r.Hits.Select(h => h.DayNumber).ToArray());
     }
 
-    [Fact] // T170: order of the lines
+    [Fact]
+    // order of the lines
+    [Trait("TestCase", "T170")]
     public void LinesAreInOrderOfDayAllDayFirstThenStart()
     {
         var events = new[]
@@ -255,7 +281,8 @@ public class EventSearchTests
     private static CalendarEvent Weekly(string id, string title, DateTime start, string rule = "FREQ=WEEKLY") =>
         Ev(id, title, start) with { Recurrence = rule };
 
-    [Fact] // T169
+    [Fact]
+    [Trait("TestCase", "T169")]
     public void EveryOccurrenceOfASeriesIsALine()
     {
         var series = Weekly("s", "Palestra", new DateTime(2026, 11, 3, 18, 0, 0), "FREQ=WEEKLY;COUNT=5");
@@ -265,7 +292,9 @@ public class EventSearchTests
         Assert.Equal(Enumerable.Range(0, 5).Select(i => new DateTime(2026, 11, 3).AddDays(7 * i)).ToArray(), r.Hits.Select(h => h.Day).ToArray());
     }
 
-    [Fact] // T169: a series without an end is looked for from today to a year later
+    [Fact]
+    // a series without an end is looked for from today to a year later
+    [Trait("TestCase", "T169")]
     public void ASeriesWithoutAnEndStopsAtTheHorizon()
     {
         var daily = Weekly("s", "Allenamento", new DateTime(2020, 1, 1, 7, 0, 0), "FREQ=DAILY");
@@ -275,7 +304,10 @@ public class EventSearchTests
         Assert.Equal(366, r.Hits.Count);
     }
 
-    [Fact] // T169, T178: with dates, exactly those
+    [Fact]
+    // with dates, exactly those
+    [Trait("TestCase", "T169")]
+    [Trait("TestCase", "T178")]
     public void WithDatesTheSeriesIsExpandedInsideThem()
     {
         var daily = Weekly("s", "Allenamento", new DateTime(2020, 1, 1, 7, 0, 0), "FREQ=DAILY");
@@ -284,7 +316,10 @@ public class EventSearchTests
         Assert.Equal(10, Find([daily], new SearchQuery { Text = "allenamento", From = new DateTime(2020, 3, 1), To = new DateTime(2020, 3, 10) }).Hits.Count);
     }
 
-    [Fact] // T169, T178: one date only
+    [Fact]
+    // one date only
+    [Trait("TestCase", "T169")]
+    [Trait("TestCase", "T178")]
     public void OneDateOnly()
     {
         var daily = Weekly("s", "Allenamento", new DateTime(2020, 1, 1, 7, 0, 0), "FREQ=DAILY");
@@ -298,7 +333,9 @@ public class EventSearchTests
         Assert.Equal(new DateTime(2026, 12, 31), onlyTo.Hits.Last().Day);
     }
 
-    [Fact] // T169: a modified occurrence takes the place of its own, a cancelled one is not shown
+    [Fact]
+    // a modified occurrence takes the place of its own, a cancelled one is not shown
+    [Trait("TestCase", "T169")]
     public void ModifiedAndCancelledOccurrences()
     {
         var series = Weekly("s", "Palestra", new DateTime(2026, 10, 6, 18, 0, 0), "FREQ=WEEKLY;COUNT=4");
@@ -309,7 +346,9 @@ public class EventSearchTests
         Assert.Contains(r.Hits, h => h.Event.Id == "m");
     }
 
-    [Fact] // T169: a series that ended long ago is not found without dates
+    [Fact]
+    // a series that ended long ago is not found without dates
+    [Trait("TestCase", "T169")]
     public void ASeriesThatEndedBeforeTheHorizonIsNotListed()
     {
         var old = Weekly("s", "Corso", new DateTime(2020, 1, 7, 18, 0, 0), "FREQ=WEEKLY;COUNT=10");
@@ -319,7 +358,9 @@ public class EventSearchTests
 
     // ---- without dates every plain event is found, however old ----
 
-    [Fact] // T178: with no first day the search starts today
+    [Fact]
+    // with no first day the search starts today
+    [Trait("TestCase", "T178")]
     public void WithoutAFirstDayNothingBeforeTodayIsListed()
     {
         var events = new[]
@@ -331,7 +372,10 @@ public class EventSearchTests
         Assert.Equal(["far", "old", "today", "yesterday"], Ids(Find(events, new SearchQuery { Text = "alfa", From = new DateTime(2000, 1, 1) })).Order());
     }
 
-    [Fact] // T170, T178: an event that began before today is listed from today on
+    [Fact]
+    // an event that began before today is listed from today on
+    [Trait("TestCase", "T170")]
+    [Trait("TestCase", "T178")]
     public void AnEventInProgressIsListedFromToday()
     {
         var e = new CalendarEvent("m", "c1", "Congresso", Today.AddDays(-2).AddHours(9), Today.AddDays(1).AddHours(18));
@@ -342,7 +386,8 @@ public class EventSearchTests
 
     // ---- limit ----
 
-    [Fact] // T173
+    [Fact]
+    [Trait("TestCase", "T173")]
     public void MoreLinesThanTheLimitAreCut_AndSaid()
     {
         var events = Enumerable.Range(0, 1500).Select(i => Ev("e" + i, "Alfa " + i, new DateTime(2027, 1, 1).AddMinutes(i))).ToList();
@@ -355,7 +400,8 @@ public class EventSearchTests
 
     // ---- the text shown under a result ----
 
-    [Fact] // T166
+    [Fact]
+    [Trait("TestCase", "T166")]
     public void SnippetIsAroundTheFirstWord_WithDotsWhereCut()
     {
         var text = string.Concat(Enumerable.Repeat("parola ", 30)) + "tesoro " + string.Concat(Enumerable.Repeat("altro ", 30));
@@ -372,7 +418,8 @@ public class EventSearchTests
         Assert.Equal("", EventSearch.Snippet("", ["x"]));
     }
 
-    [Fact] // T166
+    [Fact]
+    [Trait("TestCase", "T166")]
     public void SnippetOfAnEventShowsTheDescriptionElseTheGuests()
     {
         var withDescription = Find([Ev("a", "Alfa", Today, description: "Portare il libretto e un documento")], new SearchQuery { Text = "libretto" });
@@ -384,7 +431,8 @@ public class EventSearchTests
 
     // ---- speed ----
 
-    [Fact] // T176
+    [Fact]
+    [Trait("TestCase", "T176")]
     public void TwentyThousandEventsAreSearchedInUnderASecond()
     {
         var text = string.Concat(Enumerable.Repeat("Lorem ipsum dolor sit amet città ", 25));

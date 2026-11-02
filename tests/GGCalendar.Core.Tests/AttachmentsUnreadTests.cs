@@ -29,7 +29,6 @@ public class AttachmentsUnreadTests
         new(ev, [new CalendarItemViewModel(new CalendarInfo("c1", "Locale", "Personale", "#1A73E8"), () => { }),
                  new CalendarItemViewModel(new CalendarInfo(GoogleCalendarId, "me@example.com", "Principale", "#1A73E8"), () => { })], isNew, new AppSettings());
 
-    // T351
     [Fact]
     [Trait("TestCase", "T351")]
     public void AnUnreadEventOfGoogleCannotGetALink()
@@ -45,7 +44,6 @@ public class AttachmentsUnreadTests
         Assert.Null(editor.TryBuild()!.Attachments); // saved without attachments: nothing is sent to Google about them
     }
 
-    // T352
     [Theory]
     [Trait("TestCase", "T352")]
     [InlineData("c1", null, false)]            // an event of this PC has nothing to lose
@@ -63,7 +61,6 @@ public class AttachmentsUnreadTests
         Assert.Equal((count ?? 0) + 1, editor.Attachments.Count);
     }
 
-    // T352
     [Fact]
     [Trait("TestCase", "T352")]
     public void ANewEventCanGetALink()
@@ -73,7 +70,6 @@ public class AttachmentsUnreadTests
         Assert.True(editor.CanAddAttachment);
     }
 
-    // T351
     [Theory]
     [Trait("TestCase", "T351")]
     [InlineData(true)]
@@ -106,7 +102,6 @@ public class AttachmentsUnreadTests
         }
     });
 
-    // T353
     [Fact]
     [Trait("TestCase", "T353")]
     public async Task EditingAnUnreadEventOnGoogleThroughTheEditorKeepsTheAttachmentsOfGoogle()
@@ -132,7 +127,6 @@ public class AttachmentsUnreadTests
         Assert.Equal(2, rig.Google.AttachmentsOf(id)!.Count); // the two of Google are still there
     }
 
-    // T351
     [Fact]
     [Trait("TestCase", "T351")]
     public void TheMessageIsInEveryLanguage()
