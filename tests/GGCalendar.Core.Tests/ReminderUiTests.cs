@@ -98,6 +98,7 @@ public class ReminderUiTests
     [Trait("TestCase", "T19")]
     public Task T19_ASnoozedReminderComesBackAfterFiveMinutes() => InAppAsync(async window =>
     {
+        Vm(window).Settings.SnoozeMinutes = 5; // the default is ten minutes (issue #48); InAppAsync puts the settings file back
         var calendar = await CreateLocalCalendarAsync(window, NewTitle());
         var title = NewTitle();
         await CreateEventAsync(window, new EventSpec(title) { CalendarId = calendar, Start = InMinutes(31) });
