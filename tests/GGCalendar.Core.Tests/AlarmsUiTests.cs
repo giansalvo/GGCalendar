@@ -220,7 +220,7 @@ public class AlarmsUiTests
 
         var row = Assert.Single(Rows(panel));
         Assert.Contains(L.T("alarms.snoozed"), TitlesIn(row));
-        Assert.Contains(AlarmsViewModel.Remaining(TimeSpan.FromMinutes(5)), TitlesIn(row));
+        Assert.Contains(AlarmsViewModel.Remaining(TimeSpan.FromMinutes(AppSettings.DefaultSnoozeMinutes)), TitlesIn(row));
     });
 
     // ---- T215: cancel an alarm ----
@@ -314,7 +314,7 @@ public class AlarmsUiTests
         var panel = await OpenListAsync(window);
         Assert.Contains(L.T("alarms.snoozed_hidden"), TitlesIn(Assert.Single(Rows(panel))));
 
-        FireAt(window, TimeSpan.FromMinutes(6));
+        FireAt(window, TimeSpan.FromMinutes(AppSettings.DefaultSnoozeMinutes + 1));
 
         Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " nascosta"));
         Assert.Single(window.Ringer.Items);
@@ -549,5 +549,91 @@ public class AlarmsUiTests
         var expected = File.Exists(ReminderSounds.SystemAlarmSound) ? ReminderSounds.SystemAlarmSound : null;
         Assert.Equal(expected, window.Ringer.Current!.Sound);
         await Task.CompletedTask;
+    });
+
+    // ---- T359-T360: the snooze that comes back (issue #48) ----
+
+    private static string TimeText(MainWindow window, DateTime time) => time.ToString(Vm(window).Settings.Use24HourClock ? "HH:mm" : "h:mm tt", L.Culture);
+
+    [Fact]
+    [Trait("TestCase", "T359")]
+    public Task T359_AnAlarmPutOffByAChipComesBackAtThatTimeAndSaysWhen() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Add(window, "posticipo trenta", TimeSpan.FromMinutes(40), null, Alarm(10));
+        FireAt(window, TimeSpan.FromMinutes(31));
+        var toast = Toasts().Single(t => ShowsTitle(t, Word + " posticipo trenta"));
+        Click(FindButton(toast, "Reminder.SnoozeChoice.30"));
+        await WaitForAsync(() => Toasts().Any(t => ShowsTitle(t, Word + " posticipo trenta")) ? null : window, "la chiusura della notifica");
+        Assert.Empty(window.Ringer.Items);
+
+        // The status bar tells when it comes back, so that a length chosen by mistake is noticed.
+        var status = Vm(window).SyncStatus;
+        Assert.Contains(TimeText(window, _clock + TimeSpan.FromMinutes(30)), status);
+        Assert.Contains(Word + " posticipo trenta", status);
+
+        var panel = await OpenListAsync(window);
+        var row = Assert.Single(Rows(panel));
+        Assert.Contains(L.T("alarms.snoozed"), TitlesIn(row));
+        Assert.Contains(AlarmsViewModel.Remaining(TimeSpan.FromMinutes(30)), TitlesIn(row));
+
+        FireAt(window, TimeSpan.FromMinutes(29)); // not yet
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, Word + " posticipo trenta"));
+        FireAt(window, TimeSpan.FromMinutes(1));
+        Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " posticipo trenta"));
+        Assert.Single(window.Ringer.Items);
+    });
+
+    [Fact]
+    [Trait("TestCase", "T359")]
+    public Task T359_ThePopupAndTheBigButtonUseTheDefaultOfTheSettings() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Vm(window).Settings.SnoozeMinutes = 15;
+        Add(window, "popup predefinito", TimeSpan.FromMinutes(40), null, new EventReminder(ReminderMethod.Popup, 10));
+        Add(window, "sveglia predefinita", TimeSpan.FromMinutes(40), null, Alarm(10));
+        FireAt(window, TimeSpan.FromMinutes(31));
+
+        var popup = Toasts().Single(t => ShowsTitle(t, Word + " popup predefinito"));
+        Assert.Equal(L.T("reminder.snooze", 15), FindButton(popup, "Reminder.Snooze").Content);
+        Assert.Empty(popup.GetVisualDescendants().OfType<Button>().Where(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b)?.StartsWith("Reminder.SnoozeChoice.") == true));
+        var alarm = Toasts().Single(t => ShowsTitle(t, Word + " sveglia predefinita"));
+        Assert.Equal(L.T("reminder.snooze", 15), FindButton(alarm, "Reminder.Snooze").Content);
+
+        Click(FindButton(popup, "Reminder.Snooze"));
+        Click(FindButton(alarm, "Reminder.Snooze"));
+        await WaitForAsync(() => Toasts().Any(t => ShowsTitle(t, Word + " popup predefinito") || ShowsTitle(t, Word + " sveglia predefinita")) ? null : window, "la chiusura delle notifiche");
+
+        FireAt(window, TimeSpan.FromMinutes(14));
+        Assert.Empty(Toasts().Where(t => ShowsTitle(t, Word + " popup predefinito") || ShowsTitle(t, Word + " sveglia predefinita")));
+        FireAt(window, TimeSpan.FromMinutes(1));
+        Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " popup predefinito"));
+        Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " sveglia predefinita"));
+    });
+
+    [Fact]
+    [Trait("TestCase", "T360")]
+    public Task T360_TwoAlarmsPutOffByDifferentChipsComeBackEachAtItsTime() => InAlarmsAppAsync(async window =>
+    {
+        HideAll(window);
+        Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+        Add(window, "breve", TimeSpan.FromMinutes(40), null, Alarm(10));
+        Add(window, "lunga", TimeSpan.FromMinutes(40), null, Alarm(10));
+        FireAt(window, TimeSpan.FromMinutes(31));
+        Click(FindButton(Toasts().Single(t => ShowsTitle(t, Word + " breve")), "Reminder.SnoozeChoice.5"));
+        Click(FindButton(Toasts().Single(t => ShowsTitle(t, Word + " lunga")), "Reminder.SnoozeChoice.60"));
+        await WaitForAsync(() => Toasts().Any(t => ShowsTitle(t, Word + " breve") || ShowsTitle(t, Word + " lunga")) ? null : window, "la chiusura delle notifiche");
+
+        var panel = await OpenListAsync(window);
+        Assert.Equal(2, Rows(panel).Count);
+
+        FireAt(window, TimeSpan.FromMinutes(5));
+        Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " breve"));
+        Assert.DoesNotContain(Toasts(), t => ShowsTitle(t, Word + " lunga"));
+
+        FireAt(window, TimeSpan.FromMinutes(55));
+        Assert.Contains(Toasts(), t => ShowsTitle(t, Word + " lunga"));
     });
 }
