@@ -56,7 +56,7 @@ public class SyncLimitRealGoogleTests(ITestOutputHelper output)
             while (result.Pending > 0 && pass < 10);
 
             Assert.Equal(0, result.Pending);
-            var onGoogle = (await direct.FindAsync(AppDriver.TestPrefix)).Select(e => e.GetProperty("summary").GetString()).ToList();
+            var onGoogle = (await direct.FindAsync(AppDriver.TestPrefix)).Select(e => e.GetProperty("summary").GetString() ?? "").ToList();
             output.WriteLine($"su Google: {onGoogle.Count(t => titles.Contains(t))} dei {Count} eventi; Google ha rallentato {slowedDown} volte; invio in {clock.Elapsed.TotalSeconds:F0} s");
             Assert.All(titles, t => Assert.Single(onGoogle, g => g == t)); // every event is there, none twice
         }

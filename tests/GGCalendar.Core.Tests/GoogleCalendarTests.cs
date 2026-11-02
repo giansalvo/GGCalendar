@@ -162,7 +162,7 @@ public class GoogleCalendarTests
         using var rig = new SyncRig();
         await rig.Service.CreateCalendarAsync(FakeGoogle.Account, "Scuro", "#1A237E", CancellationToken.None);
         await rig.Service.CreateCalendarAsync(FakeGoogle.Account, "Chiaro", "#F6BF26", CancellationToken.None);
-        Assert.Equal(["#FFFFFF", "#000000"], rig.Google.ColorPatches.Select(p => (string?)JsonNode.Parse(p.Body)!["foregroundColor"]).ToArray());
+        Assert.Equal(["#FFFFFF", "#000000"], rig.Google.ColorPatches.Select(p => (string)JsonNode.Parse(p.Body)!["foregroundColor"]!).ToArray());
     }
 
     [Fact] // T184

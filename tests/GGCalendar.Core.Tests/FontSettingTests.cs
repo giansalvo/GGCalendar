@@ -234,7 +234,7 @@ public class FontSettingTests
             Dispatcher.UIThread.RunJobs();
             var frame = Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
             Assert.NotNull(frame);
-            frame.Save(Path.Combine(Folder, font.Replace(' ', '_') + ".png"));
+            frame.Save(Path.Combine(Folder, font.Replace(' ', '_') + ".png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         }
         finally
         {

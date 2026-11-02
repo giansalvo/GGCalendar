@@ -76,7 +76,7 @@ public class DescriptionScreenshotTests
                     Dispatcher.UIThread.RunJobs();
                     var frame = window.CaptureRenderedFrame();
                     Assert.NotNull(frame);
-                    frame.Save(Path.Combine(Folder, $"{(dark ? "scuro" : "chiaro")}_{first / PerSheet + 1:D2}.png"));
+                    frame.Save(Path.Combine(Folder, $"{(dark ? "scuro" : "chiaro")}_{first / PerSheet + 1:D2}.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
                 finally
                 {
