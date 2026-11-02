@@ -352,7 +352,7 @@ public partial class MainWindow : Window
                 player.Play(ReminderSounds.Playable(ReminderSounds.SystemReminderSound, isAlarm: false), vm.Settings.ReminderVolumePercent, loop: false);
         }
 
-        var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm);
+        var toast = new ReminderNotificationWindow(due.Event, vm.Settings.Use24HourClock, isAlarm, vm.Settings.SnoozeLength);
         toast.Closed += (_, _) =>
         {
             player?.Dispose();
@@ -362,7 +362,7 @@ public partial class MainWindow : Window
                 _ringer.Remove(due.Key);
             }
 
-            if (toast.Result == ReminderAction.Snooze) _scheduler?.Snooze(due, TimeSpan.FromMinutes(5));
+            if (toast.Result == ReminderAction.Snooze) SnoozeReminder(vm, due, toast.SnoozeMinutes);
         };
         if (isAlarm)
         {
@@ -371,6 +371,15 @@ public partial class MainWindow : Window
         }
 
         toast.Show();
+    }
+
+    /// <summary>Puts the reminder off and says when it comes back, so that a length chosen by mistake is noticed.</summary>
+    private void SnoozeReminder(MainViewModel vm, DueReminder due, int minutes)
+    {
+        _scheduler?.Snooze(due, TimeSpan.FromMinutes(minutes));
+        var back = (ReminderClock?.Invoke() ?? DateTime.Now).AddMinutes(minutes);
+        var time = back.ToString(vm.Settings.Use24HourClock ? "HH:mm" : "h:mm tt", L.Culture);
+        vm.SetStatus(Msg.Of("reminder.snoozed_status", time, string.IsNullOrWhiteSpace(due.Event.Title) ? L.T("common.untitled") : due.Event.Title));
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;

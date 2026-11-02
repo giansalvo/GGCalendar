@@ -45,6 +45,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         DefaultSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultReminderSound) ?? AddCustomSound(s.DefaultReminderSound);
         AlarmSound = Sounds.FirstOrDefault(o => o.Path == s.DefaultAlarmSound) ?? AddCustomSound(s.DefaultAlarmSound);
         AlarmDurationMinutes = Math.Clamp(s.AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes);
+        SnoozeOption = SnoozeOptions.First(o => o.Value == s.SnoozeLength);
         DayStartHour = s.DayStartHour;
         DayEndHour = s.DayEndHour;
         HideOutsideHours = s.HideOutsideHours;
@@ -214,6 +215,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     partial void OnAlarmDurationMinutesChanged(int value) => OnPropertyChanged(nameof(AlarmDurationLabel));
 
+    /// <summary>The lengths a snooze can have ("10 min"): the default one is chosen here, the others in the window of the alarm.</summary>
+    public IReadOnlyList<ChoiceOption<int>> SnoozeOptions { get; } = AppSettings.SnoozeChoices.Select(m => new ChoiceOption<int>(m, L.T("snooze.choice", m))).ToList();
+
+    /// <summary>How long "Snooze" puts a reminder off by default.</summary>
+    [ObservableProperty] public partial ChoiceOption<int> SnoozeOption { get; set; }
+
     public SoundOption AddCustomSound(string path)
     {
         var existing = Sounds.FirstOrDefault(o => o.Path == path);
@@ -343,6 +350,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultReminderSound = DefaultSound.Path ?? new AppSettings().DefaultReminderSound,
             DefaultAlarmSound = AlarmSound.Path ?? new AppSettings().DefaultAlarmSound,
             AlarmDurationMinutes = Math.Clamp(AlarmDurationMinutes, AppSettings.MinAlarmMinutes, AppSettings.MaxAlarmMinutes),
+            SnoozeMinutes = SnoozeOption?.Value ?? AppSettings.DefaultSnoozeMinutes,
             SnapMinutes = SnapMinutes,
             SecondaryTimeZoneId = string.IsNullOrEmpty(SecondaryTimeZone.Id) || SecondaryTimeZone.Id == TimeZoneInfo.Local.Id ? null : SecondaryTimeZone.Id,
             SecondaryTimeZoneLabel = SecondZones.ClampLabel(SecondaryTimeZoneLabel) is { Length: > 0 } label ? label : null,

@@ -128,7 +128,7 @@
                 </StackPanel>
                 <TextBlock Classes="section" Text="{loc:T settings.notifications}" />
                 <CheckBox AutomationProperties.AutomationId="Settings.NotificationsEnabled" Content="{loc:T settings.notifications_enabled}" IsChecked="{Binding NotificationsEnabled}" />
-                <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                <Grid ColumnDefinitions="140,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                     <TextBlock Text="{loc:T settings.default_sound}" VerticalAlignment="Center" />
                     <ComboBox AutomationProperties.AutomationId="Settings.DefaultSound" Grid.Column="1" ItemsSource="{Binding Sounds}" SelectedItem="{Binding DefaultSound}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
@@ -148,8 +148,10 @@
                     <TextBlock Grid.Row="2" Text="{loc:T settings.alarm_duration}" VerticalAlignment="Center" />
                     <Slider AutomationProperties.AutomationId="Settings.AlarmDuration" Grid.Row="2" Grid.Column="1" Minimum="{Binding MinAlarmMinutes}" Maximum="{Binding MaxAlarmMinutes}" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding AlarmDurationMinutes}" />
                     <TextBlock AutomationProperties.AutomationId="Settings.AlarmDurationLabel" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Text="{Binding AlarmDurationLabel}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                    <TextBlock Grid.Row="3" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
-                    <Slider Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
+                    <TextBlock Grid.Row="3" Text="{loc:T settings.snooze_default}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <ComboBox AutomationProperties.AutomationId="Settings.Snooze" Grid.Row="3" Grid.Column="1" ItemsSource="{Binding SnoozeOptions}" SelectedItem="{Binding SnoozeOption}" HorizontalAlignment="Stretch" DisplayMemberBinding="{ReflectionBinding Label}" />
+                    <TextBlock Grid.Row="4" Text="{loc:T settings.volume}" VerticalAlignment="Center" />
+                    <Slider Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ReminderVolumePercent}" />
                 </Grid>
 
                 <TextBlock Classes="section" Text="{loc:T settings.advanced_section}" />

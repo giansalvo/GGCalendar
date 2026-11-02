@@ -76,6 +76,18 @@ public sealed class AppSettings
     [System.Text.Json.Serialization.JsonIgnore]
     public TimeSpan AlarmDuration => TimeSpan.FromMinutes(Math.Clamp(AlarmDurationMinutes, MinAlarmMinutes, MaxAlarmMinutes));
 
+    /// <summary>The lengths of a snooze the person can choose (as on Android), in minutes.</summary>
+    public static readonly IReadOnlyList<int> SnoozeChoices = [5, 10, 15, 30, 60];
+
+    public const int DefaultSnoozeMinutes = 10;
+
+    /// <summary>How long "Snooze" puts a reminder off when the person does not choose another length (issue #48).</summary>
+    public int SnoozeMinutes { get; set; } = DefaultSnoozeMinutes;
+
+    /// <summary><see cref="SnoozeMinutes"/> if it is one of the choices, else the default (a hand-edited file).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int SnoozeLength => SnoozeChoices.Contains(SnoozeMinutes) ? SnoozeMinutes : DefaultSnoozeMinutes;
+
     public int ReminderVolumePercent { get; set; } = 80;
     public string OllamaUrl { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "qwen3.6:latest";
