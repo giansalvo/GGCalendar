@@ -191,7 +191,7 @@ public class GoogleCalendarTests
         var ex = await Assert.ThrowsAsync<GoogleCalendarException>(() => rig.Service.CreateCalendarAsync(FakeGoogle.Account, "Palestra", "#1A73E8", CancellationToken.None));
         Assert.Equal(expected, ex.Problem);
         Assert.Single(rig.Store.GetCalendars());
-        Assert.Equal(1, rig.Google.CalendarIds.Count); // nothing on Google either
+        Assert.Single(rig.Google.CalendarIds); // nothing on Google either
     }
 
     [Fact] // T184: the calendar is made but its colour is refused: it is kept

@@ -55,8 +55,8 @@ public class AccountDisconnectTests
         Assert.True(revoked);
         Assert.Equal(["refresh-token"], rig.Google.RevokedTokens);
         Assert.Empty(rig.Service.AccountEmails);
-        Assert.Empty(rig.Store.GetCalendars().Where(c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal)));
-        Assert.Empty(rig.Store.GetAllEvents().Where(e => e.CalendarId == FakeGoogle.LocalCalendarId)); // the events go with the calendar
+        Assert.DoesNotContain(rig.Store.GetCalendars(), c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal));
+        Assert.DoesNotContain(rig.Store.GetAllEvents(), e => e.CalendarId == FakeGoogle.LocalCalendarId); // the events go with the calendar
         Assert.Empty(rig.Store.GetPending()); // and the changes not sent
     }
 
@@ -90,7 +90,7 @@ public class AccountDisconnectTests
 
         Assert.Equal(expectedRevoked, revoked);
         Assert.Empty(rig.Service.AccountEmails);
-        Assert.Empty(rig.Store.GetCalendars().Where(c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal)));
+        Assert.DoesNotContain(rig.Store.GetCalendars(), c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class AccountDisconnectTests
         Assert.False(revoked);
         Assert.Empty(rig.Google.RevokedTokens);
         Assert.Empty(rig.Service.AccountEmails);
-        Assert.Empty(rig.Store.GetCalendars().Where(c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal)));
+        Assert.DoesNotContain(rig.Store.GetCalendars(), c => c.Id.StartsWith(FakeGoogle.Account + "|", StringComparison.Ordinal));
     }
 
     [Fact]

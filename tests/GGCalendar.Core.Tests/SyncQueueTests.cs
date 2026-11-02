@@ -159,7 +159,7 @@ public class SyncQueueTests
 
         await rig.Service.CancelQueuedAsync(["s"], CancellationToken.None);
 
-        Assert.Empty(rig.Store.GetAllEvents().Where(e => e.Id is "s" or "x"));
+        Assert.DoesNotContain(rig.Store.GetAllEvents(), e => e.Id is "s" or "x");
         Assert.Empty(rig.Store.GetPending());
     }
 
@@ -364,6 +364,6 @@ public class SyncQueueTests
         Assert.Equal(3000, result.Cancelled);
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(15), $"Ci sono voluti {watch.Elapsed.TotalSeconds:0} secondi.");
         Assert.Equal(0, rig.Service.CountQueuedEvents());
-        Assert.Empty(rig.Store.GetAllEvents().Where(e => e.Id.StartsWith("i", StringComparison.Ordinal)));
+        Assert.DoesNotContain(rig.Store.GetAllEvents(), e => e.Id.StartsWith("i", StringComparison.Ordinal));
     }
 }

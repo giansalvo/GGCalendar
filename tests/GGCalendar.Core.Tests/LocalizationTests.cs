@@ -100,8 +100,8 @@ public class LocalizationTests
         foreach (var language2 in new[] { "it", language })
         {
             var keys = L.Texts(language2).Keys;
-            Assert.False(keys.Where(k => k.EndsWith(".one", StringComparison.Ordinal)).Any(k => !keys.Contains(k[..^4] + ".other")));
-            Assert.False(keys.Where(k => k.EndsWith(".other", StringComparison.Ordinal)).Any(k => !keys.Contains(k[..^6] + ".one")));
+            Assert.DoesNotContain(keys.Where(k => k.EndsWith(".one", StringComparison.Ordinal)), k => !keys.Contains(k[..^4] + ".other"));
+            Assert.DoesNotContain(keys.Where(k => k.EndsWith(".other", StringComparison.Ordinal)), k => !keys.Contains(k[..^6] + ".one"));
         }
     }
 

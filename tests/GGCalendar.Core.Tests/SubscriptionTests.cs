@@ -288,7 +288,7 @@ public class SubscriptionTests
         var preview = (await service.PreviewAsync(Host + "/a.ics")).Preview!;
         Assert.Equal(3, preview.Snapshot.Events.Count);
         var range = new SubscriptionRange(new DateTime(2026, 5, 1), new DateTime(2026, 7, 31));
-        Assert.Equal(1, preview.Recount(range).Snapshot.Events.Count);
+        Assert.Single(preview.Recount(range).Snapshot.Events);
 
         var (calendar, _) = service.Add(preview, "  Il mio  ", "#AABBCC", range);
         Assert.Equal("Il mio", calendar!.Name);
