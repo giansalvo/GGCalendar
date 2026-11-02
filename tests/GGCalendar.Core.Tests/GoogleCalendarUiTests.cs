@@ -77,12 +77,12 @@ public class GoogleCalendarUiTests
     /// <summary>The menu of the calendar, opened.</summary>
     internal static ContextMenu OpenCalendarMenu(MainWindow window, CalendarItemViewModel calendar)
     {
-        return OpenMenu(() => CalendarRow(window, calendar.Id));
+        return OpenMenu(window, () => CalendarRow(window, calendar.Id));
     }
 
     internal static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
     {
-        return OpenMenu(() => AccountHeader(window, group.AccountName));
+        return OpenMenu(window, () => AccountHeader(window, group.AccountName));
     }
 
     internal static CalendarItemViewModel Calendar(MainWindow window, string localId) => Vm(window).Calendars.First(c => c.Id == localId);
