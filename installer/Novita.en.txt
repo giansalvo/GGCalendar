@@ -1,9 +1,9 @@
 ﻿GGCalendar 1.0.3 - What is new
 ==============================
 
-  - The description of an event shows bold, italic, underline, line breaks, paragraphs, titles, lists and links as in Google Calendar (read only).
-  - Web addresses and emails in the description are clickable; a click asks for confirmation and shows the real address.
-  - Search looks at the text you see.
-  - The description is limited to 8192 characters.
-  - The first time the app runs after an install or an update, a splash screen with the app information appears for 5 seconds.
-  - Events can have attachments (https links to files, also from Google Drive): add them in the event window, see them in the event card; they travel with Google Calendar and in .ics files and the search finds them.
+  - Choice of the font used in the application;
+  - The description of an event shows bold, italic, underline, titles, lists and links;
+  - Web addresses and emails in the description are clickable;
+  - Improved search (ignores hidden tags);
+  - Events can have attachments (https links to files);
+  - Sharing of single events through the most common applications.

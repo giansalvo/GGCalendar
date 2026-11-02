@@ -20,23 +20,22 @@
 
 ## Funktionen
 
-- Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht; Wochenenden ausblendbar
-- Termine per Ziehen erstellen, verschieben und in der Größe ändern, auch zwischen verschiedenen Kalendern
-- Übersichtskarte beim Klick auf einen Termin (bearbeiten, löschen, teilen, an Meet teilnehmen); Doppelklick zum Bearbeiten
-- Einen Termin über seine Karte teilen: WhatsApp, Telegram, E-Mail (Titel als Betreff, Text im Nachrichtentext), E-Mail an die Gäste (nur wenn es welche gibt), `.ics`-Datei auf der Festplatte, Zwischenablage und die anderen Apps von Windows (Text und `.ics`-Datei)
-- Wiederkehrende Termine, mit Bearbeiten oder Löschen eines einzelnen Termins, der folgenden oder der ganzen Serie
-- Erinnerungen mit Benachrichtigung, Wecker mit Ton (bis Sie ihn ausschalten, höchstens 1 bis 10 Minuten nach Ihrer Wahl, standardmäßig 2; ein Weckton getrennt von dem der Erinnerungen, auch eine eigene mp3- oder wav-Datei) und Schlummerfunktion, auch nach einem Neustart erhalten
-- Liste der Wecker (Symbol neben der Lupe): die gerade klingelnden und die in den nächsten 60 Tagen anstehenden, mit der verbleibenden Zeit; Sie können sie ausschalten, abbrechen (nur auf diesem Computer) oder den Termin öffnen. Wecker klingeln einzeln nacheinander und nur bei geöffnetem GGCalendar; Erinnerungen ausgeblendeter Kalender klingeln nicht (verschobene Wecker schon)
-- Synchronisierung in beide Richtungen mit einem oder mehreren Google-Kalender-Konten, mit Konfliktbehandlung; Wecker reisen mit dem Termin über Google und werden mit [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) für Android geteilt
-- Gäste, Google-Meet-Links, Erinnerungen per E-Mail (von Google gesendet)
-- Suche nach einem Text in Titel, Beschreibung, Ort und Gästen, in einem oder mehreren Kalendern, mit Datum und auszuschließenden Wörtern
-- Kalender in Google-Konten erstellen und löschen (nur eigene, nie den Hauptkalender)
-- Name und Farbe von Kalendern ändern: den Namen für lokale und eigene Google-Kalender, die Farbe für alle (8 Schnellfarben und die 24 von Google)
-- Ein Google-Konto per Rechtsklick auf seinen Namen (oder in den Einstellungen) trennen: Eine Rückfrage sagt, was von diesem PC entfernt wird (Kalender, Termine, noch nicht gesendete Änderungen); der Zugriff wird bei Google widerrufen, und was Sie bei Google haben, ändert sich nicht
-- Immer sichtbare Statusleiste mit dem Synchronisierungsanzeiger: ein grüner Punkt, wenn alles an Google gesendet ist, eine Sanduhr mit der Anzahl der Termine, wenn welche warten. Ein Klick öffnet die Liste der wartenden Änderungen nach Kalender: Sie können sofort erneut versuchen oder sie abbrechen (der Termin geht zurück auf die Version von Google)
+- Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht
+- Terminverwaltung per Ziehen
+- Wiederkehrende Termine
+- Synchronisierung mit einem oder mehreren Google-Kalender-Konten, mit Konfliktbehandlung
+- Wecker mit anpassbaren Tönen, Dauer und Verschiebezeit
+- Wecker, die mit [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) für Android geteilt werden
+- Einen Termin teilen: WhatsApp, Telegram, E-Mail, Datei, Zwischenablage und die anderen Apps von Windows
+- Dateien über einen Link an einen Termin anhängen
+- Erinnerungen mit Benachrichtigung und Weckermodus
+- Erweiterte Suche nach einem Termin anhand des Textes von Titel oder Beschreibung
+- Kalender in Google-Konten erstellen und löschen
+- Immer sichtbare Statusleiste mit dem Synchronisierungsanzeiger
 - Lokale Kalender, Import und Export von `.ics`-Dateien
+- Auswahl der Schriftart der Anwendung
 - Helles und dunkles Design
-- Oberfläche in Italienisch, Englisch, Deutsch, Spanisch und Französisch: Die Sprache wird in den *Einstellungen* gewählt (Standard: die Sprache von Windows) und ändert sich sofort
+- Oberfläche in Italienisch, Englisch, Deutsch, Spanisch und Französisch
 
 ## Installation
 

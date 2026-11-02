@@ -4,6 +4,9 @@
 #ifndef AppVersion
   #error AppVersion non definita: compila con installer\build-installer.ps1.
 #endif
+#ifndef AppVersionNumeric
+  #define AppVersionNumeric AppVersion
+#endif
 #define AppExe "GGCalendar.App.exe"
 
 [Setup]
@@ -14,7 +17,7 @@ AppVersion={#AppVersion}
 AppVerName=GGCalendar {#AppVersion}
 AppPublisher=Giansalvo Gusinu
 AppCopyright=© 2026 Giansalvo Gusinu
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppVersionNumeric}
 DefaultDirName={autopf}\GGCalendar
 DefaultGroupName=GGCalendar
 DisableProgramGroupPage=yes

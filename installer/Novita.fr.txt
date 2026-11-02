@@ -1,9 +1,9 @@
 ﻿GGCalendar 1.0.3 - Nouveautés
 =============================
 
-  - La description d'un événement affiche le gras, l'italique, le souligné, les retours à la ligne, les paragraphes, les titres, les listes et les liens comme dans Google Agenda (lecture seule).
-  - Les adresses web et les e-mails de la description sont cliquables ; un clic demande confirmation et montre la vraie adresse.
-  - La recherche regarde le texte que vous voyez.
-  - La description est limitée à 8192 caractères.
-  - Au premier lancement après une installation ou une mise à jour, un écran de démarrage avec les informations sur l'application s'affiche pendant 5 secondes.
-  - Les événements peuvent avoir des pièces jointes (liens https vers des fichiers, aussi de Google Drive) : on les ajoute dans la fenêtre de l'événement, on les voit dans la fiche, elles voyagent avec Google Agenda et dans les fichiers .ics et la recherche les trouve.
+  - Choix de la police de caractères de l'application ;
+  - La description d'un événement affiche le gras, l'italique, le souligné, les titres, les listes et les liens ;
+  - Les adresses web et les e-mails de la description sont cliquables ;
+  - Recherche améliorée (écarte les balises cachées) ;
+  - Les événements peuvent avoir des pièces jointes (liens https vers des fichiers) ;
+  - Partage d'événements individuels via les applications les plus courantes.

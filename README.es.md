@@ -20,23 +20,22 @@
 
 ## Funciones
 
-- Vistas de día, semana, 6 días, mes, año y programa; los fines de semana se pueden ocultar
-- Crear, mover y redimensionar eventos arrastrando, también entre calendarios distintos
-- Ficha resumen al hacer clic en un evento (editar, eliminar, compartir, unirse a Meet); doble clic para editarlo
-- Compartir un evento desde su ficha: WhatsApp, Telegram, correo (título como asunto, texto en el cuerpo), correo a los invitados (solo si hay), archivo `.ics` en el disco, portapapeles y las otras aplicaciones de Windows (texto y archivo `.ics`)
-- Eventos recurrentes, con edición o eliminación de una sola repetición, de las siguientes o de toda la serie
-- Recordatorios con notificación, alarma sonora (hasta que la apagas, como máximo de 1 a 10 minutos a tu elección, 2 por defecto; un sonido de las alarmas aparte del de los recordatorios, también un archivo mp3 o wav tuyo) y posposición, conservados también tras un reinicio
-- Lista de las alarmas (icono junto a la lupa): las que suenan y las de los próximos 60 días, con el tiempo que falta; puedes apagarlas, cancelarlas (solo en este equipo) o abrir el evento. Las alarmas suenan una a una y solo con GGCalendar abierto; los recordatorios de calendarios ocultos no suenan (las alarmas pospuestas sí)
-- Sincronización en ambos sentidos con una o más cuentas de Google Calendar, con gestión de conflictos; las alarmas viajan con el evento en Google y se comparten con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) para Android
-- Invitados, enlaces de Google Meet, recordatorios por correo (enviados por Google)
-- Búsqueda de un texto en título, descripción, lugar e invitados, en uno o varios calendarios, con fechas y palabras a excluir
-- Crear y eliminar calendarios en las cuentas de Google (solo los tuyos, nunca el principal)
-- Cambiar el nombre y el color de los calendarios: el nombre en los locales y en los tuyos de Google, el color en todos (8 colores rápidos y los 24 de Google)
-- Desconectar una cuenta de Google con clic derecho en su nombre (o desde los ajustes): una pregunta dice qué se quita de este equipo (calendarios, eventos, cambios aún no enviados); el acceso se revoca en Google y lo que tienes en Google no cambia
-- Barra de estado siempre visible con el indicador de sincronización: un punto verde cuando todo está enviado a Google, un reloj de arena con el número de eventos cuando hay alguno pendiente. Un clic abre la lista de los cambios pendientes, por calendario: puedes reintentar ahora o cancelarlos (el evento vuelve a como está en Google)
+- Vistas de día, semana, 6 días, mes, año y programa
+- Gestión de los eventos arrastrando
+- Eventos recurrentes
+- Sincronización con una o más cuentas de Google Calendar, con gestión de conflictos
+- Alarmas con sonidos, duración y posposición personalizables
+- Alarmas compartidas con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) para Android
+- Compartir un evento: WhatsApp, Telegram, correo, archivo, portapapeles y las otras aplicaciones de Windows
+- Posibilidad de adjuntar archivos a un evento mediante un enlace
+- Recordatorios con notificación y modo alarma
+- Búsqueda avanzada de un evento según el texto del título o de la descripción
+- Crear y eliminar calendarios en las cuentas de Google
+- Barra de estado siempre visible con el indicador de sincronización
 - Calendarios locales, importación y exportación de archivos `.ics`
+- Elección de la fuente de letra de la aplicación
 - Tema claro y oscuro
-- Interfaz en italiano, inglés, alemán, español y francés: el idioma se elige en *Ajustes* (por defecto, el de Windows) y cambia al instante
+- Interfaz en italiano, inglés, alemán, español y francés
 
 ## Instalación
 

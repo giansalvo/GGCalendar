@@ -20,23 +20,22 @@
 
 ## Fonctionnalités
 
-- Vues jour, semaine, 6 jours, mois, année et programme ; week-ends masquables
-- Création, déplacement et redimensionnement des événements par glisser-déposer, y compris entre agendas différents
-- Fiche récapitulative au clic sur un événement (modifier, supprimer, partager, rejoindre Meet) ; double-clic pour le modifier
-- Partager un événement depuis sa fiche : WhatsApp, Telegram, e-mail (titre en objet, texte dans le corps), e-mail aux invités (seulement s'il y en a), fichier `.ics` sur le disque, presse-papiers et les autres applications de Windows (texte et fichier `.ics`)
-- Événements récurrents, avec modification ou suppression d'une seule occurrence, des suivantes ou de toute la série
-- Rappels avec notification, alarme sonore (jusqu'à ce que vous l'arrêtiez, de 1 à 10 minutes au maximum à votre choix, 2 par défaut ; un son des alarmes distinct de celui des rappels, aussi un fichier mp3 ou wav à vous) et report, conservés aussi après un redémarrage
-- Liste des alarmes (icône à côté de la loupe) : celles qui sonnent et celles à venir dans les 60 prochains jours, avec le temps restant ; vous pouvez les arrêter, les annuler (sur cet ordinateur seulement) ou ouvrir l'événement. Les alarmes sonnent une à la fois et seulement quand GGCalendar est ouvert ; les rappels des agendas masqués ne sonnent pas (les alarmes reportées, si)
-- Synchronisation dans les deux sens avec un ou plusieurs comptes Google Agenda, avec gestion des conflits ; les alarmes voyagent avec l'événement sur Google et sont partagées avec [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) pour Android
-- Invités, liens Google Meet, rappels par e-mail (envoyés par Google)
-- Recherche d'un texte dans le titre, la description, le lieu et les invités, dans un ou plusieurs agendas, avec des dates et des mots à exclure
-- Création et suppression d'agendas sur les comptes Google (seulement ceux dont vous êtes propriétaire, jamais l'agenda principal)
-- Modification du nom et de la couleur des agendas : le nom pour les agendas locaux et les vôtres sur Google, la couleur pour tous (8 couleurs rapides et les 24 de Google)
-- Déconnecter un compte Google par un clic droit sur son nom (ou depuis les paramètres) : une question indique ce qui est retiré de cet ordinateur (agendas, événements, modifications non encore envoyées) ; l'accès est révoqué sur Google et ce que vous avez sur Google ne change pas
-- Barre d'état toujours visible avec l'indicateur de synchronisation : un point vert quand tout est envoyé à Google, un sablier avec le nombre d'événements quand certains attendent. Un clic ouvre la liste des modifications en attente, par agenda : vous pouvez réessayer tout de suite ou les annuler (l'événement revient tel qu'il est sur Google)
+- Vues jour, semaine, 6 jours, mois, année et programme
+- Gestion des événements par glisser-déposer
+- Événements récurrents
+- Synchronisation avec un ou plusieurs comptes Google Agenda, avec gestion des conflits
+- Alarmes avec sons, durée et report personnalisables
+- Alarmes partagées avec [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) pour Android
+- Partage d'un événement : WhatsApp, Telegram, e-mail, fichier, presse-papiers et les autres applications de Windows
+- Possibilité de joindre des fichiers à un événement au moyen d'un lien
+- Rappels avec notification et mode alarme
+- Recherche avancée d'un événement d'après le texte du titre ou de la description
+- Création et suppression d'agendas sur les comptes Google
+- Barre d'état toujours visible avec l'indicateur de synchronisation
 - Agendas locaux, importation et exportation de fichiers `.ics`
+- Choix de la police de caractères de l'application
 - Thème clair et sombre
-- Interface en italien, anglais, allemand, espagnol et français : la langue se choisit dans les *Paramètres* (par défaut, celle de Windows) et change immédiatement
+- Interface en italien, anglais, allemand, espagnol et français
 
 ## Installation
 

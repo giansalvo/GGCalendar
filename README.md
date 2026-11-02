@@ -20,23 +20,22 @@
 
 ## Funzionalità
 
-- Viste giorno, settimana, 6 giorni, mese, anno e programma; weekend nascondibili
-- Creazione, spostamento e ridimensionamento degli eventi con il trascinamento, anche tra calendari diversi
-- Scheda riassuntiva al clic su un evento (modifica, elimina, condividi, partecipa a Meet); doppio clic per modificarlo
-- Condividi un evento dalla sua scheda: WhatsApp, Telegram, email (titolo come oggetto, testo nel corpo), email agli invitati (solo se ci sono), file `.ics` su disco, appunti e le altre app di Windows (testo e file `.ics`)
-- Eventi ricorrenti, con modifica o eliminazione di una sola occorrenza, delle successive o dell'intera serie
-- Promemoria con notifica, sveglia sonora (fino a quando la spegni, al massimo da 1 a 10 minuti a tua scelta, 2 di partenza; suono delle sveglie a parte da quello dei promemoria, anche un tuo file mp3 o wav) e posticipo, conservati anche dopo un riavvio
-- Elenco delle sveglie (icona accanto alla lente): quelle che stanno suonando e quelle in arrivo nei prossimi 60 giorni, con il tempo rimasto; le puoi spegnere, annullare (solo su questo computer) o aprire l'evento. Le sveglie suonano una alla volta e solo con GGCalendar aperto; i promemoria dei calendari nascosti non suonano (le sveglie posticipate sì)
-- Sincronizzazione bidirezionale con uno o più account Google Calendar, con gestione dei conflitti; le sveglie viaggiano con l'evento su Google e si condividono con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) per Android
-- Invitati, link Google Meet, promemoria via email (inviati da Google)
-- Ricerca di un testo in titolo, descrizione, posizione e invitati, su uno o più calendari, con date e parole da escludere
-- Creazione ed eliminazione dei calendari sugli account Google (solo quelli di cui sei proprietario, non il principale)
-- Modifica di nome e colore dei calendari: il nome per quelli locali e per i tuoi su Google, il colore per tutti (8 colori veloci e i 24 di Google)
-- Scollegare un account Google dal tasto destro sul suo nome (o dalle impostazioni): una domanda dice cosa viene tolto da questo PC (calendari, eventi, modifiche non ancora inviate); l'accesso viene revocato su Google e quello che hai su Google non cambia
-- Barra di stato sempre visibile con l'indicatore della sincronizzazione: un pallino verde quando tutto è inviato a Google, una clessidra con il numero di eventi quando ce ne sono in attesa. Un clic apre l'elenco delle modifiche in attesa, per calendario: puoi riprovare subito o annullarle (l'evento torna com'è su Google)
+- Viste giorno, settimana, 6 giorni, mese, anno e programma
+- Gestione degli eventi con il trascinamento
+- Eventi ricorrenti
+- Sincronizzazione con uno o più account Google Calendar, con gestione dei conflitti;
+- Sveglie con suoni, durata e posticipo personalizzabili
+- Sveglie condivise con [GGCalendar Mobile](https://github.com/giansalvo/GGCalendarMobile) per Android
+- Condivisione di un evento: WhatsApp, Telegram, email, file, appunti e altre app di Windows
+- Possibilità di allegare file ad un evento mediante un link
+- Promemoria con notifica e modalità sveglia
+- Ricerca avanzata di un evento in base al testo del titolo o della descrizione
+- Creazione ed eliminazione dei calendari sugli account Google
+- Barra di stato sempre visibile con l'indicatore della sincronizzazione
 - Calendari locali, importazione ed esportazione di file `.ics`
+- Scelta del font dei caratteri nell'applicazione;
 - Tema chiaro e scuro
-- Interfaccia in italiano, inglese, tedesco, spagnolo e francese: la lingua si sceglie in *Impostazioni* (di default quella di Windows) e cambia subito
+- Interfaccia in italiano, inglese, tedesco, spagnolo e francese
 
 ## Installazione
 
