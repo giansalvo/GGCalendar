@@ -173,6 +173,57 @@ public class LocalizationTests
         Assert.Empty(hardCoded);
     }
 
+    /// <summary>
+    /// Texts that may stay written in the files of the windows: names and addresses that are the same in every language,
+    /// the font of the app, and the message of the template of Avalonia that a developer sees when a view is missing (never a user).
+    /// </summary>
+    private static readonly string[] FixedTextsAllowed = ["GGCalendar", "https://…", "fonts:Inter#Inter", "Not Found:"];
+
+    [Fact]
+    [Trait("TestCase", "T208")]
+    public void T208_NoFixedTextInTheFilesOfTheWindows()
+    {
+        var app = Path.Combine(RepoRoot(), "src", "GGCalendar.App");
+        var files = Directory.GetFiles(app, "*.*", SearchOption.AllDirectories)
+            .Where(f => (f.EndsWith(".cs") || f.EndsWith(".axaml"))
+                        && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .ToList();
+        Assert.NotEmpty(files);
+
+        // Symbols, icons (also written as &#xE721; or \uE715), numbers and the allowed names have no words in them: only a text with a word of letters is a phrase.
+        static bool IsPhrase(string value) =>
+            Regex.IsMatch(Regex.Replace(value, @"&#x[0-9A-Fa-f]+;|\\u[0-9A-Fa-f]{4}", ""), "[A-Za-zÀ-ÿ]{2,}") && !Regex.IsMatch(value.Trim(), "^#[0-9A-Fa-f]{3,8}$") && !FixedTextsAllowed.Contains(value.Trim());
+
+        var fixedTexts = new List<string>();
+        foreach (var file in files)
+        {
+            var name = Path.GetRelativePath(app, file);
+            var text = File.ReadAllText(file);
+            if (file.EndsWith(".axaml"))
+            {
+                // Any attribute that is not a binding or a markup extension ({loc:T key}) and shows words; the ones that are not text
+                // (Name, Class, Source, Grid.Row...) have no spaces nor accents, so the list of attributes is the one that shows text.
+                foreach (Match m in Regex.Matches(text, @"\s(Content|Text|Header|ToolTip\.Tip|Title|Watermark|PlaceholderText|Label)=""([^""{]*)"""))
+                    if (IsPhrase(m.Groups[2].Value)) fixedTexts.Add($"{name}: {m.Groups[1].Value}=\"{m.Groups[2].Value}\"");
+
+                // The text between the tags: <TextBlock>Phrase</TextBlock>.
+                foreach (Match m in Regex.Matches(text, @">([^<>{]+)<"))
+                    if (IsPhrase(m.Groups[1].Value.Trim())) fixedTexts.Add($"{name}: >{m.Groups[1].Value.Trim()}<");
+            }
+            else
+            {
+                // A window made in the code: a property that shows text given a literal, or ToolTip.SetTip(control, "literal").
+                foreach (Match m in Regex.Matches(text, @"\b(Content|Text|Header|Title|Watermark|PlaceholderText)\s*=\s*\$?""([^""]*)"""))
+                    if (IsPhrase(m.Groups[2].Value)) fixedTexts.Add($"{name}: {m.Groups[1].Value} = \"{m.Groups[2].Value}\"");
+                foreach (Match m in Regex.Matches(text, @"ToolTip\.SetTip\([^,]+,\s*\$?""([^""]*)"""))
+                    if (IsPhrase(m.Groups[1].Value)) fixedTexts.Add($"{name}: ToolTip \"{m.Groups[1].Value}\"");
+            }
+        }
+
+        Assert.Empty(fixedTexts);
+    }
+
     [Fact]
     [Trait("TestCase", "T133")]
     public Task T133_AMessageKeepsItsKeyAndIsMadeAgainInTheNewLanguage() => KeepingLanguage(() =>
