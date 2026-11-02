@@ -325,6 +325,120 @@ public class SearchUiTests
         Assert.Equal(L.T("search.empty"), ((TextBlock)FindById(window, "Search.Message")).Text);
     });
 
+    // ---- T366-T370: the card stays when the data are read again (issue #82) ----
+
+    private static Popup DetailsPopup(MainWindow window) => window.FindControl<Popup>("DetailsPopup")!;
+
+    private static string? TitleOfCard(MainWindow window) =>
+        (DetailsPopup(window).Child as EventDetailsCard)?.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).FirstOrDefault(t => t?.Contains(Word, StringComparison.Ordinal) == true);
+
+    private static void PressEsc(MainWindow window)
+    {
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    [Fact]
+    [Trait("TestCase", "T366")]
+    public Task T366_TheCardOpenedFromTheSearchStaysOpenWhenTheDataAreReadAgain() => InSearchAppAsync(async window =>
+    {
+        var ev = Add(window, "Riunione", Soon, description: "importante");
+        Search(window, "importante");
+        await ShowCardAsync(window, Assert.Single(Rows(window)));
+        Assert.True(DetailsPopup(window).IsOpen);
+
+        await Vm(window).ReloadAsync();
+        await PauseAsync(TimeSpan.FromMilliseconds(200));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(DetailsPopup(window).IsOpen); // the line it was beside has been made again: the card must not go with it
+        Assert.Equal(ev.Title, TitleOfCard(window));
+        Assert.Single(Rows(window));
+    });
+
+    [Fact]
+    [Trait("TestCase", "T366")]
+    public Task T366_TheCardStaysOpenWhenAnotherEventIsAddedAndWhenNothingChanges() => InSearchAppAsync(async window =>
+    {
+        var ev = Add(window, "Riunione", Soon, description: "importante");
+        Search(window, "importante");
+        await ShowCardAsync(window, Assert.Single(Rows(window)));
+
+        Add(window, "Altra", Soon.AddHours(2), description: "importante"); // the list gets a second line
+        await PauseAsync(TimeSpan.FromMilliseconds(200));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(2, Rows(window).Count);
+        Assert.True(DetailsPopup(window).IsOpen);
+        Assert.Equal(ev.Title, TitleOfCard(window));
+
+        await Vm(window).ReloadAsync(); // and a read that finds the same data
+        await Vm(window).ReloadAsync();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(DetailsPopup(window).IsOpen);
+        Assert.Equal(ev.Title, TitleOfCard(window));
+    });
+
+    [Fact]
+    [Trait("TestCase", "T367")]
+    public Task T367_EscAfterAReloadClosesTheCardAndNotTheSearch() => InSearchAppAsync(async window =>
+    {
+        Add(window, "Riunione", Soon, description: "importante");
+        Search(window, "importante");
+        await ShowCardAsync(window, Assert.Single(Rows(window)));
+        await Vm(window).ReloadAsync();
+        Dispatcher.UIThread.RunJobs();
+
+        PressEsc(window);
+        Assert.False(DetailsPopup(window).IsOpen);
+        Assert.True(Vm(window).Search.IsOpen); // the first Esc closes the card only
+        PressEsc(window);
+        Assert.False(Vm(window).Search.IsOpen); // the second one closes the search
+    });
+
+    [Fact]
+    [Trait("TestCase", "T367")]
+    public Task T367_EscClosesTheCardFirstEvenWhenTheFocusIsNotOnIt() => InSearchAppAsync(async window =>
+    {
+        Add(window, "Riunione", Soon, description: "importante");
+        Search(window, "importante");
+        await ShowCardAsync(window, Assert.Single(Rows(window)));
+
+        ((TextBox)FindById(window, "Search.Box")).Focus(); // the focus is back on the window, not on the card
+        Dispatcher.UIThread.RunJobs();
+        PressEsc(window);
+
+        Assert.False(DetailsPopup(window).IsOpen);
+        Assert.True(Vm(window).Search.IsOpen);
+    });
+
+    [Fact]
+    [Trait("TestCase", "T368")]
+    public Task T368_TheCardOpenedFromTheAgendaStaysOpenWhenTheDataAreReadAgain() => InSearchAppAsync(async window =>
+    {
+        var vm = Vm(window);
+        var ev = Add(window, "Agenda", Soon);
+        vm.Search.IsOpen = false;
+        vm.ViewModeIndex = 4;
+        vm.SelectedDate = DateTime.Today;
+        Dispatcher.UIThread.RunJobs();
+
+        Border Row() => window.GetVisualDescendants().OfType<Border>()
+            .First(b => b.DataContext is AgendaItem item && item.Event.Id == ev.Id && b.IsEffectivelyVisible);
+        for (var attempt = 0; attempt < 6 && !DetailsPopup(window).IsOpen; attempt++)
+        {
+            Tap(window, Row());
+            await PauseAsync(TimeSpan.FromMilliseconds(200));
+        }
+
+        Assert.True(DetailsPopup(window).IsOpen);
+        await vm.ReloadAsync();
+        await PauseAsync(TimeSpan.FromMilliseconds(200));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(DetailsPopup(window).IsOpen);
+        Assert.Equal(ev.Title, TitleOfCard(window));
+    });
+
     [Fact]
     [Trait("TestCase", "T171")]
     public Task T171_APublicCalendarIsSearchedAndItsEventsCannotBeChanged() => InSearchAppAsync(async window =>

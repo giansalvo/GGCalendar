@@ -338,7 +338,7 @@
         </ScrollViewer>
 
         <ScrollViewer IsVisible="{Binding IsAgenda}">
-            <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="24,8,24,24" MaxWidth="900">
+            <ItemsControl Name="AgendaList" ItemsSource="{Binding AgendaDays}" Margin="24,8,24,24" MaxWidth="900">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:AgendaDay">
                         <StackPanel Margin="0,0,0,14">
@@ -423,7 +423,7 @@
             <Panel>
                 <ScrollViewer>
                     <StackPanel Margin="24,0,24,24" MaxWidth="1000">
-                        <ItemsControl ItemsSource="{Binding Search.Groups}" AutomationProperties.AutomationId="Search.Results">
+                        <ItemsControl Name="SearchResults" ItemsSource="{Binding Search.Groups}" AutomationProperties.AutomationId="Search.Results">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:SearchGroup">
                                     <Border BorderThickness="0,0,0,1" BorderBrush="#33808080" Padding="0,10">
