@@ -24,7 +24,7 @@ public class AccountDisconnectUiTests
     /// <summary>The menu of the header of the account, opened.</summary>
     private static ContextMenu OpenAccountMenu(MainWindow window, AccountGroup group)
     {
-        return OpenMenu(() => AccountHeader(window, group.AccountName));
+        return OpenMenu(window, () => AccountHeader(window, group.AccountName));
     }
 
     private static async Task<ConfirmWindow> AskAsync(MainWindow window)

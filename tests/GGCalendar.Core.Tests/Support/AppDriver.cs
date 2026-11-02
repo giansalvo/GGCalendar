@@ -227,30 +227,50 @@ public static class AppDriver
     /// reload replaces its controls: one found a moment ago may be gone (its menu then refuses to open on it), and a menu asked to open is not always open
     /// at once. So the control is found again at every try, until the menu is open, for at most 15 seconds (a menu that never opens is a failure with its own message).
     /// </summary>
-    public static ContextMenu OpenMenu(Func<Control?> findOwner, Func<Control, object?>? dataContextOf = null)
+    public static ContextMenu OpenMenu(MainWindow window, Func<Control?> findOwner, Func<Control, object?>? dataContextOf = null)
     {
         var until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        int tries = 0, found = 0, detached = 0, replaced = 0;
+        var lastIsOpen = (bool?)null;
         while (true)
         {
-            if (findOwner() is { ContextMenu: { } menu } owner && TopLevel.GetTopLevel(owner) is not null)
+            tries++;
+            if (findOwner() is { ContextMenu: { } menu } owner)
             {
-                menu.DataContext = dataContextOf?.Invoke(owner) ?? owner.DataContext; // the menu takes it from the control it opens on; headless, not always before the first read
-                try
+                found++;
+                if (TopLevel.GetTopLevel(owner) is null) detached++;
+                else
                 {
-                    if (!menu.IsOpen) menu.Open(owner);
-                }
-                catch (ArgumentException)
-                {
-                    // the control was replaced by a reload between finding it and opening the menu: find it again
-                }
+                    menu.DataContext = dataContextOf?.Invoke(owner) ?? owner.DataContext; // the menu takes it from the control it opens on; headless, not always before the first read
+                    try
+                    {
+                        if (!menu.IsOpen) menu.Open(owner);
+                    }
+                    catch (ArgumentException)
+                    {
+                        // the control was replaced by a reload between finding it and opening the menu: find it again
+                        replaced++;
+                    }
 
-                Dispatcher.UIThread.RunJobs();
-                if (menu.IsOpen) return menu;
+                    Dispatcher.UIThread.RunJobs();
+                    lastIsOpen = menu.IsOpen;
+                    if (menu.IsOpen) return menu;
+                }
             }
 
-            if (DateTime.UtcNow > until) throw new XunitException("Il menu contestuale non si apre.");
+            if (DateTime.UtcNow > until) throw new XunitException(WhyTheMenuDoesNotOpen(window, tries, found, detached, replaced, lastIsOpen));
             Thread.Sleep(100);
         }
+    }
+
+    // What a menu that never opens leaves to see: whether the control was there, whether it was in the window, and what the reloads of the list did meanwhile.
+    private static string WhyTheMenuDoesNotOpen(MainWindow window, int tries, int found, int detached, int replaced, bool? lastIsOpen)
+    {
+        var vm = Vm(window);
+        var rows = window.GetVisualDescendants().OfType<Border>().Count(b => b.DataContext is CalendarItemViewModel);
+        return $"Il menu contestuale non si apre. Tentativi {tries}: controllo trovato {found} volte, fuori dalla finestra {detached}, sostituito durante l'apertura {replaced}, "
+            + $"ultimo IsOpen {(lastIsOpen is null ? "mai letto" : lastIsOpen.ToString())}. Calendari nel modello {vm.Calendars.Count}, righe disegnate {rows}. "
+            + "Ricariche (le ultime): " + string.Join(" | ", vm.ReloadTrace.TakeLast(12));
     }
 
     /// <summary>The line of a calendar in the list (found by id: a reload makes new items), or null while it is not drawn.</summary>
