@@ -88,6 +88,7 @@ Wecker werden mit Google und mit GGCalendar Mobile (Android) synchronisiert. Ein
     Eigene Töne bleiben auf dem Computer; Gäste erhalten Ihre Wecker nicht.
 
 ------
+Product features
 Produktfunktionen
 
  Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht
@@ -229,3 +230,151 @@ exporter un fichier .ics
 Licence
 
 Le code est un logiciel libre, distribué sous licence GNU GPL version 3 ou ultérieure. Le nom « GGCalendar » et le logo restent à l'auteur : ils ne sont pas concédés comme marque, et quiconque distribue des versions modifiées doit utiliser un nom, un logo et un identifiant d'application différents.
+
+
+
+
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+What's new in this version
+### Inglese
+
+* Font choice within the application;
+* Advanced text formatting (bold, italic, underline, headings, bulleted and numbered lists, and links);
+* Website addresses and emails in the description are clickable;
+* Advanced event search based on title or description text;
+* Ability to attach files to an event via a link;
+* Alarm sound choice, duration, and snooze time (5, 10, 15, 30, or 60 minutes, default 10: selected on the fly in the alarm window);
+* Event sharing: WhatsApp, Telegram, email, file, clipboard, and other Windows apps;
+* The small calendar on the left follows the Today button, arrows, and view changes;
+* Bug fixes.
+
+---
+
+### Francese
+
+* Choix de la police de caractères dans l'application ;
+* Formatage de texte avancé (gras, italique, souligné, titres, listes à puces et numérotées, et liens) ;
+* Les adresses de sites web et les e-mails dans la description sont cliquables ;
+* Recherche avancée d'un événement basée sur le texte du titre ou de la description ;
+* Possibilité de joindre des fichiers à un événement via un lien ;
+* Choix du son de l'alarme, de la durée et du temps de répétition (5, 10, 15, 30 ou 60 minutes, par défaut 10 : sélectionnable à la volée dans la fenêtre de l'alarme) ;
+* Partage d'un événement : WhatsApp, Telegram, e-mail, fichier, presse-papiers et autres applications Windows ;
+* Le petit calendrier à gauche suit le bouton Aujourd'hui, les flèches et les changements de vue ;
+* Correction de bugs.
+
+---
+
+### Spagnolo
+
+* Selección de la fuente de letra en la aplicación;
+* Formato de texto avanzado (negrita, cursiva, subrayado, títulos, listas con viñetas y numeradas, y enlaces);
+* Las direcciones de sitios web y correos electrónicos en la descripción son interactivos (hacen clic);
+* Búsqueda avanzada de un evento basada en el texto del título o de la descripción;
+* Posibilidad de adjuntar archivos a un evento mediante un enlace;
+* Selección del sonido de la alarma, la duración y el tiempo de posposición (5, 10, 15, 30 o 60 minutos, predeterminado 10: se elige al instante en la ventana de la alarma);
+* Compartir un evento: WhatsApp, Telegram, correo electrónico, archivo, portapapeles y otras aplicaciones de Windows;
+* El calendario pequeño a la izquierda sigue al botón Hoy, las flechas y el cambio de vista;
+* Corrección de errores (bugs).
+
+---
+
+### Tedesco
+
+* Schriftartauswahl in der Anwendung;
+* Erweiterte Textformatierung (Fett, Kursiv, Unterstrichen, Überschriften, Aufzählungen, nummerierte Listen und Links);
+* Website-Adressen und E-Mails in der Beschreibung sind anklickbar;
+* Erweiterte Ereignissuche basierend auf dem Titel- oder Beschreibungstext;
+* Möglichkeit, Dateien über einen Link an ein Ereignis anzuhängen;
+* Auswahl des Wecksons, der Dauer und der Schlummerzeit (5, 10, 15, 30 oder 60 Minuten, Standard 10: direkt im Weckerfenster auswählbar);
+* Teilen eines Ereignisses: WhatsApp, Telegram, E-Mail, Datei, Zwischenablage und andere Windows-Apps;
+* Der kleine Kalender auf der linken Seite folgt der Schaltfläche „Heute“, den Pfeilen und dem Ansichtswechsel;
+* Fehlerbehebungen (Bugfixes).
+
+
+
+
+Copyright and trademark info 
+### Inglese
+
+© 2026 Giansalvo Gusinu. Free software distributed under the GNU GPL v3 or later license. "GGCalendar" and the logo belong to the author and are not granted as a trademark.
+
+---
+
+### Francese
+
+© 2026 Giansalvo Gusinu. Logiciel libre distribué sous licence GNU GPL v3 ou ultérieure. « GGCalendar » et le logo appartiennent à l'auteur et ne sont pas concédés comme marque déposée.
+
+---
+
+### Spagnolo
+
+© 2026 Giansalvo Gusinu. Software libre distribuido bajo la licencia GNU GPL v3 o posterior. "GGCalendar" y el logotipo pertenecen al autor y no se conceden como marca registrada.
+
+---
+
+### Tedesco
+
+© 2026 Giansalvo Gusinu. Freie Software, lizenziert unter der GNU GPL v3 oder höher. „GGCalendar“ und das Logo sind Eigentum des Autors und werden nicht als Marke gewährt.
+
+
+
+
+Additional license terms 
+### Inglese
+
+The code is free software, distributed under the GNU GPL version 3 or later license. The name “GGCalendar” and the logo remain the property of the author: they are not granted as a trademark, and anyone distributing modified versions must use a different name, logo, and app identifier.
+
+---
+
+### Francese
+
+Le code est un logiciel libre, distribué sous licence GNU GPL version 3 ou ultérieure. Le nom « GGCalendar » et le logo restent la propriété de l'auteur : ils ne sont pas concédés comme marque déposée, et quiconque distribue des versions modifiées doit utiliser un nom, un logo et un identifiant d'application différents.
+
+---
+
+### Spagnolo
+
+El código es software libre, distribuido bajo la licencia GNU GPL versión 3 o posterior. El nombre "GGCalendar" y el logotipo siguen siendo propiedad del autor: no se conceden como marca registrada, y quienes distribuyan versiones modificadas deben utilizar un nombre, logotipo e identificador de aplicación diferentes.
+
+---
+
+### Tedesco
+
+Der Code ist freie Software, lizenziert unter der GNU GPL Version 3 oder höher. Der Name „GGCalendar“ und das Logo verbleiben beim Autor: Sie werden nicht als Marke gewährt, und wer modifizierte Versionen verbreitet, muss einen anderen Namen, ein anderes Logo und eine andere App-Kennung verwenden.
+
+
+
+
+
+
+
+
+
+
+
+
+### Inglese
+
+GGCalendar organizes appointments and deadlines on Windows 11 with a light/dark theme. It offers various views, drag-and-drop, .ics file management, and two-way sync with Google Calendar. It includes desktop, email, and alarm notifications that recover missed reminders.
+
+---
+
+### Francese
+
+GGCalendar organise rendez-vous et échéances sur Windows 11 avec un thème clair/sombre. Il propose différentes vues, le glisser-déposer, la gestion des fichiers .ics et une synchronisation bidirectionnelle avec Google Calendar. Il inclut des notifications de bureau, des e-mails et des réveils qui récupèrent les rappels manqués.
+
+---
+
+### Spagnolo
+
+GGCalendar organiza compromisos y plazos en Windows 11 con tema claro/oscuro. Ofrece varias vistas, arrastrar y soltar, gestión de archivos .ics y sincronización bidireccional con Google Calendar. Incluye notificaciones de escritorio, correo electrónico y alarmas que recuperan los recordatorios perdidos.
+
+---
+
+### Tedesco
+
+GGCalendar organisiert Termine und Fristen unter Windows 11 mit Hell-/Dunkel-Design. Es bietet verschiedene Ansichten, Drag-and-Drop, .ics-Verwaltung und eine bidirektionale Synchronisierung mit Google Calendar. Es enthält Desktop-Benachrichtigungen, E-Mails und Wecker, die verpasste Erinnerungen wiederherstellen.
