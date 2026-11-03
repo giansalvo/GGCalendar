@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GGCalendar.App.ViewModels;
@@ -8,6 +8,11 @@ namespace GGCalendar.App;
 
 public partial class App : Application
 {
+    /// <summary>The one running copy of the app (null in the tests, which start the app by themselves): a second start asks it to show the window.</summary>
+    public static GGCalendar.App.Services.SingleInstance? Instance { get; set; }
+
+    private GGCalendar.App.Services.TrayController? _tray;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -33,6 +38,15 @@ public partial class App : Application
             {
                 desktop.MainWindow = CreateMainWindow();
             }
+        }
+
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow window } classic && Instance is not null)
+        {
+            // Closing the window hides it in the tray (issue #30): the app ends only with "Esci", so the lifetime must not end with the window.
+            classic.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+            _tray = new GGCalendar.App.Services.TrayController(window, store, () => classic.Shutdown());
+            Instance.Activated += () => Avalonia.Threading.Dispatcher.UIThread.Post(_tray.Show);
+            Instance.StartListening();
         }
 
         base.OnFrameworkInitializationCompleted();

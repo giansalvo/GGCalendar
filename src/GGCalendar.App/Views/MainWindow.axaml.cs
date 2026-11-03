@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _syncCts;
     private DispatcherTimer? _debounce;
     private ReminderScheduler? _scheduler;
+    private bool _setUp;
 
     /// <summary>How the Google service is made when the window opens: the tests put a service on a fake Google here.</summary>
     public static Func<GoogleSyncService>? GoogleFactory { get; set; }
@@ -77,6 +78,14 @@ public partial class MainWindow : Window
         _ringer.SoundStopRequested += StopAlarmSound;
         Opened += (_, _) =>
         {
+            // Showing the window again after it was hidden in the tray (issue #30) raises Opened again: the app is already set up, only the grid goes back to the day start.
+            if (_setUp)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToDayStart, Avalonia.Threading.DispatcherPriority.Loaded);
+                return;
+            }
+
+            _setUp = true;
             if (Vm is { } vm)
             {
                 vm.Settings = _store.Load();
@@ -1286,6 +1295,7 @@ public partial class MainWindow : Window
         // What the settings window does not show stays as it was: the splash already shown and the version of the sync data.
         result.SplashVersion = vm.Settings.SplashVersion;
         result.SyncSchema = vm.Settings.SyncSchema;
+        result.TrayNoticeShown = vm.Settings.TrayNoticeShown;
         _store.Save(result);
         vm.Settings = result;
         L.Apply(result.Language);

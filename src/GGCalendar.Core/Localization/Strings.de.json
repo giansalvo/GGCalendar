@@ -644,5 +644,10 @@
   "unit.weeks": "Wochen",
   "visibility.default": "Standardsichtbarkeit",
   "visibility.private": "Privat",
-  "visibility.public": "Öffentlich"
+  "visibility.public": "Öffentlich",
+  "tray.open": "GGCalendar öffnen",
+  "tray.exit": "Beenden",
+  "tray.tooltip": "GGCalendar",
+  "tray.notice_title": "GGCalendar läuft weiter",
+  "tray.notice_text": "Beim Schließen des Fensters wird GGCalendar nicht beendet: Es läuft im Infobereich (neben der Uhr) weiter und lässt Erinnerungen und Wecker klingeln. Zum erneuten Öffnen klicken Sie auf das Symbol; zum endgültigen Beenden klicken Sie mit der rechten Maustaste auf das Symbol und wählen „Beenden“."
 }

@@ -1,4 +1,4 @@
-﻿namespace GGCalendar.Core.Models;
+namespace GGCalendar.Core.Models;
 
 public sealed class AppSettings
 {
@@ -11,6 +11,9 @@ public sealed class AppSettings
 
     /// <summary>The version of the app that showed the splash screen last; another version (or none) shows it again.</summary>
     public string? SplashVersion { get; set; }
+
+    /// <summary>True once the person has been told that closing the window keeps GGCalendar running in the tray (issue #30); the message is shown only the first time.</summary>
+    public bool TrayNoticeShown { get; set; }
 
     public int DayStartHour { get; set; } = 7;
     public int DayEndHour { get; set; } = 22;
