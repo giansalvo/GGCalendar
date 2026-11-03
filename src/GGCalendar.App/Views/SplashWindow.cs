@@ -14,8 +14,17 @@ public sealed class SplashWindow : Window
     public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(5);
 
     /// <summary>Shows a splash over <paramref name="main"/> as soon as it is open; the main window goes on loading under it.</summary>
-    public static void ShowWhenOpened(Window main, TimeSpan? duration = null) =>
-        main.Opened += (_, _) => new SplashWindow(duration).Show(main);
+    public static void ShowWhenOpened(Window main, TimeSpan? duration = null)
+    {
+        // Once: a window hidden in the tray (issue #30) raises Opened again when it is shown again.
+        void Show(object? sender, EventArgs e)
+        {
+            main.Opened -= Show;
+            new SplashWindow(duration).Show(main);
+        }
+
+        main.Opened += Show;
+    }
 
     public SplashWindow(TimeSpan? duration = null)
     {

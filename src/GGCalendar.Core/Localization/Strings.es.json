@@ -644,5 +644,10 @@
   "unit.weeks": "semanas",
   "visibility.default": "Visibilidad predeterminada",
   "visibility.private": "Privado",
-  "visibility.public": "Público"
+  "visibility.public": "Público",
+  "tray.open": "Abrir GGCalendar",
+  "tray.exit": "Salir",
+  "tray.tooltip": "GGCalendar",
+  "tray.notice_title": "GGCalendar sigue activo",
+  "tray.notice_text": "Al cerrar la ventana GGCalendar no se cierra: sigue activo en el área de notificación (junto al reloj) y continúa haciendo sonar recordatorios y alarmas. Para abrirlo de nuevo, haz clic en su icono; para cerrarlo del todo, haz clic derecho en el icono y elige «Salir»."
 }

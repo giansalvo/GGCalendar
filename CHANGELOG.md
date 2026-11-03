@@ -1,5 +1,8 @@
 # Novità di GGCalendar
 
+## 1.0.4-RC1
+
+
 ## 1.0.3
 
 - Scelta del font dei caratteri nell'applicazione;

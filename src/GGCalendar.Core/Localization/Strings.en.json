@@ -644,5 +644,10 @@
   "unit.weeks": "weeks",
   "visibility.default": "Default visibility",
   "visibility.private": "Private",
-  "visibility.public": "Public"
+  "visibility.public": "Public",
+  "tray.open": "Open GGCalendar",
+  "tray.exit": "Exit",
+  "tray.tooltip": "GGCalendar",
+  "tray.notice_title": "GGCalendar keeps running",
+  "tray.notice_text": "Closing the window does not quit GGCalendar: it keeps running in the notification area (next to the clock) and goes on ringing reminders and alarms. To open it again, click its icon; to quit it for good, right-click the icon and choose “Exit”."
 }

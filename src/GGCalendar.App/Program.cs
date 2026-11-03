@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using GGCalendar.App.Services;
 using System;
 
@@ -10,8 +10,14 @@ sealed class Program
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        // A second start only asks the first one to show its window (issue #30).
+        using var instance = SingleInstance.TryAcquire();
+        if (instance is null) return;
+        App.Instance = instance;
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
