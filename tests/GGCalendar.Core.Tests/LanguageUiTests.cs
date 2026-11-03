@@ -65,7 +65,8 @@ public class LanguageUiTests
     {
         var vm = Vm(window);
         var before = L.Language;
-        var other = before == "en" ? "de" : "en";
+        // Not German after English: "November 2026" is the same in both, and the title of the month is compared.
+        var other = before == "en" ? "es" : "en";
         var textBefore = TodayButtonText(window);
         vm.SetStatus("status.syncing");
         var statusBefore = vm.SyncStatus;
