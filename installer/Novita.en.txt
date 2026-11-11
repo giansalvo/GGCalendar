@@ -1,9 +1,6 @@
-﻿GGCalendar 1.0.3 - What is new
+﻿GGCalendar 1.0.4 - What is new
 ==============================
 
-  - Choice of the font used in the application;
-  - The description of an event shows bold, italic, underline, titles, lists and links;
-  - Web addresses and emails in the description are clickable;
-  - Improved search (ignores hidden tags);
-  - Events can have attachments (https links to files);
-  - Sharing of single events through the most common applications.
+  - Notification area (tray): closing or minimizing the window hides it in the notification area, so alarms stay active;
+  - Single instance: opening GGCalendar again brings the window that is already open to the front;
+  - Update of the included libraries.

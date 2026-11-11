@@ -1,7 +1,12 @@
 # Novità di GGCalendar
 
-## 1.0.4-RC1
+Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 
+## 1.0.4 (12/11/2026)
+
+- Area di notifica (tray): chiudere o minimizzare la finestra la nasconde nell'area di notifica, così le sveglie restano attive;
+- Istanza unica: aprire di nuovo GGCalendar riporta in primo piano la finestra già aperta;
+- Aggiornamento delle librerie incluse.
 
 ## 1.0.3
 

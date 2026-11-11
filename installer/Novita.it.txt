@@ -1,9 +1,6 @@
-﻿GGCalendar 1.0.3 - Novità
+﻿GGCalendar 1.0.4 - Novità
 =========================
 
-  - Scelta del font dei caratteri nell'applicazione;
-  - La descrizione degli eventi mostra grassetto, corsivo, sottolineato, titoli, elenchi e link;
-  - Gli indirizzi di siti ed email nella descrizione sono cliccabili;
-  - Ricerca migliorata (scarta tag nascosti);
-  - Gli eventi possono avere allegati (link https a file);
-  - Condivisione di eventi singoli tramite le applicazioni più diffuse.
+  - Area di notifica (tray): chiudere o minimizzare la finestra la nasconde nell'area di notifica, così le sveglie restano attive;
+  - Istanza unica: aprire di nuovo GGCalendar riporta in primo piano la finestra già aperta;
+  - Aggiornamento delle librerie incluse.

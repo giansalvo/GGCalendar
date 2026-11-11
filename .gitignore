@@ -494,3 +494,7 @@ Microsoft_deploy/appunti.txt
 
 # Planning notes: kept in a local nested git repository (app_planning/.git), not on GitHub
 app_planning/
+
+# Release output (build_release.ps1)
+dist/*
+!dist/.gitkeep

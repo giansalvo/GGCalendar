@@ -1,9 +1,6 @@
-﻿GGCalendar 1.0.3 - Neuigkeiten
+﻿GGCalendar 1.0.4 - Neuigkeiten
 ==============================
 
-  - Auswahl der Schriftart der Anwendung;
-  - Die Beschreibung eines Termins zeigt fett, kursiv, unterstrichen, Überschriften, Listen und Links;
-  - Webadressen und E-Mails in der Beschreibung sind anklickbar;
-  - Verbesserte Suche (verwirft versteckte Tags);
-  - Termine können Anhänge haben (https-Links zu Dateien);
-  - Teilen einzelner Termine über die gängigsten Anwendungen.
+  - Infobereich (Tray): Schließen oder Minimieren des Fensters blendet es im Infobereich aus, sodass die Wecker aktiv bleiben;
+  - Einzelne Instanz: Ein erneuter Start von GGCalendar bringt das bereits geöffnete Fenster in den Vordergrund;
+  - Aktualisierung der enthaltenen Bibliotheken.
