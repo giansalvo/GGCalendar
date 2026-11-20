@@ -57,6 +57,15 @@ public sealed class FakeGoogle : HttpMessageHandler
     /// <summary>After this many writes (insert, patch, delete) Google answers 403 rateLimitExceeded, as it does for a burst of requests. Null = no limit.</summary>
     public int? LimitAfterWrites { get; set; }
 
+    /// <summary>
+    /// When true, the refusals for a limit are written as Google Cloud writes a quota error (issue #37): no "errors" list, the reason ("RATE_LIMIT_EXCEEDED")
+    /// only inside "details", and the long message "Quota exceeded for quota metric...". The reason "quotaMessageOnly" gives the message with no reason at all.
+    /// </summary>
+    public bool CloudErrorFormat { get; set; }
+
+    /// <summary>The reason given with the refusal of <see cref="QuotaOnEventList"/> (rateLimitExceeded, or quotaMessageOnly with <see cref="CloudErrorFormat"/>).</summary>
+    public string QuotaReason { get; set; } = "rateLimitExceeded";
+
     /// <summary>The next write is answered with this status and reason (once), without being applied.</summary>
     public (HttpStatusCode Status, string Reason)? NextWriteFails { get; set; }
 
@@ -409,7 +418,7 @@ public sealed class FakeGoogle : HttpMessageHandler
 
         var query = System.Web.HttpUtility.ParseQueryString(url.Query);
 
-        if (id is null && request.Method == HttpMethod.Get && QuotaOnEventList.Contains(calendar.Id)) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, "rateLimitExceeded"));
+        if (id is null && request.Method == HttpMethod.Get && QuotaOnEventList.Contains(calendar.Id)) return Reply(HttpStatusCode.Forbidden, ErrorBody(HttpStatusCode.Forbidden, QuotaReason));
         if (id is null && request.Method == HttpMethod.Get) return List(query["syncToken"]);
         if (id is null && request.Method == HttpMethod.Post)
         {
@@ -580,8 +589,28 @@ public sealed class FakeGoogle : HttpMessageHandler
         }
     }
 
-    private static string ErrorBody(HttpStatusCode status, string reason) =>
-        new JsonObject
+    private string ErrorBody(HttpStatusCode status, string reason)
+    {
+        if (CloudErrorFormat && reason is "rateLimitExceeded" or "userRateLimitExceeded" or "quotaExceeded" or "quotaMessageOnly")
+        {
+            var error = new JsonObject
+            {
+                ["code"] = (int)status,
+                ["message"] = "Quota exceeded for quota metric 'Queries' and limit 'Queries per minute per user' of service 'calendar-json.googleapis.com' for consumer 'project_number:123456789'.",
+                ["status"] = status == HttpStatusCode.Forbidden ? "PERMISSION_DENIED" : "RESOURCE_EXHAUSTED",
+            };
+            if (reason != "quotaMessageOnly")
+                error["details"] = new JsonArray(new JsonObject
+                {
+                    ["@type"] = "type.googleapis.com/google.rpc.ErrorInfo",
+                    ["reason"] = "RATE_LIMIT_EXCEEDED",
+                    ["domain"] = "googleapis.com",
+                    ["metadata"] = new JsonObject { ["service"] = "calendar-json.googleapis.com", ["quota_metric"] = "calendar-json.googleapis.com/quota/requests" },
+                });
+            return new JsonObject { ["error"] = error }.ToJsonString();
+        }
+
+        return new JsonObject
         {
             ["error"] = new JsonObject
             {
@@ -590,6 +619,7 @@ public sealed class FakeGoogle : HttpMessageHandler
                 ["message"] = reason,
             },
         }.ToJsonString();
+    }
 
     private static HttpResponseMessage Reply(HttpStatusCode status, string json) =>
         new(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };

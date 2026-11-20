@@ -26,14 +26,19 @@ public sealed class GoogleApiException(HttpStatusCode status, string message, st
     private static readonly HashSet<string> LimitReasons = new(StringComparer.OrdinalIgnoreCase)
     {
         "rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded", "dailyLimitExceeded", "calendarUsageLimitsExceeded",
+        // The newer error format of Google Cloud (ErrorInfo in "details"): the same limits, written in capitals.
+        "RATE_LIMIT_EXCEEDED", "USER_RATE_LIMIT_EXCEEDED", "QUOTA_EXCEEDED", "RESOURCE_EXHAUSTED",
     };
+
+    private static bool SaysLimit(string message) =>
+        message.Contains("Quota exceeded", StringComparison.OrdinalIgnoreCase) || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Google is refusing for now, not for good: a limit on the speed or the quota (403 with one of the limit reasons, or 429) or a
     /// problem on its side (5xx). The same request can succeed later, so it must not be dropped.
     /// </summary>
     public bool IsTemporary =>
-        Status == HttpStatusCode.TooManyRequests || (int)Status >= 500 || (Status == HttpStatusCode.Forbidden && Reason is not null && LimitReasons.Contains(Reason));
+        Status == HttpStatusCode.TooManyRequests || (int)Status >= 500 || (Status == HttpStatusCode.Forbidden && ((Reason is not null && LimitReasons.Contains(Reason)) || SaysLimit(Message)));
 }
 
 /// <summary>Thin Calendar v3 client for one account; refreshes the access token on demand.</summary>
@@ -78,15 +83,24 @@ public sealed class GoogleCalendarClient
         return string.IsNullOrWhiteSpace(text) ? default : JsonDocument.Parse(text).RootElement.Clone();
     }
 
-    private static string? ReasonOf(string text)
+    /// <summary>
+    /// The reason of Google's error body: the first of "errors" (the classic format) or, when there is no such list (the format of Google Cloud
+    /// quotas: "Quota exceeded for quota metric..."), the first "reason" of an entry of "details".
+    /// </summary>
+    internal static string? ReasonOf(string text)
     {
         try
         {
             using var doc = JsonDocument.Parse(text);
-            return doc.RootElement.TryGetProperty("error", out var error) && error.TryGetProperty("errors", out var errors)
-                && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0 && errors[0].TryGetProperty("reason", out var reason)
-                ? reason.GetString()
-                : null;
+            if (!doc.RootElement.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object) return null;
+            if (error.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0
+                && errors[0].TryGetProperty("reason", out var reason) && reason.ValueKind == JsonValueKind.String)
+                return reason.GetString();
+            if (error.TryGetProperty("details", out var details) && details.ValueKind == JsonValueKind.Array)
+                foreach (var detail in details.EnumerateArray())
+                    if (detail.ValueKind == JsonValueKind.Object && detail.TryGetProperty("reason", out var r) && r.ValueKind == JsonValueKind.String)
+                        return r.GetString();
+            return null;
         }
         catch (JsonException)
         {
