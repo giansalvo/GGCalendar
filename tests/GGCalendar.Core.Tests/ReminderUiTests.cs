@@ -121,8 +121,8 @@ public class ReminderUiTests
     });
 
     [Fact]
-    [Trait("TestCase", "T285")]
-    public Task T285_TheAlarmRingsAndStops() => InAppAsync(async window =>
+    [Trait("TestCase", "TM285")]
+    public Task TM285_TheAlarmRingsAndStops() => InAppAsync(async window =>
     {
         // Semi-automatic: the test brings the app to the alarm; the person listens and says what was heard.
         var calendar = await CreateLocalCalendarAsync(window, NewTitle());

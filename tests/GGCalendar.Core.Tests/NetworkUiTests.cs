@@ -3,7 +3,7 @@ using static GGCalendar.Core.Tests.Support.AppDriver;
 
 namespace GGCalendar.Core.Tests;
 
-/// <summary>T17: the app without a network. Semi-automatic: the person switches the network off and on when the test asks.</summary>
+/// <summary>TM17: the app without a network. Semi-automatic: the person switches the network off and on when the test asks.</summary>
 [Collection(CollectionName)]
 [Trait("Category", "RealGoogle")]
 public class NetworkUiTests
@@ -35,8 +35,8 @@ public class NetworkUiTests
     }
 
     [Fact]
-    [Trait("TestCase", "T17")]
-    public Task T17_WithoutANetworkNothingIsLostAndTheChangesArriveWhenItIsBack() => InAppAsync(async window =>
+    [Trait("TestCase", "TM17")]
+    public Task TM17_WithoutANetworkNothingIsLostAndTheChangesArriveWhenItIsBack() => InAppAsync(async window =>
     {
         TellThePerson("Test della rete. DISATTIVA ORA la connessione a Internet (Wi-Fi o cavo). Il test prosegue da solo quando la rete non c'è più.");
         await WaitForNetworkAsync(false, "la disattivazione della rete");

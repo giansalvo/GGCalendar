@@ -58,6 +58,38 @@ public sealed class AllDayStrip : Control
 
     /// <summary>Raised on a single click on an event, with its block (shows its details beside it).</summary>
     public event Action<CalendarEvent, Rect>? EventClicked;
+
+    /// <summary>The mouse rests on an event (or leaves it: null); the window opens the card of the event after a short delay (issue #91).</summary>
+    public event Action<CalendarEvent?, Rect>? EventHovered;
+
+    private (string Id, DateTime Start)? _hovered;
+
+    private void Hover(CalendarEvent? ev, Rect rect)
+    {
+        (string, DateTime)? key = ev is null ? null : (ev.Id, ev.Start);
+        if (key == _hovered) return;
+        _hovered = key;
+        EventHovered?.Invoke(ev, rect);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        Hover(null, default);
+    }
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        var p = e.GetPosition(this);
+        for (var i = _hits.Count - 1; i >= 0; i--)
+        {
+            if (!_hits[i].Rect.Contains(p)) continue;
+            Hover(_hits[i].Event, _hits[i].Rect);
+            return;
+        }
+
+        Hover(null, default);
+    }
     public event Action<DateTime>? DayDoubleClicked;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -99,6 +131,7 @@ public sealed class AllDayStrip : Control
         for (var i = _hits.Count - 1; i >= 0; i--)
         {
             if (!_hits[i].Rect.Contains(p)) continue;
+            Hover(null, default);
             EventClicked?.Invoke(_hits[i].Event, _hits[i].Rect);
             return;
         }

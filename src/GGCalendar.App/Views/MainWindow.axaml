@@ -338,8 +338,8 @@
                           Events="{Binding VisibleEvents}" Margin="12,0" />
         </ScrollViewer>
 
-        <ScrollViewer IsVisible="{Binding IsAgenda}">
-            <ItemsControl Name="AgendaList" ItemsSource="{Binding AgendaDays}" Margin="24,8,24,24" MaxWidth="900">
+        <ScrollViewer Name="AgendaScroll" IsVisible="{Binding IsAgenda}">
+            <ItemsControl Name="AgendaList" ItemsSource="{Binding AgendaDays}" Margin="24,8,24,24" HorizontalAlignment="Left">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:AgendaDay">
                         <StackPanel Margin="0,0,0,14">
@@ -347,7 +347,8 @@
                             <ItemsControl ItemsSource="{Binding Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:AgendaItem">
-                                        <Border Background="Transparent" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened">
+                                        <Border Background="Transparent" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened"
+                                                PointerEntered="OnAgendaItemEntered" PointerExited="OnAgendaItemExited">
                                             <Grid ColumnDefinitions="18,170,*">
                                                 <Ellipse Width="10" Height="10" Fill="{Binding ColorHex}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
