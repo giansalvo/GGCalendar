@@ -16,7 +16,7 @@ namespace GGCalendar.Core.Tests;
 
 /// <summary>
 /// T320-T324: sharing an event from its card (issue #45): the text, the addresses of WhatsApp, Telegram and mail, what each way does and
-/// says, and the share button with its row of icons. The share sheet of Windows and the real apps are tried by hand (T325).
+/// says, and the share button with its row of icons. The share sheet of Windows and the real apps are tried by hand (TM325).
 /// </summary>
 [Collection(AppDriver.CollectionName)]
 public class ShareTests

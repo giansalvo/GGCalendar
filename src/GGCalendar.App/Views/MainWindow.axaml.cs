@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using GGCalendar.Providers.Google;
 using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
+using GGCalendar.Core.Hover;
 using GGCalendar.Core.Ics;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Subscriptions;
@@ -71,6 +72,14 @@ public partial class MainWindow : Window
         Grid.EventClicked += (ev, rect) => ShowDetails(ev, Grid, rect);
         AllDay.EventClicked += (ev, rect) => ShowDetails(ev, AllDay, rect);
         Month.EventClicked += (ev, rect) => ShowDetails(ev, Month, rect);
+        _hover = new HoverIntent<Action>(() => Vm?.Settings.HoverDetailsDelay ?? TimeSpan.Zero,
+            () => Vm?.Settings.HoverDetailsCloseDelay ?? TimeSpan.FromMilliseconds(AppSettings.DefaultHoverDetailsCloseDelayMs),
+            new DispatcherHoverClock(), open => open(), CloseDetails);
+        Grid.EventHovered += (ev, rect) => OnEventHovered(ev, Grid, rect);
+        AllDay.EventHovered += (ev, rect) => OnEventHovered(ev, AllDay, rect);
+        Month.EventHovered += (ev, rect) => OnEventHovered(ev, Month, rect);
+        DetailsPopup.Closed += (_, _) => { if (!_reopening) _hover.Dismissed(); };
+        AgendaScroll.SizeChanged += (_, _) => UpdateAgendaLayout();
         Year.DayClicked += day => Vm?.ShowDay(day);
         KeyDown += OnShortcut;
         SetUpSyncQueue();
@@ -581,10 +590,50 @@ public partial class MainWindow : Window
         if (sender is Control { DataContext: AgendaItem item } row) ShowDetailsOfLine(item.Event, row, AgendaList);
     }
 
+    private void OnAgendaItemEntered(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        if (sender is Control { DataContext: AgendaItem item } row)
+            _hover.Enter(HoverKey(item.Event), () => ShowDetailsOfLine(item.Event, row, AgendaList, pinned: false));
+    }
+
+    private void OnAgendaItemExited(object? sender, Avalonia.Input.PointerEventArgs e) => _hover.Leave();
+
+    /// <summary>
+    /// The list of the agenda leaves a free lane at its right, as wide as the card of the details, so that the card opens there and not over the
+    /// events of the list. A window too narrow for both keeps the whole width for the list.
+    /// </summary>
+    private void UpdateAgendaLayout()
+    {
+        var viewport = AgendaScroll.Bounds.Width;
+        if (viewport <= 0) return;
+        const double listMargins = 48, lane = EventDetailsCard.CardWidth + 40, minList = 400, maxList = 900;
+        var room = viewport - 24 - lane;
+        AgendaList.Width = Math.Max(0, room >= minList ? Math.Min(maxList, room) : Math.Min(maxList, viewport - listMargins));
+    }
+
+    // ---------- Event details (mouse over) ----------
+
+    private HoverIntent<Action> _hover = null!;
+
+    /// <summary>True while the card is being replaced: its popup closes and opens again, which is not a card closed from outside.</summary>
+    private bool _reopening;
+
+    private static object HoverKey(CalendarEvent ev) => (ev.Id, ev.Start);
+
+    /// <summary>The mouse rests on an event of a grid (or leaves it: null): the card opens after the delay of the settings.</summary>
+    private void OnEventHovered(CalendarEvent? ev, Control target, Avalonia.Rect rect)
+    {
+        if (ev is null) { _hover.Leave(); return; }
+        _hover.Enter(HoverKey(ev), () => ShowDetailsCard(ev, target, rect, pinned: false));
+    }
+
     // ---------- Event details (single click) ----------
 
     /// <summary>Shows the details card beside <paramref name="rect"/> of <paramref name="target"/> (the whole control when null).</summary>
-    private void ShowDetails(CalendarEvent ev, Control target, Avalonia.Rect? rect)
+    private void ShowDetails(CalendarEvent ev, Control target, Avalonia.Rect? rect) => ShowDetailsCard(ev, target, rect, pinned: true);
+
+    /// <summary><paramref name="pinned"/>: opened by a click, so it stays until a click elsewhere; else by the mouse over, and it goes away by itself.</summary>
+    private void ShowDetailsCard(CalendarEvent ev, Control target, Avalonia.Rect? rect, bool pinned)
     {
         if (Vm is not { } vm) return;
         var calendar = vm.Calendars.FirstOrDefault(c => c.Id == ev.CalendarId);
@@ -612,22 +661,32 @@ public partial class MainWindow : Window
         card.LinkRequested += async uri => await OpenDescriptionLinkAsync(uri);
         card.CloseRequested += CloseDetails;
 
+        // The card of a click stays until a click elsewhere; the one of the mouse over goes away by itself when the mouse leaves (and it does not take the keyboard).
+        card.PointerEntered += (_, _) => _hover.EnterCard();
+        card.PointerExited += (_, _) => _hover.LeaveCard();
+        _reopening = true;
         DetailsPopup.IsOpen = false;
+        _reopening = false;
+        DetailsPopup.IsLightDismissEnabled = pinned;
         DetailsPopup.PlacementTarget = target;
         DetailsPopup.PlacementRect = rect;
         DetailsPopup.Child = card;
         DetailsPopup.IsOpen = true;
-        card.Focus();
+        if (pinned)
+        {
+            _hover.Pin(HoverKey(ev));
+            card.Focus();
+        }
     }
 
     /// <summary>
     /// Shows the card beside a line of a list. The lines are made again on every reload and a popup closes when the control it is placed on leaves the
     /// window, so the card is placed on the list (which stays) at the rectangle of the line.
     /// </summary>
-    private void ShowDetailsOfLine(CalendarEvent ev, Control line, Control list)
+    private void ShowDetailsOfLine(CalendarEvent ev, Control line, Control list, bool pinned = true)
     {
         var origin = Avalonia.VisualExtensions.TranslatePoint(line, default, list);
-        ShowDetails(ev, list, origin is { } p ? new Avalonia.Rect(p, line.Bounds.Size) : null);
+        ShowDetailsCard(ev, list, origin is { } p ? new Avalonia.Rect(p, line.Bounds.Size) : null, pinned);
     }
 
     /// <summary>The language changed: what is drawn by hand shows the new names of months and days, and the card of an event is closed (it is made again when opened).</summary>
@@ -659,6 +718,7 @@ public partial class MainWindow : Window
     {
         DetailsPopup.IsOpen = false;
         DetailsPopup.Child = null;
+        _hover?.Dismissed();
     }
 
     /// <summary>A link of a description comes from outside the app (an invitation, a feed): the user sees the real address and decides.</summary>

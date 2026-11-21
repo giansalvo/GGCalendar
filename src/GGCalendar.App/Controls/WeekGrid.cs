@@ -124,6 +124,25 @@ public sealed class WeekGrid : Control
     /// <summary>Raised on a single click on an event that was not dragged, with its block (shows its details beside it).</summary>
     public event Action<CalendarEvent, Rect>? EventClicked;
 
+    /// <summary>The mouse rests on an event (or leaves it: null); the window opens the card of the event after a short delay (issue #91).</summary>
+    public event Action<CalendarEvent?, Rect>? EventHovered;
+
+    private (string Id, DateTime Start)? _hovered;
+
+    private void Hover(CalendarEvent? ev, Rect rect)
+    {
+        (string, DateTime)? key = ev is null ? null : (ev.Id, ev.Start);
+        if (key == _hovered) return;
+        _hovered = key;
+        EventHovered?.Invoke(ev, rect);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        Hover(null, default);
+    }
+
     /// <summary>Raised when an event is dropped to the left of the grid (the calendar list); carries the window position.</summary>
     public event Action<CalendarEvent, Point>? EventDroppedOutside;
 
@@ -155,6 +174,7 @@ public sealed class WeekGrid : Control
 
         var p = e.GetPosition(this);
         if (p.X < Gutter) return;
+        Hover(null, default); // pressing starts a click or a drag: the card of the hover goes away
         _pressPoint = p;
         _pressClickCount = e.ClickCount;
 
@@ -188,6 +208,8 @@ public sealed class WeekGrid : Control
         if (_mode == DragMode.None)
         {
             UpdateCursor(p);
+            var over = p.X < Gutter ? null : HitTest(p);
+            Hover(over?.Event, over?.Rect ?? default);
             return;
         }
 

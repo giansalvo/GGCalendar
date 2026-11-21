@@ -24,6 +24,9 @@ namespace GGCalendar.App.Views;
 /// </summary>
 public sealed class EventDetailsCard : Border
 {
+    /// <summary>The width of the card; the agenda leaves a lane as wide as this beside its list.</summary>
+    public const double CardWidth = 440;
+
     private static CultureInfo Culture => L.Culture;
     private const string IconFont = "Segoe Fluent Icons, Segoe MDL2 Assets";
 
@@ -53,7 +56,7 @@ public sealed class EventDetailsCard : Border
         CornerRadius = new CornerRadius(16);
         BoxShadow = BoxShadows.Parse("0 8 28 0 #50000000");
         Padding = new Thickness(20, 12, 20, 20);
-        Width = 440;
+        Width = CardWidth;
         Focusable = true;
         KeyDown += (_, e) =>
         {

@@ -31,6 +31,27 @@ public sealed class AppSettings
     /// </summary>
     public string? FontFamily { get; set; }
 
+    public const int DefaultHoverDetailsDelayMs = 100;
+    public const int DefaultHoverDetailsCloseDelayMs = 100;
+    private const int MaxHoverDelayMs = 5000;
+
+    /// <summary>
+    /// Milliseconds the mouse rests on an event before the card with its details opens (issue #91). Only in the settings file: a missing
+    /// key means the default (100); 0 or less switches the hover off, so the card opens only with a click.
+    /// </summary>
+    public int HoverDetailsDelayMs { get; set; } = DefaultHoverDetailsDelayMs;
+
+    /// <summary>Milliseconds the card stays after the mouse left both the event and the card. Only in the settings file; the default is 100.</summary>
+    public int HoverDetailsCloseDelayMs { get; set; } = DefaultHoverDetailsCloseDelayMs;
+
+    /// <summary><see cref="HoverDetailsDelayMs"/> as a time, kept below 5 seconds; zero when the hover is off.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TimeSpan HoverDetailsDelay => TimeSpan.FromMilliseconds(Math.Clamp(HoverDetailsDelayMs, 0, MaxHoverDelayMs));
+
+    /// <summary><see cref="HoverDetailsCloseDelayMs"/> as a time, between 0 and 5 seconds.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TimeSpan HoverDetailsCloseDelay => TimeSpan.FromMilliseconds(Math.Clamp(HoverDetailsCloseDelayMs, 0, MaxHoverDelayMs));
+
     public bool DimPastEvents { get; set; } = true;
     public bool DefaultGuestsCanModify { get; set; }
     public bool DefaultGuestsCanInvite { get; set; }
