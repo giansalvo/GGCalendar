@@ -2,6 +2,13 @@
 
 Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 
+## 1.0.5 (xx/11/2026)
+
+- Visualizza messaggio comprensibile quando Google segnala errore 403
+- Revisione del layout della finestra di editing di un evento
+- Visualizzazione dei promemoria in basso a destra (le successive sono impilate)
+- Correzione di anomalie (bugfix)
+
 ## 1.0.4 (12/11/2026)
 
 - Area di notifica (tray): chiudere o minimizzare la finestra la nasconde nell'area di notifica, così le sveglie restano attive;

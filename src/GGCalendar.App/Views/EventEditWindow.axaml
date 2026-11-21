@@ -1,11 +1,12 @@
 ﻿<Window xmlns:loc="using:GGCalendar.App.Localization" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GGCalendar.App.ViewModels"
+        xmlns:views="using:GGCalendar.App.Views"
         xmlns:models="using:GGCalendar.Core.Models"
         x:Class="GGCalendar.App.Views.EventEditWindow"
         x:DataType="vm:EventEditViewModel"
         Icon="/Assets/GGCalendar.ico"
-        Width="1080" Height="780" MinWidth="900" MinHeight="600"
+        Width="1280" Height="900" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterOwner"
         Title="{Binding Header}">
 
@@ -65,11 +66,9 @@
         <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,14">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <CalendarDatePicker SelectedDate="{Binding StartDate}" FirstDayOfWeek="Monday" />
-                <TimePicker SelectedTime="{Binding StartTime}" IsVisible="{Binding IsTimed}" MinuteIncrement="5"
-                            ClockIdentifier="{Binding Use24Hour, Converter={x:Static vm:ClockConverter.Instance}}" />
+                <views:TimeBox x:Name="StartTimeBox" Value="{Binding StartTime}" Use24Hour="{Binding Use24Hour}" IsVisible="{Binding IsTimed}" />
                 <TextBlock Text="–" VerticalAlignment="Center" />
-                <TimePicker SelectedTime="{Binding EndTime}" IsVisible="{Binding IsTimed}" MinuteIncrement="5"
-                            ClockIdentifier="{Binding Use24Hour, Converter={x:Static vm:ClockConverter.Instance}}" />
+                <views:TimeBox x:Name="EndTimeBox" Value="{Binding EndTime}" Use24Hour="{Binding Use24Hour}" IsVisible="{Binding IsTimed}" />
                 <CalendarDatePicker SelectedDate="{Binding EndDate}" FirstDayOfWeek="Monday" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="16">
@@ -104,51 +103,13 @@
                          so long hints never wrap and fixed-width boxes get cut off in a narrow window. -->
                     <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="📍" />
-                        <TextBox Grid.Column="1" Text="{Binding Location}" PlaceholderText="{loc:T edit.add_location}" MaxWidth="480" HorizontalAlignment="Stretch" />
-                    </Grid>
-
-                    <!-- Reminders -->
-                    <Grid ColumnDefinitions="28,*">
-                        <TextBlock Classes="icon" Text="🔔" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <StackPanel Grid.Column="1" Spacing="8">
-                            <ItemsControl ItemsSource="{Binding Reminders}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ReminderItemViewModel">
-                                        <WrapPanel Margin="0,0,0,8" ItemSpacing="8" LineSpacing="6" MaxWidth="520">
-                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Methods}" SelectedItem="{Binding Method}" MinWidth="120">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="vm:ReminderMethodOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                            <NumericUpDown Value="{Binding Value}" Minimum="0" Maximum="9999" FormatString="0" Width="110" />
-                                            <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Units}" SelectedItem="{Binding Unit}" MinWidth="120">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="vm:ReminderUnitOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                            <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsPopup}">
-                                                <ComboBox ItemsSource="{Binding SoundOptions}" SelectedItem="{Binding Sound}" MinWidth="230">
-                                                    <ComboBox.ItemTemplate>
-                                                        <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
-                                                    </ComboBox.ItemTemplate>
-                                                </ComboBox>
-                                                <Button Content="▶" Click="OnPreviewSound" ToolTip.Tip="{loc:T common.listen}" />
-                                                <Button Content="📂" Click="OnBrowseSound" ToolTip.Tip="{loc:T common.choose_audio}" />
-                                            </StackPanel>
-                                            <Button Content="✕" Background="Transparent" Click="OnRemoveReminder" ToolTip.Tip="{loc:T common.remove}" />
-                                        </WrapPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button Content="{loc:T edit.add_notification}" Classes="link" Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" Padding="0" />
-                            <TextBlock Classes="hint" MaxWidth="640" HorizontalAlignment="Left"
-                                       Text="{loc:T edit.notifications_note}" />
-                        </StackPanel>
+                        <TextBox Grid.Column="1" Text="{Binding Location}" PlaceholderText="{loc:T edit.add_location}" HorizontalAlignment="Stretch" />
                     </Grid>
 
                     <!-- Calendar + color -->
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Classes="icon" Text="📅" />
+                    <Grid ColumnDefinitions="28,*">
+                        <TextBlock Classes="icon" Text="📅" VerticalAlignment="Top" Margin="0,6,0,0" />
+                        <WrapPanel Grid.Column="1" ItemSpacing="8" LineSpacing="6">
                         <ComboBox ItemsSource="{Binding Calendars}" SelectedItem="{Binding SelectedCalendar}" MinWidth="260">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CalendarItemViewModel">
@@ -170,19 +131,87 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </StackPanel>
+                    </WrapPanel>
+                    </Grid>
 
                     <!-- Availability / visibility -->
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="💼" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <ComboBox ItemsSource="{Binding AvailabilityOptions}" SelectedItem="{Binding Availability}" MinWidth="140" DisplayMemberBinding="{ReflectionBinding Label}" />
                         <ComboBox ItemsSource="{Binding VisibilityOptions}" SelectedItem="{Binding Visibility}" MinWidth="200" DisplayMemberBinding="{ReflectionBinding Label}" />
                     </StackPanel>
+                    </Grid>
+
+                    <!-- Description -->
+                    <Grid ColumnDefinitions="28,*">
+                        <TextBlock Classes="icon" Text="≡" VerticalAlignment="Top" Margin="0,6,0,0" />
+                        <TextBox Grid.Column="1" Text="{Binding Description}" MaxLength="8192" PlaceholderText="{loc:T edit.add_description}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 HorizontalAlignment="Stretch" MinHeight="150" />
+                    </Grid>
+
+                    <!-- Reminders -->
+                    <Grid ColumnDefinitions="28,*">
+                        <TextBlock Classes="icon" Text="🔔" VerticalAlignment="Top" Margin="0,6,0,0" />
+                        <StackPanel Grid.Column="1" Spacing="8">
+                            <ItemsControl ItemsSource="{Binding Reminders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ReminderItemViewModel">
+                                        <StackPanel Margin="0,0,0,10" Spacing="6" HorizontalAlignment="Left">
+                                            <WrapPanel ItemSpacing="8" LineSpacing="6">
+                                                <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Methods}" SelectedItem="{Binding Method}" MinWidth="120">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:ReminderMethodOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <NumericUpDown Value="{Binding Value}" Minimum="0" Maximum="9999" FormatString="0" Width="110" />
+                                                <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.Units}" SelectedItem="{Binding Unit}" MinWidth="120">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:ReminderUnitOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <TextBlock Text="{Binding Caption}" VerticalAlignment="Center" Classes="hint" />
+                                            </WrapPanel>
+                                            <WrapPanel ItemSpacing="8" LineSpacing="6">
+                                                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsPopup}">
+                                                    <ComboBox ItemsSource="{Binding SoundOptions}" SelectedItem="{Binding Sound}" MinWidth="230">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:SoundOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <Button Content="▶" Click="OnPreviewSound" ToolTip.Tip="{loc:T common.listen}" />
+                                                    <Button Content="📂" Click="OnBrowseSound" ToolTip.Tip="{loc:T common.choose_audio}" />
+                                                </StackPanel>
+                                                <ComboBox ItemsSource="{x:Static vm:ReminderItemViewModel.QuickOptions}" SelectedItem="{Binding Quick}"
+                                                          PlaceholderText="{loc:T edit.quick_choices}" MinWidth="140">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:QuickReminderOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <Button Content="✕" Background="Transparent" Click="OnRemoveReminder" ToolTip.Tip="{loc:T common.remove}" />
+                                            </WrapPanel>
+                                            <TextBlock Text="{loc:T edit.reminder_past}" Foreground="#D93025" FontSize="12" TextWrapping="Wrap"
+                                                       IsVisible="{Binding IsPast}" AutomationProperties.AutomationId="Edit.ReminderPast" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Command="{Binding AddReminderCommand}" IsEnabled="{Binding CanAddReminder}" HorizontalAlignment="Left" Padding="14,6"
+                                    AutomationProperties.AutomationId="Edit.AddReminder">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="＋" FontWeight="Bold" Foreground="#1A73E8" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:T edit.add_notification}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Classes="hint" MaxWidth="640" HorizontalAlignment="Left"
+                                       Text="{loc:T edit.notifications_note}" />
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Attachments: a row for each one (the name opens it), then a row to add another (not shown at the limit) -->
                     <Grid ColumnDefinitions="28,*">
                         <TextBlock Classes="icon" Text="📎" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <StackPanel Grid.Column="1" Spacing="6" MaxWidth="640" HorizontalAlignment="Stretch">
+                        <StackPanel Grid.Column="1" Spacing="6" HorizontalAlignment="Stretch">
                             <ItemsControl ItemsSource="{Binding Attachments}" AutomationProperties.AutomationId="Edit.Attachments">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:EventAttachment">
@@ -217,12 +246,6 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Description -->
-                    <Grid ColumnDefinitions="28,*">
-                        <TextBlock Classes="icon" Text="≡" VerticalAlignment="Top" Margin="0,6,0,0" />
-                        <TextBox Grid.Column="1" Text="{Binding Description}" MaxLength="8192" PlaceholderText="{loc:T edit.add_description}" AcceptsReturn="True" TextWrapping="Wrap"
-                                 MaxWidth="640" HorizontalAlignment="Stretch" MinHeight="150" />
-                    </Grid>
                 </StackPanel>
             </ScrollViewer>
 

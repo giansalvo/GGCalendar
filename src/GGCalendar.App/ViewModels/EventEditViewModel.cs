@@ -48,11 +48,90 @@ public sealed partial class ReminderItemViewModel : ObservableObject
 
     public bool IsPopup => Method.Method != ReminderMethod.Email;
 
-    partial void OnMethodChanged(ReminderMethodOption value) => OnPropertyChanged(nameof(IsPopup));
+    /// <summary>The ready-made values of the "Quick choices" list.</summary>
+    public static IReadOnlyList<QuickReminderOption> QuickOptions =>
+    [
+        new(L.T("quick.minutes", 0), 0), new(L.T("quick.minutes", 1), 1), new(L.T("quick.minutes", 5), 5), new(L.T("quick.minutes", 10), 10),
+        new(L.T("quick.minutes", 15), 15), new(L.T("quick.minutes", 30), 30), new(L.T("quick.hours", 1), 60), new(L.T("quick.day", 1), 1440),
+    ];
 
-    public EventReminder ToModel() =>
-        new(Method.Method, (int)((Value ?? 0) * Unit.Minutes), IsPopup ? Sound.Path : null);
+    /// <summary>The "Quick choices" box: choosing a value fills the number and the unit, then the box goes back to empty.</summary>
+    [ObservableProperty] public partial QuickReminderOption? Quick { get; set; }
+
+    partial void OnQuickChanged(QuickReminderOption? value)
+    {
+        if (value is null) return;
+        var unit = Units.LastOrDefault(u => value.Minutes > 0 && value.Minutes % u.Minutes == 0) ?? Units[0];
+        Unit = unit;
+        Value = value.Minutes / unit.Minutes;
+        Quick = null;
+    }
+
+    public int Minutes => (int)((Value ?? 0) * Unit.Minutes);
+
+    /// <summary>"before the event", or "at the time of the event" for 0.</summary>
+    public string Suffix => L.T(Minutes == 0 ? "edit.reminder_at_start" : "edit.reminder_before");
+
+    private DateTime? _start;
+    private bool _use24Hour = true;
+    private bool _discardPast;
+    private Func<DateTime> _clock = () => DateTime.Now;
+
+    /// <summary>
+    /// The start of the event, to say when the reminder goes off. <paramref name="discardPast"/>: a reminder whose moment has gone
+    /// is not kept (an event that repeats keeps them: they work for the next occurrences).
+    /// </summary>
+    public void SetStart(DateTime? start, bool use24Hour, bool discardPast, Func<DateTime> clock)
+    {
+        _start = start;
+        _use24Hour = use24Hour;
+        _discardPast = discardPast;
+        _clock = clock;
+        OnPropertyChanged(nameof(Preview));
+        OnPropertyChanged(nameof(Caption));
+        OnPropertyChanged(nameof(IsPast));
+    }
+
+    /// <summary>The moment of the reminder is already behind us: it will not be saved.</summary>
+    public bool IsPast => _discardPast && _start is { } start && start.AddMinutes(-Minutes) < _clock();
+
+    /// <summary>"before the event · Rings at 08:56", the line under the number.</summary>
+    public string Caption => Preview.Length == 0 ? Suffix : $"{Suffix} · {Preview}";
+
+    /// <summary>"Rings at 08:56": the real moment of the reminder; empty while the start is not known.</summary>
+    public string Preview
+    {
+        get
+        {
+            if (_start is not { } start) return "";
+            var (day, time) = TimeEntry.WhenParts(start, Minutes, _use24Hour, L.Culture);
+            var when = day is null ? L.T("edit.when_time", time) : L.T("edit.when_day_time", day, time);
+            return L.T(Method.Method switch { ReminderMethod.Alarm => "edit.reminder_alarm_at", ReminderMethod.Email => "edit.reminder_email_at", _ => "edit.reminder_popup_at" }, when);
+        }
+    }
+
+    private void TimingChanged()
+    {
+        OnPropertyChanged(nameof(Suffix));
+        OnPropertyChanged(nameof(Preview));
+        OnPropertyChanged(nameof(Caption));
+        OnPropertyChanged(nameof(IsPast));
+    }
+
+    partial void OnMethodChanged(ReminderMethodOption value)
+    {
+        OnPropertyChanged(nameof(IsPopup));
+        OnPropertyChanged(nameof(Preview));
+        OnPropertyChanged(nameof(Caption));
+    }
+
+    partial void OnValueChanged(decimal? value) => TimingChanged();
+    partial void OnUnitChanged(ReminderUnitOption value) => TimingChanged();
+
+    public EventReminder ToModel() => new(Method.Method, Minutes, IsPopup ? Sound.Path : null);
 }
+
+public sealed record QuickReminderOption(string Label, int Minutes);
 
 public sealed partial class AttendeeViewModel(EventAttendee a) : ObservableObject
 {
@@ -66,11 +145,13 @@ public sealed partial class EventEditViewModel : ViewModelBase
     private static readonly Regex EmailPattern = new(@"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$", RegexOptions.Compiled);
     private readonly CalendarEvent _original;
     private readonly SoundService? _sound;
+    private readonly Func<DateTime> _clock;
     private readonly AppSettings _settings;
     private readonly int _volume;
 
-    public EventEditViewModel(CalendarEvent ev, IReadOnlyList<CalendarItemViewModel> calendars, bool isNew, AppSettings settings, SoundService? sound = null)
+    public EventEditViewModel(CalendarEvent ev, IReadOnlyList<CalendarItemViewModel> calendars, bool isNew, AppSettings settings, SoundService? sound = null, Func<DateTime>? clock = null)
     {
+        _clock = clock ?? (() => DateTime.Now);
         _original = ev;
         _sound = sound;
         _settings = settings;
@@ -94,6 +175,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
 
         BuildSoundOptions(ev.Reminders);
         foreach (var r in ev.Reminders) Reminders.Add(new ReminderItemViewModel(r, SoundOptions));
+        RefreshReminderPreviews();
         foreach (var a in ev.Attendees) Attendees.Add(new AttendeeViewModel(a));
         foreach (var attachment in ev.Attachments ?? []) Attachments.Add(attachment);
 
@@ -198,11 +280,20 @@ public sealed partial class EventEditViewModel : ViewModelBase
     partial void OnEndDateChanged(DateTime? value) => SecondZoneChanged();
     partial void OnEndTimeChanged(TimeSpan? value) => SecondZoneChanged();
 
+    /// <summary>Tells each reminder when the event starts (midnight if it lasts all day), so it can show the moment it goes off.</summary>
+    private void RefreshReminderPreviews()
+    {
+        DateTime? start = StartDate is { } d ? d.Date + (IsAllDay ? TimeSpan.Zero : StartTime ?? TimeSpan.Zero) : null;
+        var discardPast = Recurrence is null || Recurrence.Value is null;
+        foreach (var r in Reminders) r.SetStart(start, Use24Hour, discardPast, _clock);
+    }
+
     private bool _shifting;
 
     partial void OnStartDateChanged(DateTime? oldValue, DateTime? newValue)
     {
         SecondZoneChanged();
+        RefreshReminderPreviews();
         if (_shifting || oldValue is null || newValue is null || EndDate is null) return;
         _shifting = true;
         EndDate = EndDate.Value.Date + (newValue.Value.Date - oldValue.Value.Date);
@@ -213,6 +304,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     partial void OnStartTimeChanged(TimeSpan? oldValue, TimeSpan? newValue)
     {
         SecondZoneChanged();
+        RefreshReminderPreviews();
         if (_shifting || oldValue is null || newValue is null || EndTime is null || EndDate is null) return;
         _shifting = true;
         var end = EndDate.Value.Date + EndTime.Value + (newValue.Value - oldValue.Value);
@@ -251,10 +343,12 @@ public sealed partial class EventEditViewModel : ViewModelBase
     /// the ones Google has, so none can be added until the next sync reads them. An event of this PC has nothing to lose, and a new one starts with none.
     /// </summary>
     public bool AttachmentsUnread => !IsNew && _original.Attachments is null && GoogleSyncService.IsGoogleCalendar(_original.CalendarId);
+
     public bool CanAddReminder => Reminders.Count < 5;
 
     partial void OnRecurrenceChanged(ChoiceOption<string?> value)
     {
+        RefreshReminderPreviews();
         if (value.Value == CustomRecurrence) CustomRecurrenceRequested?.Invoke();
         else _previousRecurrence = value;
     }
@@ -281,6 +375,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsTimed));
         SecondZoneChanged();
+        RefreshReminderPreviews();
     }
     partial void OnMeetLinkChanged(string? value) => OnPropertyChanged(nameof(HasMeetLink));
 
@@ -318,6 +413,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
     {
         if (!CanAddReminder) return;
         Reminders.Add(new ReminderItemViewModel(new EventReminder(ReminderMethod.Popup, 10), SoundOptions));
+        RefreshReminderPreviews();
         OnPropertyChanged(nameof(CanAddReminder));
     }
 
@@ -428,7 +524,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
             End = end,
             Attendees = Attendees.Select(a => new EventAttendee(a.Email, a.IsOptional)).ToList(),
             Attachments = _original.Attachments is null && !_attachmentsTouched ? null : Attachments.ToList(),
-            Reminders = Reminders.Select(r => r.ToModel()).ToList(),
+            Reminders = Reminders.Where(r => !r.IsPast).Select(r => r.ToModel()).ToList(),
             Recurrence = Recurrence.Value,
             ColorHex = EventColor.Hex,
             Availability = Availability.Value,

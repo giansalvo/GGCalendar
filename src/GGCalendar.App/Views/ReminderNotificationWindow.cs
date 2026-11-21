@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.Controls.Primitives;
 using GGCalendar.App.Localization;
 using GGCalendar.Core.Localization;
@@ -116,17 +117,41 @@ public sealed class ReminderNotificationWindow : Window
         Opened += (_, _) =>
         {
             _shownAt = DateTime.UtcNow;
-            var area = Screens.Primary?.WorkingArea;
-            if (area is null) return;
-            var scale = Screens.Primary!.Scaling;
-            var stacked = 0.0;
-            foreach (var other in OpenToasts) stacked += other.Bounds.Height + 8;
-            OpenToasts.Add(this);
-            Position = new PixelPoint(
-                area.Value.Right - (int)((Width + 16) * scale),
-                area.Value.Bottom - (int)((Bounds.Height + 16 + stacked) * scale));
+            if (!OpenToasts.Contains(this)) OpenToasts.Add(this);
+            Arrange();
+            // The height comes from the content (SizeToContent) a moment after the window opens: placed again when it is known.
+            Dispatcher.UIThread.Post(Arrange, DispatcherPriority.Loaded);
         };
-        Closed += (_, _) => OpenToasts.Remove(this);
+        SizeChanged += (_, _) => Arrange();
+        Closed += (_, _) =>
+        {
+            OpenToasts.Remove(this);
+            Arrange();
+        };
+    }
+
+    /// <summary>
+    /// Puts the open toasts at the bottom right of the work area of the screen, the oldest at the bottom and the others above it.
+    /// The size used is the real one of each window (frame included), so none ends in the middle of the screen or under the taskbar.
+    /// </summary>
+    private static void Arrange()
+    {
+        var screen = OpenToasts.Count > 0 ? OpenToasts[0].Screens.Primary : null;
+        if (screen is null) return;
+        var area = screen.WorkingArea;
+        var scale = screen.Scaling;
+        var gap = (int)(8 * scale);
+        var margin = (int)(16 * scale);
+        var bottom = area.Bottom - margin;
+        foreach (var toast in OpenToasts)
+        {
+            var frame = toast.FrameSize ?? toast.ClientSize;
+            var width = (int)Math.Round(frame.Width * scale);
+            var height = (int)Math.Round(frame.Height * scale);
+            if (height <= 0) height = (int)Math.Round(toast.Bounds.Height * scale);
+            var position = new PixelPoint(area.Right - width - margin, bottom - height);
+            if (toast.Position != position) toast.Position = position;
+            bottom -= height + gap;
+        }
     }
 }
-

@@ -9,6 +9,7 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/GGCalendar.ico"
         Width="1300" Height="780" MinWidth="900" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
         Title="GGCalendar">
 
     <Design.DataContext>
