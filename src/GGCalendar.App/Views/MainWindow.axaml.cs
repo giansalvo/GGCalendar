@@ -522,7 +522,9 @@ public partial class MainWindow : Window
             }
 
             vm.SetStatus(Msg.Join(
-                result.Errors.Count > 0 ? Msg.Of("error.sync", Msg.JoinWith(" | ", result.Errors)) : Msg.Of("status.synced", DateTime.Now),
+                result.Errors.Count > 0 ? Msg.Of("error.sync", Msg.JoinWith(" | ", result.Errors))
+                    : result.Offline ? Msg.Of("status.offline") // calm text, not red: the key does not start with "error."
+                    : Msg.Of("status.synced", DateTime.Now),
                 conflicts, waiting));
             if (result.RetryAt is { } retryAt) ScheduleRetry(retryAt);
         }
