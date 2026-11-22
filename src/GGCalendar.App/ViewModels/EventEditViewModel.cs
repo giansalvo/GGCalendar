@@ -188,6 +188,7 @@ public sealed partial class EventEditViewModel : ViewModelBase
 
         Recurrence = current;
         Availability = AvailabilityOptions.First(o => o.Value == ev.Availability);
+        VisibilityOptions = BuildVisibilityOptions(ev.Visibility);
         Visibility = VisibilityOptions.First(o => o.Value == ev.Visibility);
         EventColor = ColorOptions.FirstOrDefault(c => c.Hex == ev.ColorHex) ?? ColorOptions[0];
         AddMeet = ev.AddMeet || ev.MeetLink is not null;
@@ -234,8 +235,15 @@ public sealed partial class EventEditViewModel : ViewModelBase
     public IReadOnlyList<ChoiceOption<EventAvailability>> AvailabilityOptions { get; } =
         [new(EventAvailability.Busy, L.T("availability.busy")), new(EventAvailability.Free, L.T("availability.free"))];
 
-    public IReadOnlyList<ChoiceOption<EventVisibility>> VisibilityOptions { get; } =
-        [new(EventVisibility.Default, L.T("visibility.default")), new(EventVisibility.Public, L.T("visibility.public")), new(EventVisibility.Private, L.T("visibility.private"))];
+    /// <summary>Public and private; "default" is offered only to an event that already has it, so that opening it does not change it.</summary>
+    public IReadOnlyList<ChoiceOption<EventVisibility>> VisibilityOptions { get; }
+
+    private static IReadOnlyList<ChoiceOption<EventVisibility>> BuildVisibilityOptions(EventVisibility current)
+    {
+        List<ChoiceOption<EventVisibility>> list = [new(EventVisibility.Public, L.T("visibility.public")), new(EventVisibility.Private, L.T("visibility.private"))];
+        if (current == EventVisibility.Default) list.Insert(0, new(EventVisibility.Default, L.T("visibility.default")));
+        return list;
+    }
 
     public IReadOnlyList<ColorOption> ColorOptions { get; } =
     [

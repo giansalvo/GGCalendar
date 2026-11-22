@@ -79,6 +79,22 @@
                 <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanInvite" Content="{loc:T guests.invite}" IsChecked="{Binding DefaultGuestsCanInvite}" />
                 <CheckBox AutomationProperties.AutomationId="Settings.DefaultGuestsCanSeeList" Content="{loc:T guests.see_list}" IsChecked="{Binding DefaultGuestsCanSeeList}" />
 
+                <TextBlock Classes="section" Text="{loc:T settings.new_event_defaults}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Width="220" VerticalAlignment="Center">
+                        <TextBlock Text="💼" Width="20" FontSize="16" Opacity="0.7" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T settings.default_availability}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox AutomationProperties.AutomationId="Settings.DefaultAvailability" ItemsSource="{Binding AvailabilityChoices}" SelectedItem="{Binding DefaultAvailability}" MinWidth="160" DisplayMemberBinding="{ReflectionBinding Label}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Width="220" VerticalAlignment="Center">
+                        <TextBlock Text="🔒" Width="20" FontSize="16" Opacity="0.7" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T settings.default_visibility}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox AutomationProperties.AutomationId="Settings.DefaultVisibility" ItemsSource="{Binding VisibilityChoices}" SelectedItem="{Binding DefaultVisibility}" MinWidth="160" DisplayMemberBinding="{ReflectionBinding Label}" />
+                </StackPanel>
+
                 <TextBlock Classes="section" Text="{loc:T settings.second_zone}" />
                 <TextBlock Classes="hint" Text="{loc:T settings.second_zone_hint}" TextWrapping="Wrap" />
                 <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">

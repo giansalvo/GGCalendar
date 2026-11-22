@@ -4,11 +4,12 @@ Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 
 ## 1.0.5 (xx/11/2026)
 
-- Visualizza anteprima evento al passare del mouse;
+- Visualizza anteprima di un evento al passare del mouse;
+- Revisione del layout della finestra di editing di un evento;
 - Il tasto Canc cancella l'evento di cui è aperta la scheda dei dettagli;
 - Visualizza messaggio comprensibile quando Google segnala errore 403;
-- Revisione del layout della finestra di editing di un evento;
-- Visualizzazione dei promemoria in basso a destra nella zona notifiche (i successive sono impilati);
+- Nelle impostazioni si scelgono visibilità e stato predefiniti dei nuovi eventi;
+- Visualizzazione dei promemoria in basso a destra nella zona notifiche (i successivi sono impilati);
 - Correzione di anomalie (bugfix).
 
 ## 1.0.4 (12/11/2026)

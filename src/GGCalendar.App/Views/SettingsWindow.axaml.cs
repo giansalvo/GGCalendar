@@ -19,6 +19,14 @@ public partial class SettingsWindow : Window
             if (e.Property == Expander.IsExpandedProperty && OauthExpander.IsExpanded)
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => SettingsScroll.ScrollToEnd(), Avalonia.Threading.DispatcherPriority.Background);
         };
+
+        // Opening a drop-down focuses the box and its items, and the request to bring them into view climbs up to the scroll viewer of
+        // the window, which then scrolls for nothing. The popup lives inside the window, so the items are recognised by their type.
+        if (SettingsScroll.Content is Control content)
+            content.AddHandler(Control.RequestBringIntoViewEvent, (_, e) =>
+            {
+                if (e.Source is ComboBox or ComboBoxItem) e.Handled = true;
+            });
     }
 
     private void OnSave(object? sender, RoutedEventArgs e)
