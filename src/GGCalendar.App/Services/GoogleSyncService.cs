@@ -606,7 +606,9 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
             var remoteId = result.GetProperty("id").GetString()!;
             var etag = result.TryGetProperty("etag", out var et) ? et.GetString() : null;
             var meet = result.TryGetProperty("hangoutLink", out var hl) ? hl.GetString() : null;
-            if (store.HasPendingAfter(item.EventId, item.Seq)) store.SetRemote(item.EventId, remoteId, etag);
+            if (store.GetEvent(item.EventId) is null)
+                await client.DeleteAsync(remoteCal, remoteId, ct); // deleted on this PC while it was being sent: do not bring it back
+            else if (store.HasPendingAfter(item.EventId, item.Seq)) store.SetRemote(item.EventId, remoteId, etag);
             else store.UpsertEvent(meet is null ? snapshot : snapshot with { MeetLink = meet }, remoteId, etag);
             store.Complete(item.Seq);
             done++;
@@ -771,7 +773,13 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                         var remoteId = result.GetProperty("id").GetString()!;
                         var etag = result.TryGetProperty("etag", out var et) ? et.GetString() : null;
                         var meet = result.TryGetProperty("hangoutLink", out var hl) ? hl.GetString() : null;
-                        if (store.HasPendingAfter(item.EventId, item.Seq))
+                        if (store.GetEvent(item.EventId) is null)
+                        {
+                            // Deleted on this PC while it was being sent: do not bring it back. A new event is now on Google without a queued deletion
+                            // (the deletion saw no remote id), so it is removed there; an edited one already has its deletion queued.
+                            if (target is null) await client.DeleteAsync(remoteCal, remoteId, ct);
+                        }
+                        else if (store.HasPendingAfter(item.EventId, item.Seq))
                             store.SetRemote(item.EventId, remoteId, etag);
                         else
                             store.UpsertEvent(meet is null ? snapshot : snapshot with { MeetLink = meet }, remoteId, etag);
