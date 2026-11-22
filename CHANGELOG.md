@@ -2,7 +2,7 @@
 
 Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 
-## 1.0.5 (xx/11/2026)
+## 1.0.5-RC1 (22/11/2026)
 
 - Visualizza anteprima di un evento al passare del mouse;
 - Revisione del layout della finestra di editing di un evento;
