@@ -60,9 +60,16 @@ public sealed class EventDetailsCard : Border
         Focusable = true;
         KeyDown += (_, e) =>
         {
-            if (e.Key != Key.Escape) return;
-            CloseRequested?.Invoke();
-            e.Handled = true;
+            if (e.Key == Key.Escape)
+            {
+                CloseRequested?.Invoke();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Delete && !readOnly)
+            {
+                DeleteRequested?.Invoke();
+                e.Handled = true;
+            }
         };
 
         // Actions
