@@ -1,3 +1,4 @@
+using GGCalendar.App.Services;
 using GGCalendar.App.ViewModels;
 using GGCalendar.Core.Localization;
 using GGCalendar.Core.Models;
@@ -11,7 +12,7 @@ namespace GGCalendar.Core.Tests;
 /// the instance is read and compared with the occurrence the person saw. The real <see cref="GGCalendar.App.Services.GoogleSyncService"/>
 /// against an in-memory Google with a series of three days.
 /// </summary>
-public class OccurrenceFirstEditTests
+public class OccurrenceFirstEditTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     private static readonly DateTime Utc = new(2026, 10, 14, 7, 0, 0, DateTimeKind.Utc);
     private static string Suffix => L.T("sync.conflict_suffix");
@@ -44,6 +45,43 @@ public class OccurrenceFirstEditTests
             Rig.Store.GetAllEvents().FirstOrDefault(e => e.SeriesMasterId is not null && e.OriginalStart == Utc.ToLocalTime().AddDays(day) && !e.Title.EndsWith(Suffix));
 
         public IEnumerable<CalendarEvent> Copies() => Rig.Store.GetAllEvents().Where(e => e.Title.EndsWith(Suffix));
+
+        /// <summary>
+        /// A readable picture of the state, for the message of a failed assertion (T345 failed once on the CI and never on a PC): the result of the sync
+        /// (errors and conflicts as text), the queue with what each change is based on, the events of the app, what Google has and what was asked of it.
+        /// </summary>
+        public string Report(string moment, SyncResult? result = null)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"== {moment} ({DateTime.UtcNow:HH:mm:ss.fff} UTC, {Environment.ProcessorCount} CPU, thread {Environment.CurrentManagedThreadId}) ==");
+            if (result is not null)
+            {
+                sb.AppendLine($"Sync: pulled={result.Pulled} pushed={result.Pushed} changed={result.Changed} pending={result.Pending} offline={result.Offline} cancelled={result.Cancelled} retryAt={result.RetryAt}");
+                sb.AppendLine($"  errori ({result.Errors.Count}): " + string.Join(" | ", result.Errors.Select(e => e.Text)));
+                sb.AppendLine($"  conflitti ({result.Conflicts.Count}): " + string.Join(" | ", result.Conflicts.Select(c => c.Text)));
+            }
+
+            var pending = Rig.Store.GetPending();
+            sb.AppendLine($"Coda ({pending.Count}):");
+            foreach (var p in pending)
+            {
+                var snapshot = CalendarStore.ReadSnapshot(p);
+                var seen = CalendarStore.ReadBase(p);
+                var info = Rig.Store.GetRemoteInfo(p.EventId);
+                sb.AppendLine($"  #{p.Seq} {p.Operation} evento={p.EventId} titolo='{snapshot?.Title}' inizio={snapshot?.Start:O} originale={snapshot?.OriginalStart:O} " +
+                              $"base={(seen is null ? "ASSENTE" : $"'{seen.Title}' {seen.Start:O}")} remoto={info?.RemoteId ?? "-"} etag={info?.Etag ?? "-"} creato={p.CreatedAt:O}");
+            }
+
+            var events = Rig.Store.GetAllEvents();
+            sb.AppendLine($"Eventi dell'app ({events.Count}):");
+            foreach (var e in events)
+                sb.AppendLine($"  {e.Id} '{e.Title}' {e.Start:O} serie={e.SeriesMasterId ?? "-"} originale={e.OriginalStart:O} ricorrenza={e.Recurrence ?? "-"}");
+
+            sb.AppendLine($"Google: istanza 1 = '{Rig.Google.InstanceSummary(Master, UtcOf(1))}'; eventi = {string.Join(", ", Rig.Google.Ids)}");
+            sb.AppendLine($"Richieste a Google ({Rig.Google.Requests.Count}):");
+            foreach (var r in Rig.Google.Requests) sb.AppendLine("  " + r);
+            return sb.ToString();
+        }
 
         public void Dispose() => Rig.Dispose();
     }
@@ -208,13 +246,21 @@ public class OccurrenceFirstEditTests
         var occurrence = scene.Occurrence(1);
         scene.Vm.MoveOccurrence(occurrence, occurrence.Start.AddHours(3), occurrence.End.AddHours(3), SeriesScope.This);
         scene.Rig.Google.SetInstanceSummary(scene.Master, Scene.UtcOf(1), "Titolo Google");
+        var before = scene.Report("prima della sincronizzazione (spostamento fatto, titolo cambiato su Google)");
+        Assert.True(scene.Rig.Store.GetPending().Count > 0, "Lo spostamento non è in coda.\n" + before);
 
-        var result = await scene.Rig.SyncOkAsync();
+        var result = await scene.Rig.SyncAsync();
+        var after = scene.Report("dopo la sincronizzazione", result);
+        var report = before + after;
+        output.WriteLine(report); // also when it passes: the log of a run of the CI shows what the sync did
 
-        Assert.Single(result.Conflicts);
-        Assert.Equal("Titolo Google", scene.Rig.Google.InstanceSummary(scene.Master, Scene.UtcOf(1)));
-        var copy = Assert.Single(scene.Copies());
-        Assert.Equal(occurrence.Start.AddHours(3), copy.Start); // the move is kept in the copy
+        Assert.True(result.Errors.Count == 0, "La sincronizzazione ha dato errori.\n" + report);
+        Assert.True(result.Conflicts.Count == 1, $"Atteso 1 conflitto, trovati {result.Conflicts.Count}: la modifica è partita senza il confronto con l'istanza di Google?\n" + report);
+        var summary = scene.Rig.Google.InstanceSummary(scene.Master, Scene.UtcOf(1));
+        Assert.True(summary == "Titolo Google", $"Google è stato sovrascritto: l'istanza ora si chiama '{summary}'.\n" + report);
+        var copies = scene.Copies().ToList();
+        Assert.True(copies.Count == 1, $"Attesa 1 copia, trovate {copies.Count}.\n" + report);
+        Assert.True(copies[0].Start == occurrence.Start.AddHours(3), $"La copia ha inizio {copies[0].Start:O} invece di {occurrence.Start.AddHours(3):O}.\n" + report); // the move is kept in the copy
     }
 
     [Fact]
