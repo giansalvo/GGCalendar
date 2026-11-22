@@ -46,7 +46,8 @@ try {
     $csprojPath = Join-Path $PSScriptRoot "GGCalendar.App.csproj"
     $version = ([xml](Get-Content $csprojPath)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
     if (-not $version) { throw "Version non trovata nel csproj." }
-    $parts = @($version.Split('.'))
+    # Un suffisso come -RC1 non e' ammesso nella versione di un MSIX (solo numeri): si toglie, come fa l'installer.
+    $parts = @(($version -replace '-.*$', '').Split('.'))
     while ($parts.Count -lt 3) { $parts += '0' }
     $identityNode.SetAttribute("Version", ($parts[0..2] -join '.') + ".0")
 
