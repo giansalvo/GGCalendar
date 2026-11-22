@@ -559,6 +559,7 @@
   "status.imported_skipped.other": ", {0} bereits vorhandene übersprungen",
   "status.imported_warnings": ". Hinweise: {0}",
   "status.no_events": "In der .ics-Datei wurden keine Termine gefunden.",
+  "status.offline": "Du bist offline: Google ist nicht erreichbar. Deine Änderungen sind sicher und werden bei der nächsten Synchronisierung gesendet.",
   "status.pending.one": " {0} Änderung wartet noch auf das Senden an Google",
   "status.pending.other": " {0} Änderungen warten noch auf das Senden an Google",
   "status.pending_retry": ": Google hat das Senden gebremst, neuer Versuch um {0:HH:mm}.",

@@ -62,7 +62,7 @@ public class SyncLimitTests
 
         var first = await rig.SyncAsync();
 
-        Assert.NotEmpty(first.Errors);
+        Assert.True(first.Errors.Count > 0 || first.Offline); // the connection was lost: for the app it is the network that is down
         Assert.Single(rig.Google.Ids); // Google did create it
 
         await rig.SyncOkAsync();

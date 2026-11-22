@@ -15,8 +15,9 @@ namespace GGCalendar.App.Services;
 
 /// <param name="Pending">Changes still waiting to be sent to Google (a long queue, or Google asked to slow down).</param>
 /// <param name="RetryAt">When the sending of the changes still waiting should be tried again, if Google asked to slow down.</param>
+/// <param name="Offline">Google could not be reached for at least one account (no network, DNS or timeout): not an error to show in red, the changes stay queued for the next sync.</param>
 public sealed record SyncResult(int Pulled, int Pushed, IReadOnlyList<Msg> Errors, IReadOnlyList<Msg> Conflicts, bool Changed,
-    int Pending = 0, DateTimeOffset? RetryAt = null, bool Cancelled = false);
+    int Pending = 0, DateTimeOffset? RetryAt = null, bool Cancelled = false, bool Offline = false);
 
 /// <summary>
 /// Two-way sync with Google Calendar. Local calendar ids are "{email}|{googleCalendarId}".
@@ -380,6 +381,7 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         int pulled = 0, pushed = 0;
         var changed = false;
         var cancelled = false;
+        var offline = false;
         foreach (var account in accounts.Load())
         {
             if (ct.IsCancellationRequested) { cancelled = true; break; }
@@ -408,6 +410,13 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
                 errors.Add(Msg.Of("sync.account_limited", account.Email));
                 changed = true; // part of the download (or the removal of calendars gone from Google) may have been stored: the window reads again
             }
+            catch (Exception ex) when (IsNetworkDown(ex))
+            {
+                // No network (or Google cannot be reached): nothing is lost, the changes wait in the queue for the next sync.
+                offline = true;
+                changed = true; // idem
+                SyncLog.Write($"offline [{account.Email}] {SyncLog.Describe(ex)}");
+            }
             catch (Exception ex) when (ex is HttpRequestException or GoogleApiException or GoogleAuthException or TaskCanceledException)
             {
                 errors.Add(Msg.Of("sync.account_error", account.Email, ex.Message));
@@ -418,7 +427,20 @@ public sealed class GoogleSyncService(CalendarStore store, GoogleAccountStore ac
         var now = Clock();
         var retry = _slowedDown.Values.Where(v => v.Until > now).Select(v => (DateTimeOffset?)v.Until).Min();
         var pending = store.GetPending().Count(p => IsGoogleCalendar(p.CalendarId));
-        return new SyncResult(pulled, pushed, errors, conflicts, changed || pushed > 0 || conflicts.Count > 0, pending, retry, cancelled);
+        return new SyncResult(pulled, pushed, errors, conflicts, changed || pushed > 0 || conflicts.Count > 0, pending, retry, cancelled, offline);
+    }
+
+    /// <summary>
+    /// True when the request did not reach Google at all: no network, name not resolved (DNS), connection refused or lost, or no answer in time.
+    /// A certificate problem (TLS) is not that: it stays an error. The answers of Google (<see cref="GoogleApiException"/>) and the refusal of the
+    /// credentials (<see cref="GoogleAuthException"/>) are not either.
+    /// </summary>
+    public static bool IsNetworkDown(Exception ex)
+    {
+        if (ex is not (HttpRequestException or TaskCanceledException)) return false;
+        for (var x = ex; x is not null; x = x.InnerException)
+            if (x is System.Security.Authentication.AuthenticationException) return false;
+        return true;
     }
 
     private async Task<(int Pulled, bool Changed)> PullAsync(GoogleCalendarClient client, string email, IReadOnlyList<GoogleCalendarEntry> remote, CancellationToken ct)
