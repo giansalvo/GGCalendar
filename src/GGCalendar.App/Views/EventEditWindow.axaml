@@ -135,12 +135,13 @@
                     </Grid>
 
                     <!-- Availability / visibility -->
-                    <Grid ColumnDefinitions="28,*">
+                    <Grid ColumnDefinitions="28,Auto,*" RowDefinitions="Auto,Auto" RowSpacing="8">
                         <TextBlock Classes="icon" Text="💼" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{Binding AvailabilityOptions}" SelectedItem="{Binding Availability}" MinWidth="140" DisplayMemberBinding="{ReflectionBinding Label}" />
-                        <ComboBox ItemsSource="{Binding VisibilityOptions}" SelectedItem="{Binding Visibility}" MinWidth="200" DisplayMemberBinding="{ReflectionBinding Label}" />
-                    </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{loc:T edit.availability_label}" VerticalAlignment="Center" Width="100" />
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding AvailabilityOptions}" SelectedItem="{Binding Availability}" MinWidth="140" DisplayMemberBinding="{ReflectionBinding Label}" />
+                        <TextBlock Grid.Row="1" Classes="icon" Text="🔒" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{loc:T edit.visibility_label}" VerticalAlignment="Center" Width="100" />
+                        <ComboBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding VisibilityOptions}" SelectedItem="{Binding Visibility}" MinWidth="200" DisplayMemberBinding="{ReflectionBinding Label}" />
                     </Grid>
 
                     <!-- Description -->

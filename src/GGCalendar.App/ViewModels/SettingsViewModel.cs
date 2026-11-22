@@ -64,6 +64,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         DefaultGuestsCanModify = s.DefaultGuestsCanModify;
         DefaultGuestsCanInvite = s.DefaultGuestsCanInvite;
         DefaultGuestsCanSeeList = s.DefaultGuestsCanSeeList;
+        DefaultVisibility = VisibilityChoices.FirstOrDefault(o => o.Value == s.DefaultVisibility) ?? VisibilityChoices[1];
+        DefaultAvailability = AvailabilityChoices.FirstOrDefault(o => o.Value == s.DefaultAvailability) ?? AvailabilityChoices[0];
 
         Weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Sunday, DayOfWeek.Saturday }
             .Select(d => new WeekdayOption(d, Culture.TextInfo.ToTitleCase(Culture.DateTimeFormat.GetDayName(d)))).ToList();
@@ -276,6 +278,14 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool DefaultGuestsCanModify { get; set; }
     [ObservableProperty] public partial bool DefaultGuestsCanInvite { get; set; }
     [ObservableProperty] public partial bool DefaultGuestsCanSeeList { get; set; }
+    public IReadOnlyList<ChoiceOption<EventVisibility>> VisibilityChoices { get; } =
+        [new(EventVisibility.Public, L.T("visibility.public")), new(EventVisibility.Private, L.T("visibility.private"))];
+
+    public IReadOnlyList<ChoiceOption<EventAvailability>> AvailabilityChoices { get; } =
+        [new(EventAvailability.Busy, L.T("availability.busy")), new(EventAvailability.Free, L.T("availability.free"))];
+
+    [ObservableProperty] public partial ChoiceOption<EventVisibility> DefaultVisibility { get; set; }
+    [ObservableProperty] public partial ChoiceOption<EventAvailability> DefaultAvailability { get; set; }
     [ObservableProperty] public partial int DefaultEventMinutes { get; set; }
     [ObservableProperty] public partial int SnapMinutes { get; set; }
     [ObservableProperty] public partial WeekdayOption FirstDayOfWeek { get; set; }
@@ -350,6 +360,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             DefaultGuestsCanModify = DefaultGuestsCanModify,
             DefaultGuestsCanInvite = DefaultGuestsCanInvite,
             DefaultGuestsCanSeeList = DefaultGuestsCanSeeList,
+            DefaultVisibility = DefaultVisibility.Value,
+            DefaultAvailability = DefaultAvailability.Value,
             SyncIntervalMinutes = SyncIntervalOptions[Math.Clamp(SyncIntervalIndex, 0, SyncIntervalOptions.Length - 1)],
             SubscriptionIntervalMinutes = SubscriptionIntervalOptions[Math.Clamp(SubscriptionIntervalIndex, 0, SubscriptionIntervalOptions.Length - 1)],
             GoogleClientId = string.IsNullOrWhiteSpace(GoogleClientId) ? null : GoogleClientId.Trim(),

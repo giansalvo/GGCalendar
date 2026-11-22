@@ -57,6 +57,12 @@ public sealed class AppSettings
     public bool DefaultGuestsCanInvite { get; set; }
     public bool DefaultGuestsCanSeeList { get; set; } = true;
 
+    /// <summary>Visibility of the events created in the app (issue #89). A missing key (old settings file) means private; "Default" is not a choice.</summary>
+    public EventVisibility DefaultVisibility { get; set; } = EventVisibility.Private;
+
+    /// <summary>Status (busy/free) of the events created in the app (issue #89). A missing key means busy.</summary>
+    public EventAvailability DefaultAvailability { get; set; } = EventAvailability.Busy;
+
     /// <summary>Optional override of the embedded Google OAuth client (advanced).</summary>
     public string? GoogleClientId { get; set; }
     public string? GoogleClientSecret { get; set; }
