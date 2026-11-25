@@ -22,9 +22,15 @@ Sincronizza in due direzioni uno o più account Google Calendar mantenendo aggio
 L'interfaccia parla italiano, inglese, tedesco, spagnolo e francese: scegli la lingua nelle Impostazioni, oppure lascia che GGCalendar segua la lingua di Windows.
 
 ---- What's new in this version ----
-* Area di notifica (tray): chiudere o minimizzare la finestra la nasconde nell'area di notifica, così le sveglie restano attive;
-* Istanza unica: aprire di nuovo GGCalendar riporta in primo piano la finestra già aperta;
-* Aggiornamento delle librerie incluse.
+* Anteprima di un evento al passare del mouse;
+* Revisione del layout della finestra di modifica di un evento;
+* Il tasto Canc cancella l'evento di cui è aperta la scheda dei dettagli;
+* Messaggio comprensibile quando Google segnala l'errore 403;
+* Nelle impostazioni si scelgono visibilità e stato predefiniti dei nuovi eventi;
+* Promemoria in basso a destra nella zona notifiche (i successivi sono impilati);
+* Promemoria e orario degli eventi impostabili al minuto;
+* Senza rete compare il messaggio «Sei offline» al posto dell'errore rosso;
+* Correzione di anomalie.
 
 ---- Product features ----
 Viste giorno, settimana, 6 giorni, mese, anno e programma
@@ -69,9 +75,15 @@ Sync one or more Google Calendar accounts in both directions, keeping guests, pe
 The interface speaks Italian, English, German, Spanish and French: choose the language in Settings, or let GGCalendar follow the language of Windows.
 
 ---- What's new in this version ----
-* Notification area (tray): closing or minimizing the window hides it in the notification area, so alarms stay active;
-* Single instance: opening GGCalendar again brings the window that is already open to the front;
-* Update of the included libraries.
+* Preview of an event when the mouse rests on it;
+* Revised layout of the event editing window;
+* The Delete key deletes the event whose details card is open;
+* A clear message when Google reports error 403;
+* In Settings you choose the default visibility and status of new events;
+* Reminders appear at the bottom right, in the notification area (the next ones are stacked);
+* Reminders and event times can be set to the minute;
+* Without a network, a "You are offline" message appears instead of the red error;
+* Bug fixes.
 
 ---- Product features ----
 Day, week, 6-day, month, year and schedule views
@@ -116,9 +128,15 @@ Synchronisieren Sie ein oder mehrere Google-Kalender-Konten in beide Richtungen 
 Die Oberfläche spricht Italienisch, Englisch, Deutsch, Spanisch und Französisch: Wählen Sie die Sprache in den Einstellungen oder lassen Sie GGCalendar der Sprache von Windows folgen.
 
 ---- What's new in this version ----
-* Infobereich (Tray): Schließen oder Minimieren des Fensters blendet es im Infobereich aus, sodass die Wecker aktiv bleiben;
-* Einzelne Instanz: Ein erneuter Start von GGCalendar bringt das bereits geöffnete Fenster in den Vordergrund;
-* Aktualisierung der enthaltenen Bibliotheken.
+* Vorschau eines Termins, wenn die Maus darauf verweilt;
+* Überarbeitetes Layout des Fensters zum Bearbeiten eines Termins;
+* Die Entf-Taste löscht den Termin, dessen Detailkarte geöffnet ist;
+* Verständliche Meldung, wenn Google den Fehler 403 meldet;
+* In den Einstellungen wählen Sie Sichtbarkeit und Status neuer Termine voreingestellt;
+* Erinnerungen erscheinen unten rechts im Infobereich (weitere werden gestapelt);
+* Erinnerungen und Terminzeiten lassen sich auf die Minute genau festlegen;
+* Ohne Netzwerk erscheint die Meldung „Du bist offline“ anstelle der roten Fehlermeldung;
+* Fehlerbehebungen.
 
 ---- Product features ----
 Ansichten Tag, Woche, 6 Tage, Monat, Jahr und Terminübersicht
@@ -163,9 +181,15 @@ Sincroniza en ambos sentidos una o más cuentas de Google Calendar, manteniendo 
 La interfaz habla italiano, inglés, alemán, español y francés: elige el idioma en Ajustes o deja que GGCalendar siga el idioma de Windows.
 
 ---- What's new in this version ----
-* Área de notificación (bandeja): cerrar o minimizar la ventana la oculta en el área de notificación, así las alarmas siguen activas;
-* Instancia única: abrir de nuevo GGCalendar trae al primer plano la ventana que ya está abierta;
-* Actualización de las bibliotecas incluidas.
+* Vista previa de un evento al pasar el ratón por encima;
+* Diseño revisado de la ventana de edición de un evento;
+* La tecla Supr elimina el evento cuya ficha de detalles está abierta;
+* Mensaje comprensible cuando Google indica el error 403;
+* En Ajustes se elige la visibilidad y el estado predeterminados de los nuevos eventos;
+* Los recordatorios aparecen abajo a la derecha, en el área de notificación (los siguientes se apilan);
+* Los recordatorios y la hora de los eventos se pueden fijar al minuto;
+* Sin red aparece el mensaje «Estás sin conexión» en lugar del error en rojo;
+* Corrección de errores.
 
 ---- Product features ----
 Vistas de día, semana, 6 días, mes, año y programa
@@ -210,9 +234,15 @@ Synchronisez dans les deux sens un ou plusieurs comptes Google Agenda en gardant
 L'interface parle italien, anglais, allemand, espagnol et français : choisissez la langue dans les Paramètres, ou laissez GGCalendar suivre la langue de Windows.
 
 ---- What's new in this version ----
-* Zone de notification : fermer ou réduire la fenêtre la masque dans la zone de notification, les alarmes restent donc actives ;
-* Instance unique : ouvrir de nouveau GGCalendar ramène au premier plan la fenêtre déjà ouverte ;
-* Mise à jour des bibliothèques incluses.
+* Aperçu d'un événement lorsque la souris reste dessus ;
+* Mise en page revue de la fenêtre de modification d'un événement ;
+* La touche Suppr supprime l'événement dont la fiche de détails est ouverte ;
+* Message compréhensible lorsque Google signale l'erreur 403 ;
+* Dans les Paramètres, on choisit la visibilité et le statut par défaut des nouveaux événements ;
+* Les rappels apparaissent en bas à droite, dans la zone de notification (les suivants sont empilés) ;
+* Les rappels et l'heure des événements se règlent à la minute près ;
+* Sans réseau, le message « Vous êtes hors ligne » s'affiche à la place de l'erreur en rouge ;
+* Corrections d'anomalies.
 
 ---- Product features ----
 Vues jour, semaine, 6 jours, mois, année et programme

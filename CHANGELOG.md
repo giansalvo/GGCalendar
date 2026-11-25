@@ -2,7 +2,7 @@
 
 Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 
-## 1.0.5-RC1 (22/11/2026)
+## 1.0.5 (25/11/2026)
 
 - Visualizza anteprima di un evento al passare del mouse;
 - Revisione del layout della finestra di editing di un evento;
@@ -10,6 +10,8 @@ Le modifiche di GGCalendar da una versione alla successiva, dalla più recente.
 - Visualizza messaggio comprensibile quando Google segnala errore 403;
 - Nelle impostazioni si scelgono visibilità e stato predefiniti dei nuovi eventi;
 - Visualizzazione dei promemoria in basso a destra nella zona notifiche (i successivi sono impilati);
+- Promemoria e orario degli eventi impostabili al minuto;
+- Senza rete compare il messaggio «Sei offline» al posto dell'errore rosso;
 - Correzione di anomalie (bugfix).
 
 ## 1.0.4 (12/11/2026)
