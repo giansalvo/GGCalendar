@@ -1,6 +1,12 @@
-﻿GGCalendar 1.0.4 - What is new
+﻿GGCalendar 1.0.5 - What is new
 ==============================
 
-  - Notification area (tray): closing or minimizing the window hides it in the notification area, so alarms stay active;
-  - Single instance: opening GGCalendar again brings the window that is already open to the front;
-  - Update of the included libraries.
+  - Preview of an event when the mouse rests on it;
+  - Revised layout of the event editing window;
+  - The Delete key deletes the event whose details card is open;
+  - A clear message when Google reports error 403;
+  - In Settings you choose the default visibility and status of new events;
+  - Reminders appear at the bottom right, in the notification area (the next ones are stacked);
+  - Reminders and event times can be set to the minute;
+  - Without a network, a "You are offline" message appears instead of the red error;
+  - Bug fixes.

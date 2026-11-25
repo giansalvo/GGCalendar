@@ -1,6 +1,12 @@
-﻿GGCalendar 1.0.4 - Neuigkeiten
+﻿GGCalendar 1.0.5 - Neuigkeiten
 ==============================
 
-  - Infobereich (Tray): Schließen oder Minimieren des Fensters blendet es im Infobereich aus, sodass die Wecker aktiv bleiben;
-  - Einzelne Instanz: Ein erneuter Start von GGCalendar bringt das bereits geöffnete Fenster in den Vordergrund;
-  - Aktualisierung der enthaltenen Bibliotheken.
+  - Vorschau eines Termins, wenn die Maus darauf verweilt;
+  - Überarbeitetes Layout des Fensters zum Bearbeiten eines Termins;
+  - Die Entf-Taste löscht den Termin, dessen Detailkarte geöffnet ist;
+  - Verständliche Meldung, wenn Google den Fehler 403 meldet;
+  - In den Einstellungen wählen Sie Sichtbarkeit und Status neuer Termine voreingestellt;
+  - Erinnerungen erscheinen unten rechts im Infobereich (weitere werden gestapelt);
+  - Erinnerungen und Terminzeiten lassen sich auf die Minute genau festlegen;
+  - Ohne Netzwerk erscheint die Meldung „Du bist offline“ anstelle der roten Fehlermeldung;
+  - Fehlerbehebungen.

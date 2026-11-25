@@ -1,6 +1,12 @@
-﻿GGCalendar 1.0.4 - Novedades
+﻿GGCalendar 1.0.5 - Novedades
 ============================
 
-  - Área de notificación (bandeja): cerrar o minimizar la ventana la oculta en el área de notificación, así las alarmas siguen activas;
-  - Instancia única: abrir de nuevo GGCalendar trae al primer plano la ventana que ya está abierta;
-  - Actualización de las bibliotecas incluidas.
+  - Vista previa de un evento al pasar el ratón por encima;
+  - Diseño revisado de la ventana de edición de un evento;
+  - La tecla Supr elimina el evento cuya ficha de detalles está abierta;
+  - Mensaje comprensible cuando Google indica el error 403;
+  - En Ajustes se elige la visibilidad y el estado predeterminados de los nuevos eventos;
+  - Los recordatorios aparecen abajo a la derecha, en el área de notificación (los siguientes se apilan);
+  - Los recordatorios y la hora de los eventos se pueden fijar al minuto;
+  - Sin red aparece el mensaje «Estás sin conexión» en lugar del error en rojo;
+  - Corrección de errores.
