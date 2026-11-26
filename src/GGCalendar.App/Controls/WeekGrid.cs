@@ -78,8 +78,44 @@ public sealed class WeekGrid : Control
     private int _pressClickCount;
     private TimeSpan _grabOffset;
     private DateTime _createAnchor;
-    private string? _selectedId;
-    private DateTime _selectedStart;
+    private EventKey? _selection;
+
+    /// <summary>The event drawn as selected.</summary>
+    public EventKey? Selection
+    {
+        get => _selection;
+        set
+        {
+            if (_selection == value) return;
+            _selection = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Raised when a press of the mouse selects an event, or nothing.</summary>
+    public event Action<EventKey?>? SelectionChanged;
+
+    /// <summary>The events with a time that the grid draws: in the days shown and, at least in part, in the hours shown.</summary>
+    public IEnumerable<CalendarEvent> DrawnEvents()
+    {
+        var days = Enumerable.Range(0, Math.Max(1, DayCount)).Select(d => WeekStart.Date.AddDays(d)).ToList();
+        return (Events ?? []).Where(e => !e.IsAllDay && days.Any(day =>
+            e.Start < day.AddHours(LastHour) && e.End > day.AddHours(FirstHour)));
+    }
+
+    /// <summary>The block of an event as drawn last, or null.</summary>
+    public Rect? RectOf(EventKey key)
+    {
+        foreach (var (rect, ev) in _hits)
+            if (EventKey.Of(ev) == key) return rect;
+        return null;
+    }
+
+    private void SelectByMouse(EventKey? key)
+    {
+        Selection = key;
+        SelectionChanged?.Invoke(key);
+    }
 
     static WeekGrid()
     {
@@ -118,7 +154,6 @@ public sealed class WeekGrid : Control
 
     public event Action<CalendarEvent, DateTime, DateTime>? EventChanged;
     public event Action<DateTime, DateTime>? EventCreated;
-    public event Action<CalendarEvent>? EventDeleted;
     public event Action<CalendarEvent>? EventOpened;
 
     /// <summary>Raised on a single click on an event that was not dragged, with its block (shows its details beside it).</summary>
@@ -183,15 +218,14 @@ public sealed class WeekGrid : Control
         {
             _active = h.Event;
             _activeRect = h.Rect;
-            _selectedId = h.Event.Id;
-            _selectedStart = h.Event.Start;
+            SelectByMouse(EventKey.Of(h.Event));
             var nearBottom = p.Y >= h.Rect.Bottom - ResizeEdge && !ReadOnly(h.Event);
             _grabOffset = PointToTime(p, snap: false) - h.Event.Start;
             _mode = nearBottom ? DragMode.Resize : DragMode.Pending;
         }
         else
         {
-            _selectedId = null;
+            SelectByMouse(null);
             _createAnchor = PointToTime(p, snap: true, floor: true);
             _mode = DragMode.Create;
         }
@@ -305,31 +339,10 @@ public sealed class WeekGrid : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape && _mode != DragMode.None)
-        {
-            Reset();
-            InvalidateVisual();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Delete && _selectedId is not null)
-        {
-            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId && x.Start == _selectedStart);
-            if (ev is not null && !ReadOnly(ev))
-            {
-                _selectedId = null;
-                EventDeleted?.Invoke(ev);
-                e.Handled = true;
-            }
-        }
-        else if (e.Key == Key.Enter && _selectedId is not null)
-        {
-            var ev = Events?.FirstOrDefault(x => x.Id == _selectedId && x.Start == _selectedStart);
-            if (ev is not null)
-            {
-                EventOpened?.Invoke(ev);
-                e.Handled = true;
-            }
-        }
+        if (e.Key != Key.Escape || _mode == DragMode.None) return;
+        Reset();
+        InvalidateVisual();
+        e.Handled = true;
     }
 
     protected override void OnDoubleTapped(TappedEventArgs e)
@@ -489,7 +502,7 @@ public sealed class WeekGrid : Control
             var color = Color.Parse(hex);
             var fillColor = translucent ? Color.FromArgb(215, color.R, color.G, color.B) : color;
             var pen = selected
-                ? new Pen(new SolidColorBrush(Color.Parse("#1A73E8")), 2)
+                ? new Pen(background == Colors.White ? Brushes.Black : Brushes.White, 2.5) // seen on a block of any colour
                 : new Pen(new SolidColorBrush(background), 1);
             using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
             context.DrawRectangle(new SolidColorBrush(fillColor), pen, rect, 6, 6);
@@ -531,7 +544,7 @@ public sealed class WeekGrid : Control
 
                 _hits.Add((rect, ev));
                 if (ev.Id == hideId && ev.Start == _active?.Start) continue;
-                DrawBlock(ev, rect, false, ev.Id == _selectedId && ev.Start == _selectedStart);
+                DrawBlock(ev, rect, false, EventKey.Of(ev) == _selection);
             }
 
             if (_preview is { } pv && pv.Start < next && pv.End > day)

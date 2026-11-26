@@ -54,6 +54,31 @@ public sealed class AllDayStrip : Control
     public IReadOnlyDictionary<string, string>? CalendarColors { get => GetValue(CalendarColorsProperty); set => SetValue(CalendarColorsProperty, value); }
     public int DayCount { get => GetValue(DayCountProperty); set => SetValue(DayCountProperty, value); }
 
+    private EventKey? _selection;
+
+    /// <summary>The event drawn as selected.</summary>
+    public EventKey? Selection
+    {
+        get => _selection;
+        set
+        {
+            if (_selection == value) return;
+            _selection = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The events the strip draws.</summary>
+    public IEnumerable<CalendarEvent> DrawnEvents() => _layout.Select(l => l.Ev);
+
+    /// <summary>The block of an event as drawn last, or null.</summary>
+    public Rect? RectOf(EventKey key)
+    {
+        foreach (var (rect, ev) in _hits)
+            if (EventKey.Of(ev) == key) return rect;
+        return null;
+    }
+
     public event Action<CalendarEvent>? EventOpened;
 
     /// <summary>Raised on a single click on an event, with its block (shows its details beside it).</summary>
@@ -182,7 +207,8 @@ public sealed class AllDayStrip : Control
             _hits.Add((rect, ev));
             var hex = ev.ColorHex ?? (CalendarColors is not null && CalendarColors.TryGetValue(ev.CalendarId, out var c) ? c : "#1A73E8");
             using var fade = context.PushOpacity(DimPast && ev.End <= DateTime.Now ? 0.5 : 1.0);
-            context.DrawRectangle(new SolidColorBrush(Color.Parse(hex)), null, rect, 5, 5);
+            var pen = EventKey.Of(ev) == _selection ? new Pen(dark ? Brushes.White : Brushes.Black, 2.5) : null;
+            context.DrawRectangle(new SolidColorBrush(Color.Parse(hex)), pen, rect, 5, 5);
             using (context.PushClip(rect.Deflate(new Thickness(6, 0))))
             {
                 var text = new FormattedText(string.IsNullOrEmpty(ev.Title) ? L.T("common.untitled") : ev.Title,

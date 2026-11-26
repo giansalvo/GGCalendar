@@ -19,7 +19,7 @@
     <DockPanel Margin="24,16">
         <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
             <TextBlock Text="{Binding Error}" Foreground="#D93025" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <Button AutomationProperties.AutomationId="Settings.Cancel" Grid.Column="1" Content="{loc:T common.cancel}" Margin="0,0,8,0" Click="OnCancel" />
+            <Button AutomationProperties.AutomationId="Settings.Cancel" Grid.Column="1" Content="{loc:T common.cancel}" Margin="0,0,8,0" IsCancel="True" Click="OnCancel" />
             <Button AutomationProperties.AutomationId="Settings.Save" Grid.Column="2" Content="{loc:T common.save}" Classes="accent" IsDefault="True" Click="OnSave" />
         </Grid>
 

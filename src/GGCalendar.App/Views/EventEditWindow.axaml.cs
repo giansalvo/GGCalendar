@@ -22,6 +22,8 @@ public partial class EventEditWindow : Window
     public EventEditWindow()
     {
         InitializeComponent();
+        // Before the controls: a box with several lines or a time box must not take Ctrl+Enter for itself.
+        AddHandler(KeyDownEvent, OnSaveShortcut, RoutingStrategies.Tunnel);
         Opened += (_, _) => TitleBox.Focus();
         Closed += (_, _) => Vm?.StopSound();
         DataContextChanged += (_, _) =>
@@ -43,6 +45,15 @@ public partial class EventEditWindow : Window
     {
         if (Vm?.TryBuild() is { } ev)
             Close(new EventEditResult(ev, false));
+    }
+
+    /// <summary>Ctrl+S and Ctrl+Enter save.</summary>
+    private void OnSaveShortcut(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.Control || e.Key is not (Key.S or Key.Enter)) return;
+        e.Handled = true;
+        SaveButton.Focus(); // like a click: a time, a date or a number being written is taken when its box is left
+        OnSave(this, e);
     }
 
     private void OnDelete(object? sender, RoutedEventArgs e) => Close(new EventEditResult(null, true));

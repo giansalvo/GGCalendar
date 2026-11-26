@@ -86,7 +86,8 @@ public class AlarmsUiTests
 
     private static Button AlarmsButton(MainWindow window) => window.FindControl<Button>("AlarmsButton")!;
 
-    private static string Tip(MainWindow window) => (string)ToolTip.GetTip(AlarmsButton(window))!;
+    // The tooltip ends with the keys of the list (issue #102).
+    private static string Tip(MainWindow window) => ((string)ToolTip.GetTip(AlarmsButton(window))!).Replace($" ({L.T("key.ctrl")}+{L.T("key.shift")}+A)", "");
 
     private static string Badge(MainWindow window) => window.FindControl<TextBlock>("AlarmsBadgeText")!.Text!;
 

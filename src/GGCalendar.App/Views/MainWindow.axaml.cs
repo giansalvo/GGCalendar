@@ -50,7 +50,6 @@ public partial class MainWindow : Window
         L.Changed += OnLanguageChanged;
         Closed += (_, _) => { L.Changed -= OnLanguageChanged; _scheduler?.Dispose(); _sound.Dispose(); StopAlarmSound(); _alarmsTimer?.Stop(); _alarms?.Dispose(); _queueTimer?.Stop(); _syncTimer?.Stop(); _retryTimer?.Stop(); _subscriptionTimer?.Stop(); };
         Grid.EventChanged += async (ev, s, e) => await MoveAsync(ev, s, e);
-        Grid.EventDeleted += async ev => await DeleteAsync(ev);
         Grid.EventDroppedOutside += async (ev, point) => await DropOnCalendarAsync(ev, point);
         Grid.EventDragging += HighlightDropTarget;
         Grid.EventOpened += async ev => await EditAsync(ev, isNew: false);
@@ -70,8 +69,8 @@ public partial class MainWindow : Window
         };
         Month.DayNumberClicked += day => Vm?.ShowDay(day);
         Grid.EventClicked += (ev, rect) => ShowDetails(ev, Grid, rect);
-        AllDay.EventClicked += (ev, rect) => ShowDetails(ev, AllDay, rect);
-        Month.EventClicked += (ev, rect) => ShowDetails(ev, Month, rect);
+        AllDay.EventClicked += (ev, rect) => { Select(ev); ShowDetails(ev, AllDay, rect); };
+        Month.EventClicked += (ev, rect) => { Select(ev); ShowDetails(ev, Month, rect); };
         _hover = new HoverIntent<Action>(() => Vm?.Settings.HoverDetailsDelay ?? TimeSpan.Zero,
             () => Vm?.Settings.HoverDetailsCloseDelay ?? TimeSpan.FromMilliseconds(AppSettings.DefaultHoverDetailsCloseDelayMs),
             new DispatcherHoverClock(), open => open(), CloseDetails);
@@ -82,7 +81,18 @@ public partial class MainWindow : Window
         AgendaScroll.SizeChanged += (_, _) => UpdateAgendaLayout();
         Year.DayClicked += day => Vm?.ShowDay(day);
         MiniCalendar.DisplayModeChanged += OnMiniCalendarModeChanged;
+        MiniCalendar.AddHandler(PointerReleasedEvent, OnMiniCalendarPointerReleased, handledEventsToo: true);
+        // Before the cell that has the focus, which would take Enter and Space for a click that does nothing.
+        MiniCalendar.AddHandler(KeyDownEvent, OnMiniCalendarKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        MiniCalendar.AddHandler(KeyDownEvent, OnMiniCalendarKeyMoved, handledEventsToo: true);
+        AddHandler(GotFocusEvent, (_, _) => ViewFocusRing.IsVisible = false, handledEventsToo: true);
+        AddHandler(PointerPressedEvent, (_, _) => ViewFocusRing.IsVisible = false, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         KeyDown += OnShortcut;
+        SetUpSelection();
+        // Up and down before the controls: a scroll viewer would take them, and only for itself.
+        AddHandler(KeyDownEvent, OnScrollShortcut, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        SearchBox.AddHandler(KeyDownEvent, OnSearchBoxArrow, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        UpdateShortcutTips();
         SetUpSyncQueue();
         _ringer.SoundRequested += StartAlarmSound;
         _ringer.SoundStopRequested += StopAlarmSound;
@@ -187,7 +197,8 @@ public partial class MainWindow : Window
         AlarmsBadge.IsVisible = active;
         AlarmsBadge.Background = Avalonia.Media.Brush.Parse(ringing ? "#D93025" : "#1A73E8");
         AlarmsBadgeText.Text = count.ToString();
-        ToolTip.SetTip(AlarmsButton, L.T(!alarms.NotificationsEnabled ? "alarms.tip_off" : count == 0 ? "alarms.tip_none" : ringing ? "alarms.tip_ringing" : "alarms.tip"));
+        var tip = L.T(!alarms.NotificationsEnabled ? "alarms.tip_off" : count == 0 ? "alarms.tip_none" : ringing ? "alarms.tip_ringing" : "alarms.tip");
+        ToolTip.SetTip(AlarmsButton, WithKeys(tip, L.T("key.ctrl") + "+" + L.T("key.shift") + "+A"));
     }
 
     private void StartAlarmSound(RingingAlarm alarm)
@@ -591,7 +602,9 @@ public partial class MainWindow : Window
 
     private void OnAgendaItemTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
-        if (sender is Control { DataContext: AgendaItem item } row) ShowDetailsOfLine(item.Event, row, AgendaList);
+        if (sender is not Control { DataContext: AgendaItem item } row) return;
+        Select(item.Event);
+        ShowDetailsOfLine(item.Event, row, AgendaList);
     }
 
     private void OnAgendaItemEntered(object? sender, Avalonia.Input.PointerEventArgs e)
@@ -706,6 +719,8 @@ public partial class MainWindow : Window
         // The small calendar writes its month and day names when it is built: showing it as years and back makes it write them again.
         var shown = MiniCalendar.DisplayDate;
         PlaceMiniCalendar(shown, CalendarMode.Year);
+        UpdateShortcutTips();
+        UpdateAlarmsButton();
     }
 
     private bool _placingMiniCalendar;
@@ -738,11 +753,17 @@ public partial class MainWindow : Window
         if (_placingMiniCalendar || Vm is not { } vm || e.NewMode >= MiniCalendarZoom.RestingMode(vm.ViewModeIndex)) return;
         var shown = MiniCalendar.DisplayDate;
         // Posted: the mode is not changed again inside its own event, with the click not finished yet.
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => vm.ChooseInMiniCalendar(shown));
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            vm.ChooseInMiniCalendar(shown);
+            FocusView();
+        });
     }
 
     private void CloseDetails()
     {
+        // The keyboard that was on the card goes back to the view.
+        if (DetailsPopup.Child is { IsKeyboardFocusWithin: true }) Avalonia.Threading.Dispatcher.UIThread.Post(FocusView);
         DetailsPopup.IsOpen = false;
         DetailsPopup.Child = null;
         _hover?.Dismissed();
@@ -848,6 +869,46 @@ public partial class MainWindow : Window
         if (Vm is { } vm) vm.Search.IsAdvanced = !vm.Search.IsAdvanced;
     }
 
+    /// <summary>The lines of the results, in the order shown.</summary>
+    private List<Border> SearchLines() => Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(SearchResults).OfType<Border>()
+        .Where(b => b.Classes.Contains("searchrow") && b.IsEffectivelyVisible).ToList();
+
+    private static void FocusLine(Control line)
+    {
+        line.Focus(Avalonia.Input.NavigationMethod.Directional);
+        line.BringIntoView();
+    }
+
+    /// <summary>Down, in the search box, enters the results.</summary>
+    private void OnSearchBoxArrow(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key != Avalonia.Input.Key.Down || e.KeyModifiers != Avalonia.Input.KeyModifiers.None) return;
+        if (Vm?.Search.ShowResults != true || SearchLines().FirstOrDefault() is not { } first) return;
+        FocusLine(first);
+        e.Handled = true;
+    }
+
+    /// <summary>Up and Down move through the results (Up from the first goes back to the box); Enter opens the event.</summary>
+    private async void OnSearchRowKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.KeyModifiers != Avalonia.Input.KeyModifiers.None || sender is not Border { DataContext: SearchRow row } line) return;
+        if (e.Key is Avalonia.Input.Key.Up or Avalonia.Input.Key.Down)
+        {
+            e.Handled = true;
+            var lines = SearchLines();
+            var next = lines.IndexOf(line) + (e.Key == Avalonia.Input.Key.Up ? -1 : 1);
+            if (next < 0) SearchBox.Focus(Avalonia.Input.NavigationMethod.Directional);
+            else if (next < lines.Count) FocusLine(lines[next]);
+        }
+        else if (e.Key == Avalonia.Input.Key.Enter)
+        {
+            e.Handled = true;
+            // An event that cannot be changed has no editor: its card is shown.
+            if (MainViewModel.IsReadOnly(row.Event)) ShowDetailsOfLine(row.Event, line, SearchResults);
+            else await EditAsync(row.Event, isNew: false);
+        }
+    }
+
     private void OnSearchBoxKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
     {
         if (e.Key != Avalonia.Input.Key.Enter) return;
@@ -893,19 +954,197 @@ public partial class MainWindow : Window
 
     private void OnShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
     {
-        if (Vm is { } v && e.Key == Avalonia.Input.Key.F && e.KeyModifiers == Avalonia.Input.KeyModifiers.Control) { OpenSearch(); e.Handled = true; return; }
         // The card first: when the focus is not on it, Esc must still close the card and leave the search as it is.
         if (e.Key == Avalonia.Input.Key.Escape && DetailsPopup.IsOpen) { CloseDetails(); e.Handled = true; return; }
-        if (Vm is { } v2 && e.Key == Avalonia.Input.Key.Escape && v2.Search.IsOpen) { v2.Search.Close(); e.Handled = true; return; }
-        if (Vm is not { } vm || e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Source is TextBox) return;
-        var mode = e.Key switch
-        {
-            Avalonia.Input.Key.D => 0, Avalonia.Input.Key.W => 1, Avalonia.Input.Key.M => 2,
-            Avalonia.Input.Key.Y => 3, Avalonia.Input.Key.A => 4, Avalonia.Input.Key.X => 5, _ => -1,
-        };
-        if (mode < 0) return;
-        vm.ViewModeIndex = mode;
+        if (Vm is { } v && e.Key == Avalonia.Input.Key.Escape && v.Search.IsOpen) { v.Search.Close(); e.Handled = true; return; }
+        if (e.Key == Avalonia.Input.Key.Escape && _selection is not null) { Select((Controls.EventKey?)null); e.Handled = true; return; }
+        if (Vm is not { } vm || Shortcuts.Map(e.Key, e.KeyModifiers, e.KeySymbol) is not { } shortcut) return;
+        if (Shortcuts.BelongsToControl(e.Key, e.KeyModifiers, e.Source as Avalonia.Visual)) return;
         e.Handled = true;
+        Run(shortcut, vm);
+    }
+
+    private void Run(Shortcut shortcut, MainViewModel vm)
+    {
+        CloseDetails(); // the card belongs to what was shown before
+        switch (shortcut.Command)
+        {
+            case ShortcutCommand.Today:
+                vm.TodayCommand.Execute(null);
+                if (vm.IsTimeGrid) Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToNow, Avalonia.Threading.DispatcherPriority.Loaded);
+                break;
+            case ShortcutCommand.Previous: vm.PreviousCommand.Execute(null); break;
+            case ShortcutCommand.Next: vm.NextCommand.Execute(null); break;
+            case ShortcutCommand.NewEvent: _ = NewEventOnAsync(vm.SelectedDate ?? DateTime.Today); break;
+            case ShortcutCommand.Sync: if (!vm.IsSyncing) _ = SyncAsync(); break;
+            case ShortcutCommand.Settings: OnOpenSettings(this, new RoutedEventArgs()); break;
+            case ShortcutCommand.Search: OpenSearch(); break;
+            case ShortcutCommand.View: vm.ViewModeIndex = shortcut.View; break;
+            case ShortcutCommand.Alarms: if (AlarmsButton.IsEnabled) AlarmsButton.Flyout?.ShowAt(AlarmsButton); break;
+            case ShortcutCommand.Weekends: vm.ShowWeekends = !vm.ShowWeekends; break;
+            case ShortcutCommand.Help: _ = new ShortcutsWindow().ShowDialog(this); break;
+            case ShortcutCommand.About: OnOpenAbout(this, new RoutedEventArgs()); break;
+            case ShortcutCommand.NextArea: FocusArea(1); break;
+            case ShortcutCommand.PreviousArea: FocusArea(-1); break;
+            case ShortcutCommand.GoToDate: _ = GoToDateAsync(vm); break;
+            case ShortcutCommand.PreviousDay: vm.StepDay(-1); break;
+            case ShortcutCommand.NextDay: vm.StepDay(1); break;
+            case ShortcutCommand.JumpBack: vm.Jump(-1); break;
+            case ShortcutCommand.JumpForward: vm.Jump(1); break;
+        }
+    }
+
+    private async Task GoToDateAsync(MainViewModel vm)
+    {
+        if (await new GoToDateWindow(vm.SelectedDate ?? DateTime.Today).ShowDialog<DateTime?>(this) is { } day) vm.GoTo(day);
+    }
+
+    private void OnScrollShortcut(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (Vm is not { } vm || Shortcuts.Map(e.Key, e.KeyModifiers, null) is not { } shortcut || !Shortcuts.IsScroll(shortcut.Command)) return;
+        if (e.Source is not Avalonia.Visual source || Shortcuts.BelongsToControl(e.Key, e.KeyModifiers, source)) return;
+        // The list of the calendars scrolls itself; with the results of a search the view is covered.
+        if (Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(source).Contains(CalendarList) || vm.Search.ShowResults) return;
+        e.Handled = Scroll(shortcut.Command, vm);
+    }
+
+    /// <summary>Moves up or down in the view shown; false when the view has nothing for the command.</summary>
+    private bool Scroll(ShortcutCommand command, MainViewModel vm)
+    {
+        if (vm.IsMonth)
+        {
+            if (command is not (ShortcutCommand.PageUp or ShortcutCommand.PageDown)) return false;
+            Run(new Shortcut(command == ShortcutCommand.PageUp ? ShortcutCommand.Previous : ShortcutCommand.Next), vm);
+            return true;
+        }
+
+        var scroller = vm.IsTimeGrid ? GridScroll : vm.IsYear ? YearScroll : AgendaScroll;
+        var view = scroller.Viewport.Height;
+        var last = Math.Max(0, scroller.Extent.Height - view);
+        var line = vm.IsTimeGrid ? Controls.WeekGrid.HourHeight / 2 : 48;
+        // In the time grids Home and End are the start and the end of the day of the settings; elsewhere the two ends of the list.
+        double Hour(int hour) => (hour - vm.FirstHour) * Controls.WeekGrid.HourHeight;
+        var y = scroller.Offset.Y;
+        y = command switch
+        {
+            ShortcutCommand.LineUp => y - line,
+            ShortcutCommand.LineDown => y + line,
+            ShortcutCommand.PageUp => y - view,
+            ShortcutCommand.PageDown => y + view,
+            ShortcutCommand.Start => vm.IsTimeGrid ? Hour(vm.Settings.DayStartHour) : 0,
+            ShortcutCommand.End => vm.IsTimeGrid ? Hour(vm.Settings.DayEndHour) - view : last,
+            ShortcutCommand.Top => 0,
+            _ => last,
+        };
+        CloseDetails();
+        scroller.Offset = new Avalonia.Vector(scroller.Offset.X, Math.Clamp(y, 0, last));
+        return true;
+    }
+
+    private static string WithKeys(string text, string keys) => text + " (" + keys + ")";
+
+    /// <summary>The tooltips of the buttons name their keys, in the language shown now.</summary>
+    private void UpdateShortcutTips()
+    {
+        var ctrl = L.T("key.ctrl") + "+";
+        void Tip(Control button, string text, string keys) => ToolTip.SetTip(button, WithKeys(text, keys));
+        Tip(TodayButton, L.T("main.today"), "T");
+        Tip(PreviousButton, L.T("shortcuts.previous"), "←, K, P");
+        Tip(NextButton, L.T("shortcuts.next"), "→, J, N");
+        Tip(SearchButton, L.T("search.tip"), "/, " + ctrl + "F");
+        Tip(SyncButton, L.T("main.sync_now"), "R, F5");
+        Tip(SettingsButton, L.T("main.settings"), "S, " + ctrl + ",");
+        Tip(AboutButton, L.T("main.about"), "I");
+    }
+
+    /// <summary>The time grid shows the current hour, a third of the way down.</summary>
+    private void ScrollToNow()
+    {
+        if (Vm is not { } vm) return;
+        var top = (DateTime.Now.TimeOfDay.TotalHours - vm.FirstHour) * Controls.WeekGrid.HourHeight - GridScroll.Viewport.Height / 3;
+        GridScroll.Offset = new Avalonia.Vector(0, Math.Max(0, top));
+    }
+
+    /// <summary>The keyboard goes back to the view, so that the arrows move through its periods again.</summary>
+    private void FocusView()
+    {
+        if (!Grid.IsEffectivelyVisible || !Grid.Focus()) ViewHost.Focus();
+    }
+
+    /// <summary>F6 and Shift+F6: the keyboard goes to the next or previous area (bar, small calendar, calendars, view); an area with nothing to focus is skipped.</summary>
+    private void FocusArea(int direction)
+    {
+        Avalonia.Controls.Control[] areas = [HeaderBar, MiniCalendar, CalendarList, ViewHost];
+        var path = FocusManager?.GetFocusedElement() is Avalonia.Visual focused ? Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(focused).ToList() : [];
+        var current = Array.FindIndex(areas, path.Contains);
+        // From nowhere F6 starts with the bar and Shift+F6 with the view.
+        if (current < 0) current = direction > 0 ? areas.Length - 1 : 0;
+        for (var step = 1; step <= areas.Length; step++)
+        {
+            var next = ((current + direction * step) % areas.Length + areas.Length) % areas.Length;
+            if (FocusAreaAt(next)) return;
+        }
+    }
+
+    private bool FocusAreaAt(int area)
+    {
+        const Avalonia.Input.NavigationMethod shown = Avalonia.Input.NavigationMethod.Tab; // the focus is drawn
+        switch (area)
+        {
+            case 0: return TodayButton.Focus(shown);
+            case 1: return MiniCalendarCell() is { } cell && cell.Focus(shown);
+            case 2:
+                var calendar = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(CalendarList).OfType<Button>()
+                    .FirstOrDefault(b => b.Classes.Contains("calitem") && b.IsEffectivelyVisible);
+                return calendar is not null && calendar.Focus(shown);
+            default:
+                FocusView();
+                ViewFocusRing.IsVisible = true; // after the focus, whose change hides the frame
+                return true;
+        }
+    }
+
+    /// <summary>The cell of the small calendar that stands for the selected day (a day, a month or a year), or the first one shown.</summary>
+    private Avalonia.Controls.Control? MiniCalendarCell()
+    {
+        var mode = MiniCalendar.DisplayMode;
+        var cells = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(MiniCalendar).OfType<Button>()
+            .Where(b => b.IsEffectivelyVisible && b.IsEnabled && (mode == CalendarMode.Month ? b is Avalonia.Controls.Primitives.CalendarDayButton : b is Avalonia.Controls.Primitives.CalendarButton))
+            .ToList();
+        var day = Vm?.SelectedDate ?? DateTime.Today;
+        return cells.FirstOrDefault(c => c.DataContext is DateTime d && d.Year == day.Year
+                   && (mode == CalendarMode.Decade || d.Month == day.Month) && (mode != CalendarMode.Month || d.Day == day.Day))
+               ?? cells.FirstOrDefault();
+    }
+
+    /// <summary>Enter and Space on a month or a year of the small calendar choose it, as Ctrl+Down does.</summary>
+    private void OnMiniCalendarKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Key is not (Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space)) return;
+        if (MiniCalendar.DisplayMode == CalendarMode.Month || e.Source is not Avalonia.Controls.Primitives.CalendarButton) return;
+        e.Handled = true;
+        MiniCalendar.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = KeyDownEvent, Key = Avalonia.Input.Key.Down, KeyModifiers = Avalonia.Input.KeyModifiers.Control });
+    }
+
+    /// <summary>The arrows move the highlighted cell of the small calendar but not the focus: the focus follows it, so that the two do not part.</summary>
+    private void OnMiniCalendarKeyMoved(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.KeyModifiers != Avalonia.Input.KeyModifiers.None || e.Key is not (Avalonia.Input.Key.Left or Avalonia.Input.Key.Right or Avalonia.Input.Key.Up or Avalonia.Input.Key.Down)) return;
+        // Posted after the calendar has moved (and, with the days, after it has been placed again on the new day).
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var cells = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(MiniCalendar).OfType<Button>().Where(b => b.IsEffectivelyVisible).ToList();
+            // Months and years: the arrows move a mark of their own; days: they move the selection.
+            var highlighted = cells.FirstOrDefault(b => b.Classes.Contains(":btnfocused")) ?? cells.FirstOrDefault(b => b.Classes.Contains(":selected"));
+            highlighted?.Focus(Avalonia.Input.NavigationMethod.Directional);
+        }, Avalonia.Threading.DispatcherPriority.Input);
+    }
+
+    /// <summary>A click on a day of the small calendar chooses it: the keyboard goes back to the view.</summary>
+    private void OnMiniCalendarPointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        if (e.Source is Avalonia.Visual source && Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualAncestors(source).Any(x => x is Avalonia.Controls.Primitives.CalendarDayButton))
+            Avalonia.Threading.Dispatcher.UIThread.Post(FocusView);
     }
 
     private void ScrollToDayStart()
@@ -1355,9 +1594,13 @@ public partial class MainWindow : Window
 
     private async void OnNewEvent(object? sender, RoutedEventArgs e)
     {
+        await NewEventOnAsync(DateTime.Today);
+    }
+
+    private async Task NewEventOnAsync(DateTime day)
+    {
         if (Vm is not { } vm) return;
-        var start = DateTime.Today.AddHours(Math.Max(DateTime.Now.Hour + 1, vm.Settings.DayStartHour));
-        if (start.Date != DateTime.Today) start = DateTime.Today.AddHours(vm.Settings.DayStartHour);
+        var start = Shortcuts.NewEventStart(day, DateTime.Now, vm.Settings.DayStartHour);
         await EditAsync(vm.NewEvent(start, start.AddMinutes(vm.Settings.DefaultEventMinutes)), isNew: true);
     }
 
