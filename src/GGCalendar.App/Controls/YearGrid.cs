@@ -29,9 +29,38 @@ public sealed class YearGrid : Control
     public static readonly StyledProperty<IReadOnlyList<CalendarEvent>?> EventsProperty =
         AvaloniaProperty.Register<YearGrid, IReadOnlyList<CalendarEvent>?>(nameof(Events));
 
+    public static readonly StyledProperty<DateTime?> SelectedDayProperty =
+        AvaloniaProperty.Register<YearGrid, DateTime?>(nameof(SelectedDay));
+
     static YearGrid()
     {
-        AffectsRender<YearGrid>(YearProperty, FirstDayOfWeekProperty, EventsProperty);
+        AffectsRender<YearGrid>(YearProperty, FirstDayOfWeekProperty, EventsProperty, SelectedDayProperty);
+    }
+
+    /// <summary>The day framed: the one the arrows move (issue #102).</summary>
+    public DateTime? SelectedDay { get => GetValue(SelectedDayProperty); set => SetValue(SelectedDayProperty, value); }
+
+    /// <summary>Where a day of the year shown is drawn.</summary>
+    public Rect RectOf(DateTime day)
+    {
+        var col = (day.Month - 1) % Columns;
+        var row = (day.Month - 1) / Columns;
+        var dw = (CellW - 2 * Pad) / 7;
+        var dh = (CellH - MonthTitleHeight - 6) / 7;
+        var first = new DateTime(day.Year, day.Month, 1);
+        var index = (7 + (int)first.DayOfWeek - (int)FirstDayOfWeek) % 7 + day.Day - 1;
+        return new Rect(col * CellW + Pad + index % 7 * dw, row * CellH + MonthTitleHeight + (index / 7 + 1) * dh, dw, dh);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        // A day moved out of sight is scrolled to (posted: the year shown may change after the day).
+        if (change.Property == SelectedDayProperty && SelectedDay is { } day)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (IsEffectivelyVisible && Bounds.Width > 0 && day.Year == Year) this.BringIntoView(RectOf(day));
+            }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     public int Year { get => GetValue(YearProperty); set => SetValue(YearProperty, value); }
@@ -155,6 +184,7 @@ public sealed class YearGrid : Control
                 var date = new DateTime(Year, m, d);
                 var today = date == DateTime.Today;
                 if (today) context.DrawEllipse(accent, null, new Point(cx, cy), Math.Min(dw, dh) / 2 - 1, Math.Min(dw, dh) / 2 - 1);
+                if (date == SelectedDay?.Date) context.DrawRectangle(null, new Pen(accent, 1.5), new Rect(cx - dw / 2, cy - dh / 2, dw, dh).Deflate(0.5), 4, 4);
                 var n = new FormattedText(d.ToString(culture), culture, FlowDirection.LeftToRight, typeface, 11, today ? Brushes.White : fg);
                 context.DrawText(n, new Point(cx - n.Width / 2, cy - n.Height / 2 - (withEvents.Contains(date) && !today ? 2 : 0)));
                 if (withEvents.Contains(date) && !today)

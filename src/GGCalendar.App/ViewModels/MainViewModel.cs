@@ -753,6 +753,35 @@ public sealed partial class MainViewModel : ViewModelBase
         };
     }
 
+    /// <summary>Ctrl and the arrows: a longer step than <see cref="NextCommand"/> (none in the year view).</summary>
+    public void Jump(int direction)
+    {
+        Search.CloseAndClear();
+        var d = SelectedDate ?? DateTime.Today;
+        SelectedDate = ViewModeIndex switch
+        {
+            0 => d.AddDays(7 * direction),
+            2 or 4 => d.AddYears(direction),
+            3 => d,
+            _ => d.AddMonths(direction),
+        };
+    }
+
+    /// <summary>Shift and the arrows: the day before or after, in every view.</summary>
+    public void StepDay(int direction)
+    {
+        Search.CloseAndClear();
+        SelectedDate = (SelectedDate ?? DateTime.Today).AddDays(direction);
+    }
+
+    /// <summary>"Go to a date": the view shown goes to <paramref name="day"/>.</summary>
+    public void GoTo(DateTime day)
+    {
+        Search.CloseAndClear();
+        if (SelectedDate == day.Date) DayShown?.Invoke(day.Date); // as for Today: the small calendar may be elsewhere
+        else SelectedDate = day.Date;
+    }
+
     /// <summary>A month (month view) or a year (year view) was chosen in the small calendar: the view goes there, keeping the day.</summary>
     /// <param name="shown">The date the small calendar holds after the choice.</param>
     public void ChooseInMiniCalendar(DateTime shown)

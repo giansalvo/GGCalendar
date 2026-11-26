@@ -52,8 +52,20 @@
         <Style Selector="Button.calitem:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#22888888" />
         </Style>
+        <Style Selector="Border.searchrow">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.agendarow">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.agendarow.selected">
+            <Setter Property="Background" Value="#331A73E8" />
+        </Style>
         <Style Selector="Border.searchrow:pointerover">
             <Setter Property="Background" Value="#14888888" />
+        </Style>
+        <Style Selector="Border.searchrow:focus">
+            <Setter Property="Background" Value="#331A73E8" />
         </Style>
         <Style Selector="TextBlock.muted">
             <Setter Property="Opacity" Value="0.65" />
@@ -85,13 +97,13 @@
                 </Button>
             </Grid>
         </Border>
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,10">
+        <Grid Name="HeaderBar" DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,10">
             <!-- The title of the view is the one that gives way when the window is narrow: it is cut with dots, the buttons on the right stay. -->
             <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center" HorizontalAlignment="Left" ClipToBounds="True">
                 <TextBlock Text="GGCalendar" FontSize="20" FontWeight="SemiBold" Margin="0,0,16,0" VerticalAlignment="Center" />
-                <Button Grid.Column="1" AutomationProperties.AutomationId="Main.Today" Content="{loc:T main.today}" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
-                <Button Grid.Column="2" Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
-                <Button Grid.Column="3" Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
+                <Button Grid.Column="1" Name="TodayButton" AutomationProperties.AutomationId="Main.Today" Content="{loc:T main.today}" Command="{Binding TodayCommand}" CornerRadius="18" Padding="16,6" />
+                <Button Grid.Column="2" Name="PreviousButton" Classes="nav" Content="‹" FontSize="20" Command="{Binding PreviousCommand}" />
+                <Button Grid.Column="3" Name="NextButton" Classes="nav" Content="›" FontSize="20" Command="{Binding NextCommand}" />
                 <TextBlock Grid.Column="4" Text="{Binding Title}" FontSize="22" Margin="8,0,0,0" MaxWidth="320" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <Border Grid.Column="5" CornerRadius="4" Padding="6,2" Background="#22888888" VerticalAlignment="Center" IsVisible="{Binding Settings.ShowWeekNumbers}">
                     <TextBlock FontSize="12" Text="{Binding WeekLabel}" />
@@ -179,7 +191,7 @@
                 </Popup>
             </Grid>
         </Border>
-                <Button AutomationProperties.AutomationId="Main.Search" Classes="nav" Padding="0" Click="OnToggleSearch" ToolTip.Tip="{loc:T search.tip}">
+                <Button Name="SearchButton" AutomationProperties.AutomationId="Main.Search" Classes="nav" Padding="0" Click="OnToggleSearch">
                     <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
@@ -197,7 +209,7 @@
                         <Flyout Placement="BottomEdgeAlignedRight" />
                     </Button.Flyout>
                 </Button>
-                <Button AutomationProperties.AutomationId="Main.SyncNow" Classes="nav" Padding="0" Click="OnSyncNow" IsEnabled="{Binding !IsSyncing}" ToolTip.Tip="{loc:T main.sync_now}">
+                <Button AutomationProperties.AutomationId="Main.SyncNow" Classes="nav" Padding="0" Click="OnSyncNow" IsEnabled="{Binding !IsSyncing}" Name="SyncButton">
                     <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
@@ -219,11 +231,11 @@
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
-                <Button AutomationProperties.AutomationId="Main.Settings" Classes="nav" Padding="0" Click="OnOpenSettings" ToolTip.Tip="{loc:T main.settings}">
+                <Button Name="SettingsButton" AutomationProperties.AutomationId="Main.Settings" Classes="nav" Padding="0" Click="OnOpenSettings">
                     <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
-                <Button Classes="nav" Padding="0" Click="OnOpenAbout" ToolTip.Tip="{loc:T main.about}">
+                <Button Name="AboutButton" Classes="nav" Padding="0" Click="OnOpenAbout">
                     <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
@@ -251,7 +263,7 @@
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,8" Spacing="2">
                     <TextBlock Classes="muted" FontSize="11" Margin="8,2,0,0" Text="{loc:T main.calendars_hint}" TextWrapping="Wrap" />
                 </StackPanel>
-                <ScrollViewer Margin="0,16,0,0">
+                <ScrollViewer Name="CalendarList" Margin="0,16,0,0">
                     <!-- Right margin: the scroll bar grows over the list when the pointer is on it and must not cover the arrows. -->
                     <ItemsControl ItemsSource="{Binding Accounts}" Margin="0,0,20,0">
                         <ItemsControl.ItemTemplate>
@@ -328,14 +340,15 @@
             </DockPanel>
         </Border>
 
-        <Panel>
+        <!-- Focusable: the keyboard comes back here after a choice in the small calendar. -->
+        <Panel Name="ViewHost" Focusable="True">
         <ctl:MonthGrid Name="Month" DimPast="{Binding Settings.DimPastEvents}" IsVisible="{Binding IsMonth}" Margin="0,0,12,0" ShowWeekends="{Binding ShowWeekends}"
                        GridStart="{Binding MonthGridStart}" Month="{Binding MonthNumber}"
-                       Events="{Binding VisibleEvents}" CalendarColors="{Binding CalendarColors}" />
+                       Events="{Binding VisibleEvents}" CalendarColors="{Binding CalendarColors}" SelectedDay="{Binding SelectedDate}" />
 
-        <ScrollViewer IsVisible="{Binding IsYear}">
+        <ScrollViewer Name="YearScroll" IsVisible="{Binding IsYear}">
             <ctl:YearGrid Name="Year" Year="{Binding YearNumber}" FirstDayOfWeek="{Binding Settings.FirstDayOfWeek}"
-                          Events="{Binding VisibleEvents}" Margin="12,0" />
+                          Events="{Binding VisibleEvents}" SelectedDay="{Binding SelectedDate}" Margin="12,0" />
         </ScrollViewer>
 
         <ScrollViewer Name="AgendaScroll" IsVisible="{Binding IsAgenda}">
@@ -347,7 +360,7 @@
                             <ItemsControl ItemsSource="{Binding Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:AgendaItem">
-                                        <Border Background="Transparent" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened"
+                                        <Border Classes="agendarow" CornerRadius="8" Padding="8,6" Cursor="Hand" Tapped="OnAgendaItemTapped" DoubleTapped="OnAgendaItemOpened"
                                                 PointerEntered="OnAgendaItemEntered" PointerExited="OnAgendaItemExited">
                                             <Grid ColumnDefinitions="18,170,*">
                                                 <Ellipse Width="10" Height="10" Fill="{Binding ColorHex}" HorizontalAlignment="Left" VerticalAlignment="Center" />
@@ -443,8 +456,8 @@
                                             <ItemsControl Grid.Column="1" ItemsSource="{Binding Rows}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:SearchRow">
-                                                        <Border Classes="searchrow" AutomationProperties.AutomationId="Search.Row" Padding="10,6" CornerRadius="16" Opacity="{Binding RowOpacity}" Background="Transparent"
-                                                                Tapped="OnSearchRowTapped" DoubleTapped="OnSearchRowDoubleTapped">
+                                                        <Border Classes="searchrow" AutomationProperties.AutomationId="Search.Row" Padding="10,6" CornerRadius="16" Opacity="{Binding RowOpacity}"
+                                                                Tapped="OnSearchRowTapped" DoubleTapped="OnSearchRowDoubleTapped" Focusable="True" KeyDown="OnSearchRowKeyDown">
                                                             <Grid ColumnDefinitions="Auto,150,*,Auto">
                                                                 <Ellipse Width="12" Height="12" Fill="{Binding ColorHex}" VerticalAlignment="Top" Margin="0,5,12,0" />
                                                                 <StackPanel Grid.Column="1" Margin="0,1,8,0">
@@ -477,6 +490,9 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.AutomationId="Search.Message" />
             </Panel>
         </Border>
+
+        <!-- Shows that the keyboard is on the view, when F6 brought it there. -->
+        <Border Name="ViewFocusRing" BorderBrush="#1A73E8" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False" IsVisible="False" />
 
         <!-- Event details shown on a single click, beside the clicked event (content set in code). A click outside closes it
              and still reaches the calendar, so clicking another event opens that one directly. -->

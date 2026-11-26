@@ -61,7 +61,7 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-            <Button Content="{loc:T common.cancel}" Classes="link" Click="OnCancel" />
+            <Button Content="{loc:T common.cancel}" Classes="link" IsCancel="True" Click="OnCancel" />
             <Button Content="{loc:T recurrence.end}" Classes="accent" CornerRadius="18" Padding="26,8" IsDefault="True" Click="OnOk" />
         </StackPanel>
     </StackPanel>

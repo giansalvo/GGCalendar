@@ -10,7 +10,7 @@
         <RadioButton Name="ThisAndFollowing" GroupName="scope" Content="{loc:T scope.this_and_following}" />
         <RadioButton Name="AllEvents" GroupName="scope" Content="{loc:T scope.all_events}" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-            <Button AutomationProperties.AutomationId="Dialog.Cancel" Content="{loc:T common.cancel}" Click="OnCancel" />
+            <Button AutomationProperties.AutomationId="Dialog.Cancel" Content="{loc:T common.cancel}" Click="OnCancel" IsCancel="True" />
             <Button AutomationProperties.AutomationId="Dialog.Ok" Content="{loc:T common.ok}" Classes="accent" Click="OnOk" IsDefault="True" />
         </StackPanel>
     </StackPanel>
