@@ -81,6 +81,7 @@ public partial class MainWindow : Window
         DetailsPopup.Closed += (_, _) => { if (!_reopening) _hover.Dismissed(); };
         AgendaScroll.SizeChanged += (_, _) => UpdateAgendaLayout();
         Year.DayClicked += day => Vm?.ShowDay(day);
+        MiniCalendar.DisplayModeChanged += OnMiniCalendarModeChanged;
         KeyDown += OnShortcut;
         SetUpSyncQueue();
         _ringer.SoundRequested += StartAlarmSound;
@@ -115,6 +116,7 @@ public partial class MainWindow : Window
                 _scheduler = new ReminderScheduler(() => vm.ExpandedBetween(DateTime.Now.AddDays(-1), DateTime.Now + ReminderScheduler.Window, visibleOnly: false), isVisible: vm.IsCalendarVisible, now: ReminderClock) { Enabled = vm.Settings.NotificationsEnabled };
                 _scheduler.Fired += OnReminderFired;
                 vm.DayShown += ShowDayInMiniCalendar;
+                ShowDayInMiniCalendar(vm.SelectedDate ?? DateTime.Today); // the view of the settings was chosen before the line above
                 vm.EventsChanged += _scheduler.Invalidate;
                 vm.CalendarVisibilityChanged += _scheduler.VisibilityChanged;
                 SetUpAlarms(vm);
@@ -703,18 +705,41 @@ public partial class MainWindow : Window
 
         // The small calendar writes its month and day names when it is built: showing it as years and back makes it write them again.
         var shown = MiniCalendar.DisplayDate;
-        MiniCalendar.DisplayMode = CalendarMode.Year;
-        MiniCalendar.DisplayMode = CalendarMode.Month;
-        MiniCalendar.DisplayDate = shown;
+        PlaceMiniCalendar(shown, CalendarMode.Year);
     }
 
-    /// <summary>The small calendar shows the month of the day (as days, not months or years); it does not follow a selected day by itself.
+    private bool _placingMiniCalendar;
+
+    /// <summary>The small calendar shows the day as the view asks (its days, the months of its year or the years around it); it does not follow a selected day by itself.
     /// Posted, so that it does not run inside the click of the calendar that has just chosen the day.</summary>
-    private void ShowDayInMiniCalendar(DateTime day) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    private void ShowDayInMiniCalendar(DateTime day) => Avalonia.Threading.Dispatcher.UIThread.Post(() => PlaceMiniCalendar(day));
+
+    /// <param name="through">A mode to pass through first, besides the days.</param>
+    private void PlaceMiniCalendar(DateTime day, CalendarMode? through = null)
     {
-        MiniCalendar.DisplayMode = CalendarMode.Month;
-        MiniCalendar.DisplayDate = day;
-    });
+        _placingMiniCalendar = true;
+        try
+        {
+            if (through is { } mode) MiniCalendar.DisplayMode = mode;
+            // The order matters: the date is taken as the days are shown, and the months and years are then made from it.
+            MiniCalendar.DisplayMode = CalendarMode.Month;
+            MiniCalendar.DisplayDate = day;
+            MiniCalendar.DisplayMode = MiniCalendarZoom.RestingMode(Vm?.ViewModeIndex ?? 0);
+        }
+        finally
+        {
+            _placingMiniCalendar = false;
+        }
+    }
+
+    /// <summary>A click on a month (month view) or on a year (year view) only makes the small calendar go one level down: that is the choice.</summary>
+    private void OnMiniCalendarModeChanged(object? sender, CalendarModeChangedEventArgs e)
+    {
+        if (_placingMiniCalendar || Vm is not { } vm || e.NewMode >= MiniCalendarZoom.RestingMode(vm.ViewModeIndex)) return;
+        var shown = MiniCalendar.DisplayDate;
+        // Posted: the mode is not changed again inside its own event, with the click not finished yet.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => vm.ChooseInMiniCalendar(shown));
+    }
 
     private void CloseDetails()
     {

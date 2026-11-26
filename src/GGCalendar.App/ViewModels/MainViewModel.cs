@@ -462,7 +462,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (value is { } day) DayShown?.Invoke(day);
     }
 
-    /// <summary>Raised when the small calendar must show the month of a day: on every change of the selected day, and always on Today (even when the day does not change).</summary>
+    /// <summary>Raised when the small calendar must show a day: on every change of the selected day or of the view, and always on Today and on a choice of a month or year in it (even when the day does not change).</summary>
     public event Action<DateTime>? DayShown;
 
     partial void OnSettingsChanged(AppSettings value)
@@ -753,6 +753,17 @@ public sealed partial class MainViewModel : ViewModelBase
         };
     }
 
+    /// <summary>A month (month view) or a year (year view) was chosen in the small calendar: the view goes there, keeping the day.</summary>
+    /// <param name="shown">The date the small calendar holds after the choice.</param>
+    public void ChooseInMiniCalendar(DateTime shown)
+    {
+        Search.CloseAndClear();
+        var selected = SelectedDate ?? DateTime.Today;
+        var day = MiniCalendarZoom.Chosen(selected, shown, MiniCalendarZoom.RestingMode(ViewModeIndex));
+        if (day == SelectedDate) DayShown?.Invoke(day); // the month or year already shown: only the small calendar has to go back
+        else SelectedDate = day;
+    }
+
     /// <summary>Switches to the day view for the given date.</summary>
     public void ShowDay(DateTime day)
     {
@@ -764,6 +775,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Search.CloseAndClear(); // choosing a view ends the search and empties its box: the view chosen is shown
         Refresh();
+        DayShown?.Invoke(SelectedDate ?? DateTime.Today); // the small calendar shows days, months or years according to the view
     }
 
     public void MoveEvent(CalendarEvent ev, DateTime start, DateTime end)
