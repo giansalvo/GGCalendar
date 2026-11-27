@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using GGCalendar.App.Controls;
 using GGCalendar.App.ViewModels;
 using GGCalendar.App.Views;
+using GGCalendar.Core.Localization;
 using GGCalendar.Core.Models;
 using GGCalendar.Core.Subscriptions;
 using GGCalendar.Core.Tests.Support;
@@ -492,6 +493,75 @@ public class EventKeyboardTests
         rig.Key(PhysicalKey.Tab);
         rig.Vm.ViewModeIndex = Week;
         Assert.Null(rig.Window.Selection);
+        return Task.CompletedTask;
+    });
+
+    // ---- T490-T492: the buttons of the card pressed with the mouse (they did not click after the selection of the events) ----
+
+    private static void Press(Rig rig, Control target, Point inside)
+    {
+        var at = target.TranslatePoint(inside, rig.Window) ?? throw new Xunit.Sdk.XunitException("Il punto non è nella finestra.");
+        rig.Window.MouseDown(at, MouseButton.Left);
+        rig.Settle(); // between press and release the keyboard could move away from the button
+        rig.Window.MouseUp(at, MouseButton.Left);
+        rig.Settle();
+    }
+
+    /// <summary>The card of the only event of the day, opened as a person does: a click on its block.</summary>
+    private static Visual OpenCardWithTheMouse(Rig rig)
+    {
+        rig.Show(DayView, D);
+        rig.Window.FindControl<ScrollViewer>("GridScroll")!.Offset = new Vector(0, 7 * WeekGrid.HourHeight);
+        rig.Settle();
+        var grid = rig.Window.FindControl<WeekGrid>("Grid")!;
+        rig.Window.CaptureRenderedFrame(); // the grid knows where its blocks are once drawn
+        Press(rig, grid, new Point((grid.Gutter + grid.Bounds.Width) / 2, (9.5 - rig.Vm.FirstHour) * WeekGrid.HourHeight));
+        Assert.True(Card(rig).IsOpen);
+        rig.Window.CaptureRenderedFrame();
+        rig.Settle();
+        return (Visual)Card(rig).Child!;
+    }
+
+    private static void PressInCard(Rig rig, Visual card, string tip)
+    {
+        var button = FindButton(card, b => ToolTip.GetTip(b) as string == L.T(tip));
+        Press(rig, button, new Point(button.Bounds.Width / 2, button.Bounds.Height / 2));
+    }
+
+    [Fact]
+    [Trait("TestCase", "T490")]
+    public Task T490_ThePencilOfTheCardPressedWithTheMouseOpensTheEditor() => InEventsAppAsync(async rig =>
+    {
+        rig.Add("Matita", D.AddHours(9));
+        PressInCard(rig, OpenCardWithTheMouse(rig), "details.edit");
+
+        var editor = await DialogAsync<EventEditWindow>(rig);
+
+        Assert.False(Card(rig).IsOpen);
+        editor.Close();
+    });
+
+    [Fact]
+    [Trait("TestCase", "T491")]
+    public Task T491_TheBinOfTheCardPressedWithTheMouseDeletesTheEvent() => InEventsAppAsync(async rig =>
+    {
+        rig.Add("Cestino", D.AddHours(9));
+        PressInCard(rig, OpenCardWithTheMouse(rig), "edit.delete_event");
+
+        await WaitForAsync(() => rig.Window.SelectableEvents().Count == 0 ? rig.Window : null, "l'eliminazione");
+
+        Assert.False(Card(rig).IsOpen);
+    });
+
+    [Fact]
+    [Trait("TestCase", "T492")]
+    public Task T492_TheCrossOfTheCardPressedWithTheMouseClosesIt() => InEventsAppAsync(rig =>
+    {
+        rig.Add("Croce", D.AddHours(9));
+        PressInCard(rig, OpenCardWithTheMouse(rig), "common.close");
+
+        Assert.False(Card(rig).IsOpen);
+        Assert.Single(rig.Window.SelectableEvents());
         return Task.CompletedTask;
     });
 }

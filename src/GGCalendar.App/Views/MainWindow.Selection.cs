@@ -94,7 +94,11 @@ public partial class MainWindow
     private void OnViewPressed(object? sender, PointerPressedEventArgs e)
     {
         if (Vm?.Search.ShowResults == true) return;
-        if (e.Source is Visual source && source.GetSelfAndVisualAncestors().Contains(Grid)) return; // the time grid takes it itself
+        if (e.Source is not Visual source) return;
+        var path = source.GetSelfAndVisualAncestors().ToList();
+        // A press in the card of an event arrives here too, because the popup belongs to the view, but it is drawn apart from it.
+        // Taking the keyboard then would take it from the button being pressed, and a button that loses it does not click.
+        if (!path.Contains(ViewHost) || path.Contains(Grid)) return; // the time grid takes it itself
         ViewHost.Focus(NavigationMethod.Pointer);
     }
 
