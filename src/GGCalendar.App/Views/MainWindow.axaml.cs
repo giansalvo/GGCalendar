@@ -482,6 +482,7 @@ public partial class MainWindow : Window
             using var cts = new CancellationTokenSource();
             _syncCts = cts;
             SyncProgressWindow? progress = null;
+            var dismissed = false; // the person closed the progress window: it does not come back
             var finished = false;
             var discard = false;
             var result = await Task.Run(() => _google.SyncAllAsync(cts.Token, (done, total) =>
@@ -493,6 +494,8 @@ public partial class MainWindow : Window
                     {
                         if (finished) return;
                         if (progress is null || !progress.StopRequested) vm.SetStatus("status.sending", done, total);
+                        // Hidden in the tray the window cannot own another one (issue #111): the sending goes on and the progress comes when the app is shown again.
+                        if (!IsVisible) return;
                         if (progress is null)
                         {
                             progress = new SyncProgressWindow(() => cts.Cancel(), async () =>
@@ -505,9 +508,11 @@ public partial class MainWindow : Window
                                 cts.Cancel();
                                 return true;
                             });
-                            progress.Show(this);
+                            progress.Closed += (_, _) => dismissed = true;
                         }
 
+                        // New, or hidden together with the app: hiding is not closing, so it is shown again.
+                        if (!dismissed && !progress.IsVisible) progress.Show(this);
                         progress.Update(done, total);
                     });
             }));
