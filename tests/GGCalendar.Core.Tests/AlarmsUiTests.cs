@@ -40,7 +40,7 @@ public class AlarmsUiTests
         {
             Clean(window);
             foreach (var c in Vm(window).Calendars) visibility[c.Id] = c.IsVisible;
-            Vm(window).Settings.DefaultReminderSound = null; // the tests ring in silence
+            Vm(window).Settings.DefaultReminderSound = null; // in any case the audio output of the tests plays nothing (SilentSound)
             await test(window);
         }
         finally
@@ -535,6 +535,42 @@ public class AlarmsUiTests
                 try { File.Delete(f); } catch (IOException) { } // a temporary file: if the player still holds it, the system cleans it later
             }
         }
+    });
+
+    [Fact]
+    [Trait("TestCase", "T488")]
+    public Task T488_TurningOffAnAlarmReleasesTheOutputOfItsSound() => InAlarmsAppAsync(async window =>
+    {
+        var made = new List<FakeOutput>();
+        var standard = SoundService.NewOutput;
+        SoundService.NewOutput = () =>
+        {
+            made.Add(new FakeOutput());
+            return made[^1];
+        };
+        try
+        {
+            HideAll(window);
+            Vm(window).Calendars.First(c => c.Id == LocalCalendar(window)).IsVisible = true;
+            Add(window, "primo", TimeSpan.FromMinutes(40), null, Alarm(10));
+            Add(window, "secondo", TimeSpan.FromMinutes(40), null, Alarm(10));
+            FireAt(window, TimeSpan.FromMinutes(31));
+            var first = Assert.Single(made); // one alarm rings at a time
+            Assert.Equal(["init", "play"], first.Calls);
+
+            window.Ringer.Remove(window.Ringer.Current!.Key);
+            Assert.True(first.Disposed);
+            Assert.Equal(2, made.Count); // the next one rings
+
+            window.Ringer.RemoveAll();
+            Assert.All(made, o => Assert.True(o.Disposed));
+        }
+        finally
+        {
+            SoundService.NewOutput = standard;
+        }
+
+        await Task.CompletedTask;
     });
 
     [Fact]
